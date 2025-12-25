@@ -1,0 +1,1051 @@
+{
+  "page": 4,
+  "page_count": 5,
+  "exercise_templates": [
+    {
+      "id": "C284D923",
+      "title": "Reverse Lunge",
+      "type": "reps_only",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "hamstrings",
+        "glutes"
+      ],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "818BA121",
+      "title": "Reverse Lunge (Barbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "hamstrings",
+        "glutes"
+      ],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "FFDA283B",
+      "title": "Reverse Lunge (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "glutes",
+        "hamstrings"
+      ],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "99B49684",
+      "title": "Reverse Plank",
+      "type": "duration",
+      "primary_muscle_group": "abdominals",
+      "secondary_muscle_groups": [
+        "triceps"
+      ],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "51A0EDAA",
+      "title": "Ring Dips",
+      "type": "reps_only",
+      "primary_muscle_group": "chest",
+      "secondary_muscle_groups": [
+        "shoulders",
+        "triceps"
+      ],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "5F09F0FC",
+      "title": "Ring Pull Up",
+      "type": "reps_only",
+      "primary_muscle_group": "lats",
+      "secondary_muscle_groups": [
+        "upper_back",
+        "biceps",
+        "forearms"
+      ],
+      "equipment": "other",
+      "is_custom": false
+    },
+    {
+      "id": "AEA56BDC",
+      "title": "Ring Push Up",
+      "type": "reps_only",
+      "primary_muscle_group": "chest",
+      "secondary_muscle_groups": [
+        "shoulders",
+        "triceps"
+      ],
+      "equipment": "other",
+      "is_custom": false
+    },
+    {
+      "id": "2B4B7310",
+      "title": "Romanian Deadlift (Barbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "hamstrings",
+      "secondary_muscle_groups": [
+        "glutes",
+        "lower_back",
+        "upper_back",
+        "lats"
+      ],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "72CFFAD5",
+      "title": "Romanian Deadlift (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "hamstrings",
+      "secondary_muscle_groups": [
+        "glutes",
+        "lower_back",
+        "upper_back",
+        "lats"
+      ],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "234897AB",
+      "title": "Rope Cable Curl",
+      "type": "weight_reps",
+      "primary_muscle_group": "biceps",
+      "secondary_muscle_groups": [
+        "forearms"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "9273BA17",
+      "title": "Rope Straight Arm Pulldown",
+      "type": "weight_reps",
+      "primary_muscle_group": "lats",
+      "secondary_muscle_groups": [
+        "triceps"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "0222DB42",
+      "title": "Rowing Machine",
+      "type": "distance_duration",
+      "primary_muscle_group": "cardio",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "AC1BB830",
+      "title": "Running",
+      "type": "distance_duration",
+      "primary_muscle_group": "cardio",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "BB83BDDE",
+      "title": "Russian Twist (Bodyweight)",
+      "type": "reps_only",
+      "primary_muscle_group": "abdominals",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "2982AA23",
+      "title": "Russian Twist (Weighted)",
+      "type": "weight_reps",
+      "primary_muscle_group": "abdominals",
+      "secondary_muscle_groups": [],
+      "equipment": "plate",
+      "is_custom": false
+    },
+    {
+      "id": "15e54d84-afd1-4b02-8948-f7cc04bd6999",
+      "title": "Safety Bar Squat",
+      "type": "weight_reps",
+      "primary_muscle_group": "other",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": true
+    },
+    {
+      "id": "C7AE420A",
+      "title": "Scapular Pull Ups",
+      "type": "reps_only",
+      "primary_muscle_group": "upper_back",
+      "secondary_muscle_groups": [
+        "lats",
+        "forearms"
+      ],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "F1D60854",
+      "title": "Seated Cable Row - Bar Grip",
+      "type": "weight_reps",
+      "primary_muscle_group": "upper_back",
+      "secondary_muscle_groups": [
+        "lats",
+        "biceps",
+        "forearms"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "C3BCABB3",
+      "title": "Seated Cable Row - Bar Wide Grip",
+      "type": "weight_reps",
+      "primary_muscle_group": "upper_back",
+      "secondary_muscle_groups": [
+        "lats",
+        "traps",
+        "biceps",
+        "forearms"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "0393F233",
+      "title": "Seated Cable Row - V Grip (Cable)",
+      "type": "weight_reps",
+      "primary_muscle_group": "upper_back",
+      "secondary_muscle_groups": [
+        "lats",
+        "biceps",
+        "forearms"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "062AB91A",
+      "title": "Seated Calf Raise",
+      "type": "weight_reps",
+      "primary_muscle_group": "calves",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "6B4C797E",
+      "title": "Seated Chest Flys (Cable)",
+      "type": "weight_reps",
+      "primary_muscle_group": "chest",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "5122E7D9",
+      "title": "Seated Dip Machine",
+      "type": "weight_reps",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [
+        "chest",
+        "shoulders"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "8BAB2735",
+      "title": "Seated Incline Curl (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "biceps",
+      "secondary_muscle_groups": [],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "9372FFAA",
+      "title": "Seated Lateral Raise (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "shoulders",
+      "secondary_muscle_groups": [],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "11A123F3",
+      "title": "Seated Leg Curl (Machine)",
+      "type": "weight_reps",
+      "primary_muscle_group": "hamstrings",
+      "secondary_muscle_groups": [
+        "calves"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "91AF29E0",
+      "title": "Seated Overhead Press (Barbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "shoulders",
+      "secondary_muscle_groups": [
+        "triceps"
+      ],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "9930DF71",
+      "title": "Seated Overhead Press (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "shoulders",
+      "secondary_muscle_groups": [
+        "triceps"
+      ],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "1006DF48",
+      "title": "Seated Palms Up Wrist Curl",
+      "type": "weight_reps",
+      "primary_muscle_group": "forearms",
+      "secondary_muscle_groups": [],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "1DF4A847",
+      "title": "Seated Row (Machine)",
+      "type": "weight_reps",
+      "primary_muscle_group": "upper_back",
+      "secondary_muscle_groups": [
+        "lats",
+        "biceps",
+        "forearms"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "9237BAD1",
+      "title": "Seated Shoulder Press (Machine)",
+      "type": "weight_reps",
+      "primary_muscle_group": "shoulders",
+      "secondary_muscle_groups": [
+        "triceps"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "234BC743",
+      "title": "Seated Triceps Press",
+      "type": "weight_reps",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "9202CC23",
+      "title": "Seated Wrist Extension (Barbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "forearms",
+      "secondary_muscle_groups": [],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "c6d20055-5617-4669-833e-ad832ea3c6f1",
+      "title": "Shoulder Press",
+      "type": "weight_reps",
+      "primary_muscle_group": "other",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": true
+    },
+    {
+      "id": "878CD1D0",
+      "title": "Shoulder Press (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "shoulders",
+      "secondary_muscle_groups": [
+        "triceps"
+      ],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "059E835D",
+      "title": "Shoulder Press (Machine Plates)",
+      "type": "weight_reps",
+      "primary_muscle_group": "shoulders",
+      "secondary_muscle_groups": [
+        "triceps"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "502FCE31",
+      "title": "Shoulder Taps",
+      "type": "reps_only",
+      "primary_muscle_group": "shoulders",
+      "secondary_muscle_groups": [
+        "chest",
+        "triceps"
+      ],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "0B841777",
+      "title": "Shrug (Barbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "traps",
+      "secondary_muscle_groups": [
+        "neck"
+      ],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "FFABC123",
+      "title": "Shrug (Cable)",
+      "type": "weight_reps",
+      "primary_muscle_group": "traps",
+      "secondary_muscle_groups": [
+        "neck"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "ABEC557F",
+      "title": "Shrug (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "traps",
+      "secondary_muscle_groups": [
+        "neck"
+      ],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "19A38071",
+      "title": "Shrug (Machine)",
+      "type": "weight_reps",
+      "primary_muscle_group": "traps",
+      "secondary_muscle_groups": [
+        "neck"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "742E5BD5",
+      "title": "Shrug (Smith Machine)",
+      "type": "weight_reps",
+      "primary_muscle_group": "traps",
+      "secondary_muscle_groups": [
+        "neck"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "37F9EDA7",
+      "title": "Side Bend",
+      "type": "reps_only",
+      "primary_muscle_group": "abdominals",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "026FD047",
+      "title": "Side Bend (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "abdominals",
+      "secondary_muscle_groups": [],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "E3EDA509",
+      "title": "Side Plank",
+      "type": "duration",
+      "primary_muscle_group": "abdominals",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "8372BBCC",
+      "title": "Single Arm Cable Crossover",
+      "type": "weight_reps",
+      "primary_muscle_group": "chest",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "D0C4A899",
+      "title": "Single Arm Cable Row",
+      "type": "weight_reps",
+      "primary_muscle_group": "upper_back",
+      "secondary_muscle_groups": [
+        "lats",
+        "biceps",
+        "forearms"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "B33B526E",
+      "title": "Single Arm Curl (Cable)",
+      "type": "weight_reps",
+      "primary_muscle_group": "biceps",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "1837BA23",
+      "title": "Single Arm Landmine Press (Barbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "shoulders",
+      "secondary_muscle_groups": [
+        "triceps",
+        "chest"
+      ],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "DE68C825",
+      "title": "Single Arm Lateral Raise (Cable)",
+      "type": "weight_reps",
+      "primary_muscle_group": "shoulders",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "2EE45F81",
+      "title": "Single Arm Lat Pulldown",
+      "type": "weight_reps",
+      "primary_muscle_group": "lats",
+      "secondary_muscle_groups": [
+        "upper_back",
+        "biceps",
+        "forearms"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "8347DFD1",
+      "title": "Single Arm Tricep Extension (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "552AB030",
+      "title": "Single Arm Triceps Pushdown (Cable)",
+      "type": "weight_reps",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "629AE73D",
+      "title": "Single Leg Extensions",
+      "type": "weight_reps",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "CBC0D834",
+      "title": "Single Leg Glute Bridge",
+      "type": "reps_only",
+      "primary_muscle_group": "glutes",
+      "secondary_muscle_groups": [
+        "hamstrings",
+        "quadriceps"
+      ],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "487B3755",
+      "title": "Single Leg Hip Thrust",
+      "type": "reps_only",
+      "primary_muscle_group": "glutes",
+      "secondary_muscle_groups": [
+        "hamstrings",
+        "quadriceps"
+      ],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "D1CD146F",
+      "title": "Single Leg Hip Thrust (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "glutes",
+      "secondary_muscle_groups": [
+        "hamstrings",
+        "quadriceps"
+      ],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "3FD83744",
+      "title": "Single Leg Press (Machine)",
+      "type": "weight_reps",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "glutes",
+        "hamstrings"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "93472AC1",
+      "title": "Single Leg Romanian Deadlift (Barbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "hamstrings",
+      "secondary_muscle_groups": [
+        "glutes",
+        "lower_back",
+        "upper_back",
+        "lats"
+      ],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "937292AB",
+      "title": "Single Leg Romanian Deadlift (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "hamstrings",
+      "secondary_muscle_groups": [
+        "glutes",
+        "lower_back"
+      ],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "238BA231",
+      "title": "Single Leg Standing Calf Raise",
+      "type": "reps_only",
+      "primary_muscle_group": "calves",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "E51CCBE5",
+      "title": "Single Leg Standing Calf Raise (Barbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "calves",
+      "secondary_muscle_groups": [],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "5DA40761",
+      "title": "Single Leg Standing Calf Raise (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "calves",
+      "secondary_muscle_groups": [],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "B05C2C29",
+      "title": "Single Leg Standing Calf Raise (Machine)",
+      "type": "weight_reps",
+      "primary_muscle_group": "calves",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "F5DEF1EB",
+      "title": "Sissy Squat (Weighted)",
+      "type": "weight_reps",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "022DF610",
+      "title": "Sit Up",
+      "type": "reps_only",
+      "primary_muscle_group": "abdominals",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "9237BA12",
+      "title": "Sit Up (Weighted)",
+      "type": "bodyweight_weighted",
+      "primary_muscle_group": "abdominals",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "24A809EF",
+      "title": "Skating",
+      "type": "duration",
+      "primary_muscle_group": "cardio",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "84325755",
+      "title": "Skiing",
+      "type": "duration",
+      "primary_muscle_group": "cardio",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "875F585F",
+      "title": "Skullcrusher (Barbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "68F8A292",
+      "title": "Skullcrusher (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "7757171F",
+      "title": "Sled Push",
+      "type": "distance_duration",
+      "primary_muscle_group": "full_body",
+      "secondary_muscle_groups": [],
+      "equipment": "other",
+      "is_custom": false
+    },
+    {
+      "id": "FB09C938",
+      "title": "Snatch",
+      "type": "weight_reps",
+      "primary_muscle_group": "full_body",
+      "secondary_muscle_groups": [],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "911A58D3",
+      "title": "Snowboarding",
+      "type": "duration",
+      "primary_muscle_group": "cardio",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "2348AB72",
+      "title": "Spider Curl (Barbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "biceps",
+      "secondary_muscle_groups": [],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "90427D4A",
+      "title": "Spider Curl (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "biceps",
+      "secondary_muscle_groups": [],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "C10A5AC9",
+      "title": "Spiderman",
+      "type": "reps_only",
+      "primary_muscle_group": "abdominals",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "213AB238",
+      "title": "Spinning",
+      "type": "duration",
+      "primary_muscle_group": "cardio",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "E764B907",
+      "title": "Split Jerk",
+      "type": "weight_reps",
+      "primary_muscle_group": "full_body",
+      "secondary_muscle_groups": [],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "20C1A3CB",
+      "title": "Split Squat (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "hamstrings",
+        "glutes"
+      ],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "42e535ad-ef56-4738-a97e-d8def4329f87",
+      "title": "SPOTO Incline Bench Press",
+      "type": "weight_reps",
+      "primary_muscle_group": "other",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": true
+    },
+    {
+      "id": "9283BABA",
+      "title": "Sprints",
+      "type": "distance_duration",
+      "primary_muscle_group": "cardio",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "F1258206",
+      "title": "Squat (Band)",
+      "type": "weight_reps",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "hamstrings",
+        "glutes"
+      ],
+      "equipment": "resistance_band",
+      "is_custom": false
+    },
+    {
+      "id": "D04AC939",
+      "title": "Squat (Barbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "hamstrings",
+        "glutes"
+      ],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "9694DA61",
+      "title": "Squat (Bodyweight)",
+      "type": "reps_only",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "hamstrings",
+        "glutes"
+      ],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "fb5e6bc0-7246-4ca6-b7e3-fe7855de1268",
+      "title": "Squat (Dead Ball)",
+      "type": "weight_reps",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "glutes",
+        "hamstrings"
+      ],
+      "equipment": "other",
+      "is_custom": true
+    },
+    {
+      "id": "DCFF3E9F",
+      "title": "Squat (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "hamstrings",
+        "glutes"
+      ],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "CC35A01F",
+      "title": "Squat (Machine)",
+      "type": "weight_reps",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "hamstrings",
+        "glutes"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "A8814C06",
+      "title": "Squat Row",
+      "type": "weight_reps",
+      "primary_muscle_group": "full_body",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "DDCC3821",
+      "title": "Squat (Smith Machine)",
+      "type": "weight_reps",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "hamstrings",
+        "glutes"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "B82D6418",
+      "title": "Squat (Suspension)",
+      "type": "reps_only",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "glutes",
+        "hamstrings"
+      ],
+      "equipment": "suspension",
+      "is_custom": false
+    },
+    {
+      "id": "4377A52B",
+      "title": "Stair Machine (Floors)",
+      "type": "floors_duration",
+      "primary_muscle_group": "cardio",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "4377A52C",
+      "title": "Stair Machine (Steps)",
+      "type": "steps_duration",
+      "primary_muscle_group": "cardio",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "ACB2751D",
+      "title": "Standing Cable Glute Kickbacks",
+      "type": "weight_reps",
+      "primary_muscle_group": "glutes",
+      "secondary_muscle_groups": [
+        "hamstrings"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "06745E58",
+      "title": "Standing Calf Raise",
+      "type": "reps_only",
+      "primary_muscle_group": "calves",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "E53CCBE5",
+      "title": "Standing Calf Raise (Barbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "calves",
+      "secondary_muscle_groups": [],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "6DA40660",
+      "title": "Standing Calf Raise (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "calves",
+      "secondary_muscle_groups": [],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "E05C2C38",
+      "title": "Standing Calf Raise (Machine)",
+      "type": "weight_reps",
+      "primary_muscle_group": "calves",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "AA52E8D2",
+      "title": "Standing Calf Raise (Smith)",
+      "type": "weight_reps",
+      "primary_muscle_group": "calves",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "6120CAAB",
+      "title": "Standing Leg Curls",
+      "type": "weight_reps",
+      "primary_muscle_group": "hamstrings",
+      "secondary_muscle_groups": [
+        "calves"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    }
+  ]
+}

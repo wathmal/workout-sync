@@ -1,0 +1,586 @@
+{
+  "page": 5,
+  "page_count": 5,
+  "exercise_templates": [
+    {
+      "id": "073032BB",
+      "title": "Standing Military Press (Barbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "shoulders",
+      "secondary_muscle_groups": [
+        "triceps"
+      ],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "128A2381",
+      "title": "Step Up",
+      "type": "reps_only",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "hamstrings",
+        "glutes"
+      ],
+      "equipment": "other",
+      "is_custom": false
+    },
+    {
+      "id": "EE2938D1",
+      "title": "Sternum Pull up (Gironda)",
+      "type": "reps_only",
+      "primary_muscle_group": "lats",
+      "secondary_muscle_groups": [
+        "upper_back",
+        "biceps",
+        "forearms"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "D2387AB1",
+      "title": "Straight Arm Lat Pulldown (Cable)",
+      "type": "weight_reps",
+      "primary_muscle_group": "lats",
+      "secondary_muscle_groups": [
+        "triceps"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "2A48E443",
+      "title": "Straight Leg Deadlift",
+      "type": "weight_reps",
+      "primary_muscle_group": "hamstrings",
+      "secondary_muscle_groups": [
+        "glutes",
+        "lower_back",
+        "upper_back",
+        "lats",
+        "traps"
+      ],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "527DA061",
+      "title": "Stretching",
+      "type": "duration",
+      "primary_muscle_group": "other",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "D20D7BBE",
+      "title": "Sumo Deadlift",
+      "type": "weight_reps",
+      "primary_muscle_group": "glutes",
+      "secondary_muscle_groups": [
+        "hamstrings",
+        "quadriceps",
+        "adductors",
+        "lower_back",
+        "upper_back",
+        "lats",
+        "traps"
+      ],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "3F5F8D40",
+      "title": "Sumo Squat",
+      "type": "reps_only",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "glutes",
+        "adductors",
+        "hamstrings"
+      ],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "6622E5A0",
+      "title": "Sumo Squat (Barbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "hamstrings",
+        "glutes",
+        "adductors"
+      ],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "05293BCA",
+      "title": "Sumo Squat (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "glutes",
+        "adductors",
+        "hamstrings"
+      ],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "5E10D0E6",
+      "title": "Sumo Squat (Kettlebell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "glutes",
+        "adductors",
+        "hamstrings"
+      ],
+      "equipment": "kettlebell",
+      "is_custom": false
+    },
+    {
+      "id": "218DA87C",
+      "title": "Superman",
+      "type": "reps_only",
+      "primary_muscle_group": "lower_back",
+      "secondary_muscle_groups": [
+        "glutes",
+        "hamstrings"
+      ],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "244f87f5-3aa4-41d1-a93c-544e5cacee12",
+      "title": "Supported Barbell Row",
+      "type": "weight_reps",
+      "primary_muscle_group": "other",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": true
+    },
+    {
+      "id": "B60A678F",
+      "title": "Swimming",
+      "type": "distance_duration",
+      "primary_muscle_group": "cardio",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "08A2974E",
+      "title": "T Bar Row",
+      "type": "weight_reps",
+      "primary_muscle_group": "upper_back",
+      "secondary_muscle_groups": [
+        "lats",
+        "biceps",
+        "forearms"
+      ],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "90E506D5",
+      "title": "Thruster (Barbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "full_body",
+      "secondary_muscle_groups": [],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "10313AFD",
+      "title": "Thruster (Kettlebell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "full_body",
+      "secondary_muscle_groups": [],
+      "equipment": "kettlebell",
+      "is_custom": false
+    },
+    {
+      "id": "B94E35E1",
+      "title": "Toes to Bar",
+      "type": "reps_only",
+      "primary_muscle_group": "abdominals",
+      "secondary_muscle_groups": [
+        "forearms"
+      ],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "75BAC5C3",
+      "title": "Toe Touch",
+      "type": "reps_only",
+      "primary_muscle_group": "abdominals",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "FBB62888",
+      "title": "Torso Rotation",
+      "type": "weight_reps",
+      "primary_muscle_group": "abdominals",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "243710DE",
+      "title": "Treadmill",
+      "type": "distance_duration",
+      "primary_muscle_group": "cardio",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "28BB4A95",
+      "title": "Triceps Dip",
+      "type": "reps_only",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [
+        "chest",
+        "shoulders"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "4B4BF8C2",
+      "title": "Triceps Dip (Assisted)",
+      "type": "bodyweight_assisted",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [
+        "chest",
+        "shoulders"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "10347BAC",
+      "title": "Triceps Dip (Weighted)",
+      "type": "bodyweight_weighted",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [
+        "chest",
+        "shoulders"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "2F8D3067",
+      "title": "Triceps Extension (Barbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "21310F5F",
+      "title": "Triceps Extension (Cable)",
+      "type": "weight_reps",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "3765684D",
+      "title": "Triceps Extension (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "3092FADD",
+      "title": "Triceps Extension (Machine)",
+      "type": "weight_reps",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "6182EE83",
+      "title": "Triceps Extension (Suspension)",
+      "type": "reps_only",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [],
+      "equipment": "suspension",
+      "is_custom": false
+    },
+    {
+      "id": "EC3B69A3",
+      "title": "Triceps Kickback (Cable)",
+      "type": "weight_reps",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "6127A3AD",
+      "title": "Triceps Kickback (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "CDC472B1",
+      "title": "Triceps Pressdown",
+      "type": "weight_reps",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "93A552C6",
+      "title": "Triceps Pushdown",
+      "type": "weight_reps",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "94B7239B",
+      "title": "Triceps Rope Pushdown",
+      "type": "weight_reps",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "7AB9A362",
+      "title": "Upright Row (Barbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "shoulders",
+      "secondary_muscle_groups": [
+        "traps",
+        "upper_back",
+        "biceps",
+        "forearms"
+      ],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "286C1D0B",
+      "title": "Upright Row (Cable)",
+      "type": "weight_reps",
+      "primary_muscle_group": "shoulders",
+      "secondary_muscle_groups": [
+        "traps",
+        "upper_back",
+        "biceps",
+        "forearms"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "797F0782",
+      "title": "Upright Row (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "shoulders",
+      "secondary_muscle_groups": [
+        "traps",
+        "upper_back",
+        "biceps",
+        "forearms"
+      ],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "72880C57",
+      "title": "Vertical Traction (Machine)",
+      "type": "weight_reps",
+      "primary_muscle_group": "lats",
+      "secondary_muscle_groups": [
+        "upper_back",
+        "biceps",
+        "forearms"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "6BE68B62",
+      "title": "V Up",
+      "type": "reps_only",
+      "primary_muscle_group": "abdominals",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "72297E8C",
+      "title": "Waiter Curl (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "biceps",
+      "secondary_muscle_groups": [
+        "forearms"
+      ],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "33EDD7DB",
+      "title": "Walking",
+      "type": "distance_duration",
+      "primary_muscle_group": "cardio",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "32HKJ34K",
+      "title": "Walking Lunge",
+      "type": "reps_only",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "glutes",
+        "hamstrings"
+      ],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "A733CC5B",
+      "title": "Walking Lunge (Dumbbell)",
+      "type": "short_distance_weight",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "glutes",
+        "hamstrings"
+      ],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "A1F47ACC",
+      "title": "Wall Ball",
+      "type": "weight_reps",
+      "primary_muscle_group": "full_body",
+      "secondary_muscle_groups": [],
+      "equipment": "other",
+      "is_custom": false
+    },
+    {
+      "id": "C8706C80",
+      "title": "Wall Sit",
+      "type": "duration",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "abdominals"
+      ],
+      "equipment": "other",
+      "is_custom": false
+    },
+    {
+      "id": "79EF4E4F",
+      "title": "Warm Up",
+      "type": "duration",
+      "primary_muscle_group": "full_body",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "bac72ce3-17a0-42f0-b178-ce2da6a648cb",
+      "title": "Weighted Dips",
+      "type": "reps_only",
+      "primary_muscle_group": "other",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": true
+    },
+    {
+      "id": "B31EB524",
+      "title": "Wide-Elbow Triceps Press (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "triceps",
+      "secondary_muscle_groups": [
+        "chest",
+        "shoulders"
+      ],
+      "equipment": "dumbbell",
+      "is_custom": false
+    },
+    {
+      "id": "7C50F118",
+      "title": "Wide Pull Up",
+      "type": "reps_only",
+      "primary_muscle_group": "lats",
+      "secondary_muscle_groups": [
+        "upper_back",
+        "biceps",
+        "forearms"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "0E4523F4",
+      "title": "Wrist Roller",
+      "type": "weight_reps",
+      "primary_muscle_group": "forearms",
+      "secondary_muscle_groups": [
+        "shoulders"
+      ],
+      "equipment": "machine",
+      "is_custom": false
+    },
+    {
+      "id": "8C9D2928",
+      "title": "Yoga",
+      "type": "duration",
+      "primary_muscle_group": "full_body",
+      "secondary_muscle_groups": [],
+      "equipment": "none",
+      "is_custom": false
+    },
+    {
+      "id": "40C6A9FC",
+      "title": "Zercher Squat",
+      "type": "weight_reps",
+      "primary_muscle_group": "quadriceps",
+      "secondary_muscle_groups": [
+        "hamstrings",
+        "glutes",
+        "biceps"
+      ],
+      "equipment": "barbell",
+      "is_custom": false
+    },
+    {
+      "id": "123EE239",
+      "title": "Zottman Curl (Dumbbell)",
+      "type": "weight_reps",
+      "primary_muscle_group": "biceps",
+      "secondary_muscle_groups": [
+        "forearms"
+      ],
+      "equipment": "dumbbell",
+      "is_custom": false
+    }
+  ]
+}
