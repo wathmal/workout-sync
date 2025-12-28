@@ -2,6 +2,14 @@
 
 A mobile-first web application that allows users to upload workout photos and sync them to Hevy. Built with Next.js, TypeScript, Tailwind CSS, and shadcn/ui.
 
+## Screenshots
+
+![Hevy Sync Screen 1](docs/hevy_sync_screen_1.png)
+
+![Hevy Sync Screen 2](docs/hevy_sync_screen_2.png)
+
+![Hevy Sync Screen 3](docs/hevy_sync_screen_3.png)
+
 ## Features
 
 - 📸 **Photo Upload**: Upload workout screenshots from gym screens or selfies with EXIF date extraction
