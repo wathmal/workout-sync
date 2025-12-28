@@ -148,11 +148,51 @@ function getMockWorkoutData(): WorkoutExercise[] {
     {
       exercise: pushPressExercise,
       sets: [
-        { set_number: 1, kg: 15, reps: 6, previous_kg: 15, previous_reps: 6, completed: false },
-        { set_number: 2, kg: 15, reps: 6, previous_kg: 15, previous_reps: 6, completed: false },
-        { set_number: 3, kg: 15, reps: 6, previous_kg: 15, previous_reps: 6, completed: false },
-        { set_number: 4, kg: 15, reps: 6, previous_kg: 15, previous_reps: 6, completed: false },
-        { set_number: 5, kg: 15, reps: 6, previous_kg: 15, previous_reps: 6, completed: false },
+        { 
+          set_number: 1, 
+          weight_kg: 15, 
+          reps: 6, 
+          kg: 15, // Legacy field
+          previous_weight_kg: 15, 
+          previous_reps: 6, 
+          completed: false 
+        },
+        { 
+          set_number: 2, 
+          weight_kg: 15, 
+          reps: 6, 
+          kg: 15, // Legacy field
+          previous_weight_kg: 15, 
+          previous_reps: 6, 
+          completed: false 
+        },
+        { 
+          set_number: 3, 
+          weight_kg: 15, 
+          reps: 6, 
+          kg: 15, // Legacy field
+          previous_weight_kg: 15, 
+          previous_reps: 6, 
+          completed: false 
+        },
+        { 
+          set_number: 4, 
+          weight_kg: 15, 
+          reps: 6, 
+          kg: 15, // Legacy field
+          previous_weight_kg: 15, 
+          previous_reps: 6, 
+          completed: false 
+        },
+        { 
+          set_number: 5, 
+          weight_kg: 15, 
+          reps: 6, 
+          kg: 15, // Legacy field
+          previous_weight_kg: 15, 
+          previous_reps: 6, 
+          completed: false 
+        },
       ],
       notes: "",
       rest_timer_enabled: false,
@@ -233,10 +273,38 @@ export function calculateWorkoutMetrics(exercises: WorkoutExercise[]): {
   let total_sets = 0;
 
   exercises.forEach(exercise => {
+    const exerciseType = exercise.exercise.type;
+    
     exercise.sets.forEach(set => {
-      // Count all sets with KG and Reps data as valid, regardless of completion status
-      if (set.kg > 0 && set.reps > 0) {
-        total_volume_kg += set.kg * set.reps;
+      let isValidSet = false;
+      
+      switch (exerciseType) {
+        case "weight_reps":
+          const weight = set.weight_kg ?? set.kg ?? 0;
+          const reps = set.reps ?? 0;
+          if (weight > 0 && reps > 0) {
+            total_volume_kg += weight * reps;
+            isValidSet = true;
+          }
+          break;
+        case "reps_only":
+          if ((set.reps ?? 0) > 0) {
+            isValidSet = true;
+          }
+          break;
+        case "duration":
+          if ((set.duration_seconds ?? 0) > 0) {
+            isValidSet = true;
+          }
+          break;
+        case "distance_duration":
+          if ((set.distance_meters ?? 0) > 0 || (set.duration_seconds ?? 0) > 0) {
+            isValidSet = true;
+          }
+          break;
+      }
+      
+      if (isValidSet) {
         total_sets++;
       }
     });

@@ -108,9 +108,67 @@ export default function SyncPage() {
           </h3>
           <Card className="divide-y divide-border">
             {currentWorkout.exercises.map((workoutExercise, index) => {
-              const bestSet = workoutExercise.sets.reduce((max, set) =>
-                set.kg * set.reps > max.kg * max.reps ? set : max
-              );
+              const exerciseType = workoutExercise.exercise.type;
+              
+              // Format set display based on exercise type
+              const formatSetDisplay = (set: typeof workoutExercise.sets[0]) => {
+                switch (exerciseType) {
+                  case "weight_reps":
+                    const weight = set.weight_kg ?? set.kg ?? 0;
+                    const reps = set.reps ?? 0;
+                    return `${weight}kg × ${reps} reps`;
+                  case "reps_only":
+                    const repsOnly = set.reps ?? 0;
+                    return `${repsOnly} reps`;
+                  case "duration":
+                    const duration = set.duration_seconds ?? 0;
+                    const mins = Math.floor(duration / 60);
+                    const secs = duration % 60;
+                    return `${mins}:${secs.toString().padStart(2, "0")}`;
+                  case "distance_duration":
+                    const distance = set.distance_meters ?? 0;
+                    const dur = set.duration_seconds ?? 0;
+                    const durMins = Math.floor(dur / 60);
+                    const durSecs = dur % 60;
+                    return `${distance}m / ${durMins}:${durSecs.toString().padStart(2, "0")}`;
+                  default:
+                    return "N/A";
+                }
+              };
+
+              // Get best set summary based on exercise type
+              const getBestSetSummary = () => {
+                switch (exerciseType) {
+                  case "weight_reps":
+                    const bestSet = workoutExercise.sets.reduce((max, set) => {
+                      const weight = set.weight_kg ?? set.kg ?? 0;
+                      const reps = set.reps ?? 0;
+                      const maxWeight = max.weight_kg ?? max.kg ?? 0;
+                      const maxReps = max.reps ?? 0;
+                      return weight * reps > maxWeight * maxReps ? set : max;
+                    });
+                    const bestWeight = bestSet.weight_kg ?? bestSet.kg ?? 0;
+                    const bestReps = bestSet.reps ?? 0;
+                    return `Best: ${bestWeight}kg × ${bestReps} reps`;
+                  case "reps_only":
+                    const bestRepsSet = workoutExercise.sets.reduce((max, set) =>
+                      (set.reps ?? 0) > (max.reps ?? 0) ? set : max
+                    );
+                    return `Best: ${bestRepsSet.reps ?? 0} reps`;
+                  case "duration":
+                    const bestDurationSet = workoutExercise.sets.reduce((max, set) =>
+                      (set.duration_seconds ?? 0) > (max.duration_seconds ?? 0) ? set : max
+                    );
+                    const bestDur = bestDurationSet.duration_seconds ?? 0;
+                    const bestMins = Math.floor(bestDur / 60);
+                    const bestSecs = bestDur % 60;
+                    return `Best: ${bestMins}:${bestSecs.toString().padStart(2, "0")}`;
+                  case "distance_duration":
+                    return `${workoutExercise.sets.length} sets`;
+                  default:
+                    return `${workoutExercise.sets.length} sets`;
+                }
+              };
               
               return (
                 <div key={index} className="p-4">
@@ -123,7 +181,7 @@ export default function SyncPage() {
                         {workoutExercise.exercise.title}
                       </h4>
                       <p className="text-sm text-muted-foreground">
-                        {workoutExercise.sets.length} sets • Best: {bestSet.kg}kg × {bestSet.reps} reps
+                        {workoutExercise.sets.length} sets • {getBestSetSummary()}
                       </p>
                     </div>
                   </div>
@@ -132,7 +190,7 @@ export default function SyncPage() {
                   <div className="ml-13 space-y-1">
                     {workoutExercise.sets.map((set, setIndex) => (
                       <div key={setIndex} className="text-sm text-muted-foreground">
-                        Set {set.set_number}: {set.kg}kg × {set.reps} reps
+                        Set {set.set_number}: {formatSetDisplay(set)}
                       </div>
                     ))}
                   </div>

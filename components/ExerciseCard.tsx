@@ -8,7 +8,7 @@ import { ExerciseSearchCombobox } from "./ExerciseSearchCombobox";
 
 interface ExerciseCardProps {
   workoutExercise: WorkoutExercise;
-  onUpdateSet: (setIndex: number, field: "kg" | "reps" | "completed", value: number | boolean) => void;
+  onUpdateSet: (setIndex: number, field: "kg" | "reps" | "distance" | "duration" | "completed", value: number | boolean) => void;
   onUpdateNotes: (notes: string) => void;
   onAddSet: () => void;
   onExerciseChange: (newExercise: Exercise) => void;
@@ -46,24 +46,98 @@ export function ExerciseCard({ workoutExercise, onUpdateSet, onUpdateNotes, onAd
       </div>
 
       <div className="mb-3 -mx-4 px-4">
-        <div className="grid grid-cols-[50px_1fr_1fr_45px_35px] sm:grid-cols-[60px_1fr_1fr_50px_40px] gap-2 sm:gap-3 pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide w-full">
-          <div className="text-center">SET</div>
-          <div className="text-center">KG</div>
-          <div className="text-center">REPS</div>
-          <div></div>
-          <div></div>
-        </div>
+        {(() => {
+          const exerciseType = workoutExercise.exercise.type;
+          const getHeaderCols = () => {
+            switch (exerciseType) {
+              case "weight_reps":
+                return "grid-cols-[50px_1fr_1fr_45px_35px] sm:grid-cols-[60px_1fr_1fr_50px_40px]";
+              case "reps_only":
+                return "grid-cols-[50px_1fr_45px_35px] sm:grid-cols-[60px_1fr_50px_40px]";
+              case "duration":
+                return "grid-cols-[50px_1fr_45px_35px] sm:grid-cols-[60px_1fr_50px_40px]";
+              case "distance_duration":
+                return "grid-cols-[50px_1fr_1fr_45px_35px] sm:grid-cols-[60px_1fr_1fr_50px_40px]";
+              default:
+                return "grid-cols-[50px_1fr_1fr_45px_35px] sm:grid-cols-[60px_1fr_1fr_50px_40px]";
+            }
+          };
 
-        {workoutExercise.sets.map((set, index) => (
-          <ExerciseRow
-            key={index}
-            set={set}
-            onKgChange={(value) => onUpdateSet(index, "kg", value)}
-            onRepsChange={(value) => onUpdateSet(index, "reps", value)}
-            onToggleComplete={() => onUpdateSet(index, "completed", !set.completed)}
-            onDelete={() => onDeleteSet(index)}
-          />
-        ))}
+          const getHeaders = () => {
+            switch (exerciseType) {
+              case "weight_reps":
+                return (
+                  <>
+                    <div className="text-center">SET</div>
+                    <div className="text-center">KG</div>
+                    <div className="text-center">REPS</div>
+                    <div></div>
+                    <div></div>
+                  </>
+                );
+              case "reps_only":
+                return (
+                  <>
+                    <div className="text-center">SET</div>
+                    <div className="text-center">REPS</div>
+                    <div></div>
+                    <div></div>
+                  </>
+                );
+              case "duration":
+                return (
+                  <>
+                    <div className="text-center">SET</div>
+                    <div className="text-center">TIME</div>
+                    <div></div>
+                    <div></div>
+                  </>
+                );
+              case "distance_duration":
+                return (
+                  <>
+                    <div className="text-center">SET</div>
+                    <div className="text-center">DISTANCE (m)</div>
+                    <div className="text-center">TIME</div>
+                    <div></div>
+                    <div></div>
+                  </>
+                );
+              default:
+                return (
+                  <>
+                    <div className="text-center">SET</div>
+                    <div className="text-center">KG</div>
+                    <div className="text-center">REPS</div>
+                    <div></div>
+                    <div></div>
+                  </>
+                );
+            }
+          };
+
+          return (
+            <>
+              <div className={`grid ${getHeaderCols()} gap-2 sm:gap-3 pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide w-full`}>
+                {getHeaders()}
+              </div>
+
+              {workoutExercise.sets.map((set, index) => (
+                <ExerciseRow
+                  key={index}
+                  set={set}
+                  exerciseType={exerciseType}
+                  onWeightChange={exerciseType === "weight_reps" ? (value) => onUpdateSet(index, "kg", value) : undefined}
+                  onRepsChange={(exerciseType === "weight_reps" || exerciseType === "reps_only") ? (value) => onUpdateSet(index, "reps", value) : undefined}
+                  onDistanceChange={exerciseType === "distance_duration" ? (value) => onUpdateSet(index, "distance", value) : undefined}
+                  onDurationChange={(exerciseType === "duration" || exerciseType === "distance_duration") ? (value) => onUpdateSet(index, "duration", value) : undefined}
+                  onToggleComplete={() => onUpdateSet(index, "completed", !set.completed)}
+                  onDelete={() => onDeleteSet(index)}
+                />
+              ))}
+            </>
+          );
+        })()}
       </div>
 
       <button
