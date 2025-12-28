@@ -6,9 +6,9 @@ A mobile-first web application that allows users to upload workout photos and sy
 
 ![Hevy Sync Screen 1](docs/hevy_sync_screen_1.png)
 
-![Hevy Sync Screen 2](docs/hevy_sync_screen_2.png)
-
 ![Hevy Sync Screen 3](docs/hevy_sync_screen_3.png)
+
+![Hevy Sync Screen 2](docs/hevy_sync_screen_2.png)
 
 ## Features
 
@@ -78,36 +78,7 @@ The application requires the following environment variables:
 
 See `env.example` for a template.
 
-## Docker Deployment
-
-### Building with Docker
-
-1. **Build the Docker image:**
-```bash
-docker build -t workout-sync:latest .
-```
-
-2. **Test locally:**
-```bash
-docker run -d \
-  --name workout-sync \
-  -p 3000:3000 \
-  -e HEVY_API_KEY="your_hevy_api_key" \
-  -e GROQ_API_KEY="your_groq_api_key" \
-  workout-sync:latest
-```
-
-3. **Push to Docker Hub:**
-```bash
-# Login to Docker Hub
-docker login
-
-# Tag the image
-docker tag workout-sync:latest YOUR_DOCKERHUB_USERNAME/workout-sync:latest
-
-# Push to Docker Hub
-docker push YOUR_DOCKERHUB_USERNAME/workout-sync:latest
-```
+## Container Deployment
 
 ### Building with Podman
 
@@ -165,78 +136,6 @@ For detailed deployment instructions on TrueNAS Scale, see [docs/DOCKER_DEPLOYME
 4. Configure environment variables (`HEVY_API_KEY`, `GROQ_API_KEY`)
 5. Set port mapping (container: 3000, host: your preferred port)
 6. Configure Docker Hub credentials for private repositories
-
-## User Flow
-
-```
-Landing Page → Upload Photo → Review Workout → Sync to Hevy → Complete
-```
-
-### 1. Landing Page (`/`)
-- Welcome screen with "Upload Workout Photo" button
-- Feature highlights and how-it-works section
-
-### 2. Upload Page (`/upload`)
-- Upload area with camera icon (tap to upload or select from library)
-- Image validation (JPEG, PNG, WebP up to 20MB)
-- "Upload" button to process the image with Groq Vision API
-- Automatic fallback to sample data if API key not configured
-
-### 3. Review Page (`/review`)
-- Image preview with zoom/pan functionality
-- Workout summary cards (Duration, Volume, Sets)
-- Exercise cards with editable sets (KG and REPS)
-- Add/remove sets and exercises functionality
-- Exercise search and replacement from Hevy database
-- Date and time picker (auto-filled from EXIF data)
-- Caption/notes textarea
-- Duplicate workout detection and warning
-- "Finish" button to sync workout to Hevy
-
-### 4. Sync Page (`/sync`)
-- Animated sync progress with circular progress indicator
-- Sequential exercise syncing animation
-- Workout summary with synced/pending status badges
-- Connected accounts display (Hevy)
-- "Go to Dashboard" button
-
-## Project Structure
-
-```
-workout-sync/
-├── app/
-│   ├── page.tsx              # Landing page
-│   ├── upload/page.tsx       # Upload photo screen
-│   ├── review/page.tsx       # Review/edit workout screen
-│   ├── sync/page.tsx         # Sync progress screen
-│   ├── layout.tsx            # Root layout with WorkoutProvider
-│   └── globals.css           # Global styles with animations
-├── components/
-│   ├── ui/                   # shadcn/ui components
-│   ├── WorkoutSummaryCard.tsx
-│   ├── ExerciseCard.tsx
-│   ├── ExerciseRow.tsx
-│   ├── SyncStatusBadge.tsx
-│   ├── ConnectedAccountCard.tsx
-│   └── LoadingSpinner.tsx
-├── contexts/
-│   └── WorkoutContext.tsx    # Global workout state
-├── lib/
-│   ├── types.ts              # TypeScript type definitions
-│   ├── mock-data.ts          # API client functions and fallback data
-│   ├── groq-helpers.ts       # Groq API integration and parsing
-│   ├── hevy-api.ts           # Hevy API integration and transformation
-│   ├── hevy-exercises.ts     # Hevy exercise database (453 exercises)
-│   ├── fuzzy-match.ts        # Fuzzy matching algorithms
-│   ├── image-utils.ts        # EXIF date extraction utilities
-│   └── utils.ts              # Utility functions
-├── docs/
-│   └── DOCKER_DEPLOYMENT.md  # Docker deployment guide for TrueNAS Scale
-├── Dockerfile                 # Production Docker image definition
-├── .dockerignore             # Docker build context exclusions
-├── env.example               # Environment variables template
-└── components.json           # shadcn/ui configuration
-```
 
 ## Key Features Implementation
 
@@ -311,26 +210,6 @@ Workouts are structured as:
 }
 ```
 
-## Future Enhancements
-
-- [ ] Add user authentication
-- [ ] Implement local/remote database for workout history
-- [ ] Add Instagram story template generation
-- [ ] Support multiple workout formats (cardio, timed exercises)
-- [ ] Implement workout templates
-- [ ] Add progress tracking and analytics
-- [ ] Strava integration
-- [ ] Batch upload multiple workout photos
-- [ ] Workout history and statistics dashboard
-
-## Styling Customization
-
-The app uses Tailwind CSS with custom CSS variables defined in `globals.css`:
-- Primary color: Blue (#0066FF / hsl(221 83% 53%))
-- Destructive color: Red
-- Smooth transitions and animations
-- Custom focus states for accessibility
-
 ## Development
 
 ### Available Scripts
@@ -358,7 +237,7 @@ npx shadcn@latest add [component-name]
 
 ## License
 
-This project is private and not licensed for public use.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Support
 
