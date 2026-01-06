@@ -59,18 +59,68 @@ export function transformToHevyFormat(workout: Workout): HevyWorkoutRequest {
     start_time: startTime,
     end_time: endTime,
     is_private: false,
-    exercises: workout.exercises.map((workoutExercise) => ({
+    exercises: workout.exercises.map((workoutExercise) => {
+      const exerciseType = workoutExercise.exercise.type;
+      
+      // Filter and map sets based on exercise type
+      const hevySets = workoutExercise.sets
+        .filter((set) => {
+          // Filter sets based on exercise type
+          switch (exerciseType) {
+            case "weight_reps":
+              const weight = set.weight_kg ?? set.kg ?? 0;
+              const reps = set.reps ?? 0;
+              return weight > 0 || reps > 0;
+            case "reps_only":
+              return (set.reps ?? 0) > 0;
+            case "duration":
+              return (set.duration_seconds ?? 0) > 0;
+            case "distance_duration":
+              const distance = set.distance_meters ?? 0;
+              const duration = set.duration_seconds ?? 0;
+              return distance > 0 || duration > 0;
+            default:
+              return false;
+          }
+        })
+        .map((set) => {
+          const hevySet: HevySet = {
+            type: "normal" as const,
+          };
+
+          switch (exerciseType) {
+            case "weight_reps":
+              const weight = set.weight_kg ?? set.kg ?? 0;
+              const reps = set.reps ?? 0;
+              if (weight > 0) hevySet.weight_kg = weight;
+              if (reps > 0) hevySet.reps = reps;
+              break;
+            case "reps_only":
+              const repsOnly = set.reps ?? 0;
+              if (repsOnly > 0) hevySet.reps = repsOnly;
+              break;
+            case "duration":
+              const duration = set.duration_seconds ?? 0;
+              if (duration > 0) hevySet.duration_seconds = duration;
+              break;
+            case "distance_duration":
+              const distance = set.distance_meters ?? 0;
+              const durationSeconds = set.duration_seconds ?? 0;
+              if (distance > 0) hevySet.distance_meters = distance;
+              if (durationSeconds > 0) hevySet.duration_seconds = durationSeconds;
+              break;
+          }
+
+          return hevySet;
+        });
+
+      return {
       exercise_template_id: workoutExercise.exercise.id,
       superset_id: null,
       notes: workoutExercise.notes || undefined,
-      sets: workoutExercise.sets
-        .filter(set => set.kg > 0 || set.reps > 0) // Only include sets with data
-        .map((set) => ({
-          type: "normal" as const,
-          weight_kg: set.kg > 0 ? set.kg : undefined,
-          reps: set.reps > 0 ? set.reps : undefined,
-        })),
-    })),
+        sets: hevySets,
+      };
+    }),
   };
 }
 
@@ -121,7 +171,33 @@ export function validateWorkout(workout: Workout): { valid: boolean; error?: str
       return { valid: false, error: "Exercise must have a valid ID" };
     }
 
-    const validSets = exercise.sets.filter(set => set.kg > 0 || set.reps > 0);
+    const exerciseType = exercise.exercise.type;
+    let validSets: typeof exercise.sets = [];
+
+    switch (exerciseType) {
+      case "weight_reps":
+        validSets = exercise.sets.filter(
+          (set) => (set.weight_kg ?? set.kg ?? 0) > 0 || (set.reps ?? 0) > 0
+        );
+        break;
+      case "reps_only":
+        validSets = exercise.sets.filter((set) => (set.reps ?? 0) > 0);
+        break;
+      case "duration":
+        validSets = exercise.sets.filter((set) => (set.duration_seconds ?? 0) > 0);
+        break;
+      case "distance_duration":
+        validSets = exercise.sets.filter(
+          (set) => (set.distance_meters ?? 0) > 0 || (set.duration_seconds ?? 0) > 0
+        );
+        break;
+      default:
+        return {
+          valid: false,
+          error: `Exercise "${exercise.exercise.title}" has unsupported type: ${exerciseType}`,
+        };
+    }
+
     if (validSets.length === 0) {
       return {
         valid: false,

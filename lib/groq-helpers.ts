@@ -42,14 +42,78 @@ export function parseGroqResponse(responseText: string): WorkoutExercise[] {
         const exercise = matchExerciseWithFuzzy(detectedName);
         
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const sets: WorkoutSet[] = (ex.sets || []).map((set: any, setIndex: number) => ({
+        const sets: WorkoutSet[] = (ex.sets || []).map((set: any, setIndex: number) => {
+          const baseSet: any = {
           set_number: set.set_number || setIndex + 1,
-          kg: parseFloat(set.kg || set.weight || "0"),
-          reps: parseInt(set.reps || set.repetitions || "0", 10),
-          previous_kg: parseFloat(set.kg || set.weight || "0"),
-          previous_reps: parseInt(set.reps || set.repetitions || "0", 10),
           completed: false,
-        }));
+          };
+
+          // Parse sets based on exercise type
+          switch (exercise.type) {
+            case "weight_reps":
+              const weight = parseFloat(set.kg || set.weight || set.weight_kg || "0");
+              const reps = parseInt(set.reps || set.repetitions || "0", 10);
+              baseSet.weight_kg = weight;
+              baseSet.reps = reps;
+              baseSet.kg = weight; // Legacy field
+              baseSet.previous_weight_kg = weight;
+              baseSet.previous_reps = reps;
+              break;
+            case "reps_only":
+              const repsOnly = parseInt(set.reps || set.repetitions || "0", 10);
+              baseSet.reps = repsOnly;
+              baseSet.previous_reps = repsOnly;
+              break;
+            case "duration":
+              // Parse duration - could be in seconds or MM:SS format
+              let durationSeconds = 0;
+              if (set.duration_seconds) {
+                durationSeconds = parseInt(set.duration_seconds || "0", 10);
+              } else if (set.duration) {
+                // Try to parse MM:SS format
+                const durationStr = String(set.duration);
+                if (durationStr.includes(":")) {
+                  const [mins, secs] = durationStr.split(":").map(Number);
+                  durationSeconds = (mins || 0) * 60 + (secs || 0);
+                } else {
+                  durationSeconds = parseInt(durationStr || "0", 10);
+                }
+              }
+              baseSet.duration_seconds = durationSeconds;
+              baseSet.previous_duration_seconds = durationSeconds;
+              break;
+            case "distance_duration":
+              const distance = parseFloat(set.distance || set.distance_meters || "0");
+              let distanceDurationSeconds = 0;
+              if (set.duration_seconds) {
+                distanceDurationSeconds = parseInt(set.duration_seconds || "0", 10);
+              } else if (set.duration) {
+                const durationStr = String(set.duration);
+                if (durationStr.includes(":")) {
+                  const [mins, secs] = durationStr.split(":").map(Number);
+                  distanceDurationSeconds = (mins || 0) * 60 + (secs || 0);
+                } else {
+                  distanceDurationSeconds = parseInt(durationStr || "0", 10);
+                }
+              }
+              baseSet.distance_meters = distance;
+              baseSet.duration_seconds = distanceDurationSeconds;
+              baseSet.previous_distance_meters = distance;
+              baseSet.previous_duration_seconds = distanceDurationSeconds;
+              break;
+            default:
+              // Fallback to weight_reps for unknown types
+              const fallbackWeight = parseFloat(set.kg || set.weight || "0");
+              const fallbackReps = parseInt(set.reps || set.repetitions || "0", 10);
+              baseSet.weight_kg = fallbackWeight;
+              baseSet.reps = fallbackReps;
+              baseSet.kg = fallbackWeight;
+              baseSet.previous_weight_kg = fallbackWeight;
+              baseSet.previous_reps = fallbackReps;
+          }
+
+          return baseSet;
+        });
         
         console.log(`   Sets: ${sets.length}`);
         

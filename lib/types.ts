@@ -2,7 +2,7 @@
 export interface Exercise {
   id: string;
   title: string;
-  type: "weight_reps" | "weight_duration" | "duration" | "reps" | "cardio";
+  type: "weight_reps" | "reps_only" | "duration" | "distance_duration";
   primary_muscle_group: string;
   secondary_muscle_groups: string[];
   is_custom: boolean;
@@ -11,10 +11,21 @@ export interface Exercise {
 // Workout Set
 export interface WorkoutSet {
   set_number: number;
-  kg: number;
-  reps: number;
-  previous_kg?: number;
+  // For weight_reps type
+  weight_kg?: number;
+  reps?: number;
+  // For reps_only type (reps only)
+  // For duration type
+  duration_seconds?: number;
+  // For distance_duration type
+  distance_meters?: number;
+  // Legacy fields for backward compatibility (will be migrated)
+  kg?: number;
+  // Previous values for comparison
+  previous_weight_kg?: number;
   previous_reps?: number;
+  previous_duration_seconds?: number;
+  previous_distance_meters?: number;
   completed: boolean;
 }
 

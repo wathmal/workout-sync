@@ -109,13 +109,40 @@ export default function ReviewPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workoutDate, workoutTime]);
 
-  const handleUpdateSet = (exerciseIndex: number, setIndex: number, field: "kg" | "reps" | "completed", value: number | boolean) => {
+  const handleUpdateSet = (exerciseIndex: number, setIndex: number, field: "kg" | "reps" | "distance" | "duration" | "completed", value: number | boolean) => {
     const updatedExercises = [...exercises];
-    if (field === "kg" || field === "reps") {
-      updatedExercises[exerciseIndex].sets[setIndex][field] = value as number;
-    } else if (field === "completed") {
-      updatedExercises[exerciseIndex].sets[setIndex].completed = value as boolean;
+    const set = updatedExercises[exerciseIndex].sets[setIndex];
+    const exerciseType = updatedExercises[exerciseIndex].exercise.type;
+
+    if (field === "completed") {
+      set.completed = value as boolean;
+    } else if (typeof value === "number") {
+      // Handle different field types based on exercise type
+      if (field === "kg") {
+        // For weight_reps type, update weight_kg
+        if (exerciseType === "weight_reps") {
+          set.weight_kg = value;
+          // Keep legacy kg field for backward compatibility
+          set.kg = value;
+        }
+      } else if (field === "reps") {
+        // For weight_reps and reps_only types
+        if (exerciseType === "weight_reps" || exerciseType === "reps_only") {
+          set.reps = value;
+        }
+      } else if (field === "distance") {
+        // For distance_duration type
+        if (exerciseType === "distance_duration") {
+          set.distance_meters = value;
+        }
+      } else if (field === "duration") {
+        // For duration and distance_duration types
+        if (exerciseType === "duration" || exerciseType === "distance_duration") {
+          set.duration_seconds = value;
     }
+      }
+    }
+    
     setExercises(updatedExercises);
     setProcessedExercises(updatedExercises);
   };
@@ -131,15 +158,39 @@ export default function ReviewPage() {
     const updatedExercises = [...exercises];
     const exercise = updatedExercises[exerciseIndex];
     const lastSet = exercise.sets[exercise.sets.length - 1];
+    const exerciseType = exercise.exercise.type;
     
-    exercise.sets.push({
+    // Create new set based on exercise type
+    const newSet: any = {
       set_number: exercise.sets.length + 1,
-      kg: lastSet.kg,
-      reps: lastSet.reps,
-      previous_kg: lastSet.kg,
-      previous_reps: lastSet.reps,
       completed: false,
-    });
+    };
+
+    switch (exerciseType) {
+      case "weight_reps":
+        newSet.weight_kg = lastSet.weight_kg ?? lastSet.kg ?? 0;
+        newSet.reps = lastSet.reps ?? 0;
+        newSet.kg = newSet.weight_kg; // Legacy field
+        newSet.previous_weight_kg = lastSet.weight_kg ?? lastSet.kg ?? 0;
+        newSet.previous_reps = lastSet.reps ?? 0;
+        break;
+      case "reps_only":
+        newSet.reps = lastSet.reps ?? 0;
+        newSet.previous_reps = lastSet.reps ?? 0;
+        break;
+      case "duration":
+        newSet.duration_seconds = lastSet.duration_seconds ?? 0;
+        newSet.previous_duration_seconds = lastSet.duration_seconds ?? 0;
+        break;
+      case "distance_duration":
+        newSet.distance_meters = lastSet.distance_meters ?? 0;
+        newSet.duration_seconds = lastSet.duration_seconds ?? 0;
+        newSet.previous_distance_meters = lastSet.distance_meters ?? 0;
+        newSet.previous_duration_seconds = lastSet.duration_seconds ?? 0;
+        break;
+    }
+    
+    exercise.sets.push(newSet);
     
     setExercises(updatedExercises);
     setProcessedExercises(updatedExercises);
@@ -169,8 +220,56 @@ export default function ReviewPage() {
 
   const handleExerciseChange = (exerciseIndex: number, newExercise: Exercise) => {
     const updatedExercises = [...exercises];
-    // Update exercise, keep all existing sets data
+    const oldExercise = updatedExercises[exerciseIndex].exercise;
+    const oldType = oldExercise.type;
+    const newType = newExercise.type;
+    
+    // Update exercise
     updatedExercises[exerciseIndex].exercise = newExercise;
+    
+    // If exercise type changed, migrate sets to new format
+    if (oldType !== newType) {
+      updatedExercises[exerciseIndex].sets = updatedExercises[exerciseIndex].sets.map((set) => {
+        const migratedSet: any = {
+          set_number: set.set_number,
+          completed: set.completed,
+        };
+
+        switch (newType) {
+          case "weight_reps":
+            // Try to preserve weight and reps if available
+            const weight = set.weight_kg ?? set.kg ?? 0;
+            const reps = set.reps ?? 0;
+            migratedSet.weight_kg = weight;
+            migratedSet.reps = reps;
+            migratedSet.kg = weight; // Legacy field
+            migratedSet.previous_weight_kg = weight;
+            migratedSet.previous_reps = reps;
+            break;
+          case "reps_only":
+            // Preserve reps if available
+            const repsOnly = set.reps ?? 0;
+            migratedSet.reps = repsOnly;
+            migratedSet.previous_reps = repsOnly;
+            break;
+          case "duration":
+            // Initialize with 0 duration
+            migratedSet.duration_seconds = set.duration_seconds ?? 0;
+            migratedSet.previous_duration_seconds = set.duration_seconds ?? 0;
+            break;
+          case "distance_duration":
+            // Initialize with 0 distance and duration
+            migratedSet.distance_meters = set.distance_meters ?? 0;
+            migratedSet.duration_seconds = set.duration_seconds ?? 0;
+            migratedSet.previous_distance_meters = set.distance_meters ?? 0;
+            migratedSet.previous_duration_seconds = set.duration_seconds ?? 0;
+            break;
+        }
+
+        return migratedSet;
+      });
+    }
+    
     setExercises(updatedExercises);
     setProcessedExercises(updatedExercises);
   };
@@ -184,16 +283,45 @@ export default function ReviewPage() {
   };
 
   const handleAddExercise = (exercise: Exercise) => {
+    // Create sets based on exercise type
+    const createSets = () => {
+      return Array.from({ length: 3 }, (_, i) => {
+        const baseSet: any = {
+          set_number: i + 1,
+          completed: false,
+        };
+
+        switch (exercise.type) {
+          case "weight_reps":
+            baseSet.weight_kg = 0;
+            baseSet.reps = 0;
+            baseSet.kg = 0; // Legacy field
+            baseSet.previous_weight_kg = 0;
+            baseSet.previous_reps = 0;
+            break;
+          case "reps_only":
+            baseSet.reps = 0;
+            baseSet.previous_reps = 0;
+            break;
+          case "duration":
+            baseSet.duration_seconds = 0;
+            baseSet.previous_duration_seconds = 0;
+            break;
+          case "distance_duration":
+            baseSet.distance_meters = 0;
+            baseSet.duration_seconds = 0;
+            baseSet.previous_distance_meters = 0;
+            baseSet.previous_duration_seconds = 0;
+            break;
+        }
+
+        return baseSet;
+      });
+    };
+
     const newExercise: WorkoutExercise = {
       exercise,
-      sets: Array.from({ length: 3 }, (_, i) => ({
-        set_number: i + 1,
-        kg: 0,
-        reps: 0,
-        previous_kg: 0,
-        previous_reps: 0,
-        completed: false,
-      })),
+      sets: createSets(),
       notes: "",
       rest_timer_enabled: false,
     };
