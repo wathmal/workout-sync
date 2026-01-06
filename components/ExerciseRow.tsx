@@ -25,22 +25,30 @@ export function ExerciseRow({
   onToggleComplete,
   onDelete 
 }: ExerciseRowProps) {
-  const [durationInput, setDurationInput] = useState(
-    set.duration_seconds !== undefined ? secondsToMMSS(set.duration_seconds) : "0:00"
-  );
+  // Use controlled component approach - derive value from props
+  const durationDisplayValue = set.duration_seconds !== undefined ? secondsToMMSS(set.duration_seconds) : "0:00";
+  const [durationInput, setDurationInput] = useState(durationDisplayValue);
+  const [isFocused, setIsFocused] = useState(false);
+
+  const handleDurationFocus = () => {
+    setIsFocused(true);
+    setDurationInput(durationDisplayValue);
+  };
 
   const handleDurationBlur = () => {
+    setIsFocused(false);
     const seconds = mmssToSeconds(durationInput);
     if (onDurationChange) {
       onDurationChange(seconds);
     }
-    // Update display value
-    setDurationInput(secondsToMMSS(seconds));
   };
 
   const handleDurationChange = (value: string) => {
     setDurationInput(value);
   };
+  
+  // Use prop value when not focused, local state when focused
+  const displayValue = isFocused ? durationInput : durationDisplayValue;
 
   // Determine grid columns based on exercise type
   const getGridCols = () => {
@@ -74,24 +82,24 @@ export function ExerciseRow({
 
       {/* Weight input for weight_reps */}
       {exerciseType === "weight_reps" && onWeightChange && (
-        <Input
-          type="number"
+      <Input
+        type="number"
           value={getWeightValue()}
           onChange={(e) => onWeightChange(Number(e.target.value))}
-          className="h-9 sm:h-10 text-sm sm:text-base text-center focus:ring-2 focus:ring-ring/20 text-foreground"
+        className="h-9 sm:h-10 text-sm sm:text-base text-center focus:ring-2 focus:ring-ring/20 text-foreground"
           placeholder="0"
-        />
+      />
       )}
 
       {/* Reps input for weight_reps and reps_only */}
       {(exerciseType === "weight_reps" || exerciseType === "reps_only") && onRepsChange && (
-        <Input
-          type="number"
+      <Input
+        type="number"
           value={getRepsValue()}
-          onChange={(e) => onRepsChange(Number(e.target.value))}
-          className="h-9 sm:h-10 text-sm sm:text-base text-center focus:ring-2 focus:ring-ring/20 text-foreground"
+        onChange={(e) => onRepsChange(Number(e.target.value))}
+        className="h-9 sm:h-10 text-sm sm:text-base text-center focus:ring-2 focus:ring-ring/20 text-foreground"
           placeholder="0"
-        />
+      />
       )}
 
       {/* Distance input for distance_duration */}
@@ -110,8 +118,9 @@ export function ExerciseRow({
       {(exerciseType === "duration" || exerciseType === "distance_duration") && onDurationChange && (
         <Input
           type="text"
-          value={durationInput}
+          value={displayValue}
           onChange={(e) => handleDurationChange(e.target.value)}
+          onFocus={handleDurationFocus}
           onBlur={handleDurationBlur}
           className="h-9 sm:h-10 text-sm sm:text-base text-center focus:ring-2 focus:ring-ring/20 text-foreground"
           placeholder="0:00"

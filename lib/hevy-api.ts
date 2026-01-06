@@ -115,9 +115,9 @@ export function transformToHevyFormat(workout: Workout): HevyWorkoutRequest {
         });
 
       return {
-        exercise_template_id: workoutExercise.exercise.id,
-        superset_id: null,
-        notes: workoutExercise.notes || undefined,
+      exercise_template_id: workoutExercise.exercise.id,
+      superset_id: null,
+      notes: workoutExercise.notes || undefined,
         sets: hevySets,
       };
     }),

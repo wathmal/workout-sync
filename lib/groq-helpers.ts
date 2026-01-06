@@ -44,8 +44,8 @@ export function parseGroqResponse(responseText: string): WorkoutExercise[] {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sets: WorkoutSet[] = (ex.sets || []).map((set: any, setIndex: number) => {
           const baseSet: any = {
-            set_number: set.set_number || setIndex + 1,
-            completed: false,
+          set_number: set.set_number || setIndex + 1,
+          completed: false,
           };
 
           // Parse sets based on exercise type

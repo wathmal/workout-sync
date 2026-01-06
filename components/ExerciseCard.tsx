@@ -106,11 +106,11 @@ export function ExerciseCard({ workoutExercise, onUpdateSet, onUpdateNotes, onAd
               default:
                 return (
                   <>
-                    <div className="text-center">SET</div>
-                    <div className="text-center">KG</div>
-                    <div className="text-center">REPS</div>
-                    <div></div>
-                    <div></div>
+          <div className="text-center">SET</div>
+          <div className="text-center">KG</div>
+          <div className="text-center">REPS</div>
+          <div></div>
+          <div></div>
                   </>
                 );
             }
@@ -120,21 +120,21 @@ export function ExerciseCard({ workoutExercise, onUpdateSet, onUpdateNotes, onAd
             <>
               <div className={`grid ${getHeaderCols()} gap-2 sm:gap-3 pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide w-full`}>
                 {getHeaders()}
-              </div>
+        </div>
 
-              {workoutExercise.sets.map((set, index) => (
-                <ExerciseRow
-                  key={index}
-                  set={set}
+        {workoutExercise.sets.map((set, index) => (
+          <ExerciseRow
+            key={index}
+            set={set}
                   exerciseType={exerciseType}
                   onWeightChange={exerciseType === "weight_reps" ? (value) => onUpdateSet(index, "kg", value) : undefined}
                   onRepsChange={(exerciseType === "weight_reps" || exerciseType === "reps_only") ? (value) => onUpdateSet(index, "reps", value) : undefined}
                   onDistanceChange={exerciseType === "distance_duration" ? (value) => onUpdateSet(index, "distance", value) : undefined}
                   onDurationChange={(exerciseType === "duration" || exerciseType === "distance_duration") ? (value) => onUpdateSet(index, "duration", value) : undefined}
-                  onToggleComplete={() => onUpdateSet(index, "completed", !set.completed)}
-                  onDelete={() => onDeleteSet(index)}
-                />
-              ))}
+            onToggleComplete={() => onUpdateSet(index, "completed", !set.completed)}
+            onDelete={() => onDeleteSet(index)}
+          />
+        ))}
             </>
           );
         })()}

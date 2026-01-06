@@ -139,7 +139,7 @@ export default function ReviewPage() {
         // For duration and distance_duration types
         if (exerciseType === "duration" || exerciseType === "distance_duration") {
           set.duration_seconds = value;
-        }
+    }
       }
     }
     
