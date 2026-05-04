@@ -37,8 +37,8 @@ function restoreEnv() {
 
 async function freshMatcher() {
   jest.resetModules();
-  const mod = await import("../hevy/exercises");
-  return mod.matchExerciseWithFuzzy;
+  const mod = await import("../hevy/match-server");
+  return mod.matchExerciseWithEmbeddings;
 }
 
 interface Case {

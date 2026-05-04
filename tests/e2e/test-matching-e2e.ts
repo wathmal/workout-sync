@@ -8,7 +8,7 @@
  *      EMBEDDING_SOURCE=lm-studio tsx tests/e2e/test-matching-e2e.ts
  *      EMBEDDING_SOURCE=transformers tsx tests/e2e/test-matching-e2e.ts
  */
-import { matchExerciseWithFuzzy } from "../../lib/hevy/exercises";
+import { matchExerciseWithEmbeddings } from "../../lib/hevy/match-server";
 
 const TESTS = [
   "Bench Press (Barbell)",
@@ -31,7 +31,7 @@ async function main() {
   console.log(`\n--- mode=${process.env.MATCHING_MODE ?? "both"} source=${process.env.EMBEDDING_SOURCE ?? "auto"} ---\n`);
   for (const input of TESTS) {
     const start = Date.now();
-    const m = await matchExerciseWithFuzzy(input);
+    const m = await matchExerciseWithEmbeddings(input);
     const ms = Date.now() - start;
     console.log(`[${ms.toString().padStart(4)}ms] "${input}" → "${m.title}"`);
   }

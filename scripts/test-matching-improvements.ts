@@ -4,7 +4,8 @@
  */
 
 import { normalizeExerciseName, calculateSimilarity, calculateWordOverlap } from '../lib/hevy/fuzzy-match';
-import { matchExerciseWithFuzzy, calculateMatchScore, HEVY_EXERCISES } from '../lib/hevy/exercises';
+import { calculateMatchScore, HEVY_EXERCISES } from '../lib/hevy/exercises';
+import { matchExerciseWithEmbeddings as matchExerciseWithFuzzy } from '../lib/hevy/match-server';
 
 console.log('='.repeat(80));
 console.log('EXERCISE MATCHING IMPROVEMENTS TEST');

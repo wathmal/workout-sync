@@ -22,7 +22,7 @@ import {
   WORKOUT_EXTRACTION_SYSTEM_PROMPT,
   WORKOUT_EXTRACTION_USER_PROMPT,
 } from "../../lib/groq/prompts";
-import { matchExerciseWithFuzzy } from "../../lib/hevy/exercises";
+import { matchExerciseWithEmbeddings } from "../../lib/hevy/match-server";
 
 const IMAGE_PATH = path.join(process.cwd(), "tests", "fixtures", "workout-revl-1.jpeg");
 
@@ -139,7 +139,7 @@ async function main() {
   }> = [];
 
   for (const detected of detectedNames) {
-    const exercise = await matchExerciseWithFuzzy(detected);
+    const exercise = await matchExerciseWithEmbeddings(detected);
     const matched = exercise.title;
     const expectation = findExpectation(detected);
     const pass = expectation ? checkMatch(matched, expectation.expectAny) : false;

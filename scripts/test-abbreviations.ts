@@ -4,7 +4,7 @@
  */
 
 import { normalizeExerciseName, expandAbbreviations } from '../lib/hevy/fuzzy-match';
-import { matchExerciseWithFuzzy } from '../lib/hevy/exercises';
+import { matchExerciseWithEmbeddings as matchExerciseWithFuzzy } from '../lib/hevy/match-server';
 
 /**
  * Test abbreviation expansion

@@ -1,8 +1,8 @@
-import "server-only";
-
 /**
  * Hevy API Integration
- * Handles transformation of workout data to Hevy's API format
+ * Pure helpers + a thin client-callable duplicate-check that hits our internal
+ * /api/hevy-workouts route. No Node-only deps and no secrets — isomorphic.
+ * Server-only HTTP calls to Hevy live in app/api/hevy-{sync,workouts}/route.ts.
  */
 
 import { Workout, HevyWorkoutEvent } from "../types";

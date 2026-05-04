@@ -1,7 +1,7 @@
 import "server-only";
 
 import { WorkoutExercise, WorkoutSet } from "../types";
-import { matchExerciseWithFuzzy } from "../hevy/exercises";
+import { matchExerciseWithEmbeddings } from "../hevy/match-server";
 
 /**
  * Parse the Groq API response and convert to WorkoutExercise array.
@@ -23,7 +23,7 @@ export async function parseGroqResponse(responseText: string): Promise<WorkoutEx
         const detectedName = ex.name || ex.exercise_name || "Unknown Exercise";
         console.log(`\n[Exercise ${index + 1}/${parsed.exercises.length}]`);
 
-        const exercise = await matchExerciseWithFuzzy(detectedName);
+        const exercise = await matchExerciseWithEmbeddings(detectedName);
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sets: WorkoutSet[] = (ex.sets || []).map((set: any, setIndex: number) => {

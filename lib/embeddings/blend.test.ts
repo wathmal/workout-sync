@@ -24,14 +24,14 @@ describe("matchExerciseWithFuzzy with embedding off", () => {
 
   it("returns same exercise as legacy fuzzy path for known names", async () => {
     jest.resetModules();
-    const { matchExerciseWithFuzzy } = await import("../hevy/exercises");
+    const { matchExerciseWithEmbeddings: matchExerciseWithFuzzy } = await import("../hevy/match-server");
     const result = await matchExerciseWithFuzzy("Bench Press (Barbell)");
     expect(result.title.toLowerCase()).toContain("bench press");
   });
 
   it("matches abbreviated names", async () => {
     jest.resetModules();
-    const { matchExerciseWithFuzzy } = await import("../hevy/exercises");
+    const { matchExerciseWithEmbeddings: matchExerciseWithFuzzy } = await import("../hevy/match-server");
     const result = await matchExerciseWithFuzzy("DB Bench Press");
     expect(result.title.toLowerCase()).toContain("bench press");
     expect(result.title.toLowerCase()).toContain("dumbbell");
@@ -46,7 +46,7 @@ describe("matchExerciseWithFuzzy with vector mode but source off", () => {
 
   it("gracefully degrades to fuzzy when no embedding source", async () => {
     jest.resetModules();
-    const { matchExerciseWithFuzzy } = await import("../hevy/exercises");
+    const { matchExerciseWithEmbeddings: matchExerciseWithFuzzy } = await import("../hevy/match-server");
     const result = await matchExerciseWithFuzzy("Bench Press (Barbell)");
     expect(result.title.toLowerCase()).toContain("bench press");
   });
