@@ -15,7 +15,8 @@
     "e2e:matching": "NODE_OPTIONS=--conditions=react-server tsx --env-file=.env.local tests/e2e/test-matching-e2e.ts",
     "e2e:full": "NODE_OPTIONS=--conditions=react-server tsx --env-file=.env.local tests/e2e/full-e2e.ts",
     "e2e:heic": "NODE_OPTIONS=--conditions=react-server tsx --env-file=.env.local tests/e2e/heic-e2e.ts",
-    "debug:match": "NODE_OPTIONS=--conditions=react-server tsx scripts/debug-match.ts"
+    "debug:match": "NODE_OPTIONS=--conditions=react-server tsx scripts/debug-match.ts",
+    "compare:modes": "NODE_OPTIONS=--conditions=react-server tsx scripts/compare-modes.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
