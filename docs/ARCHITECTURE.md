@@ -107,7 +107,7 @@ Banner classes: red = `bg-red-50 border-red-200`, yellow = `bg-yellow-50 border-
 ## Deployment
 
 ### Docker
-Multi-stage build. Detects package manager from lockfile. Final image ~150-200MB. Runtime memory: ~100-200MB idle, up to 500MB under load.
+Multi-stage build (Node 22 alpine). Detects package manager from lockfile. Final image ~150-200MB. Runtime memory: ~100-200MB idle, up to 500MB under load. Embedding catalogs (`lib/data/exercise-embeddings/*.bin`) are pulled into the standalone trace via `outputFileTracingIncludes` in `next.config.ts` — they're loaded via `fs` so wouldn't be traced automatically.
 
 ```bash
 podman build -t workout-sync:latest .
@@ -117,8 +117,34 @@ podman run -d -p 3000:3000 \
   --restart unless-stopped workout-sync:latest
 ```
 
+### Runtime env vars
+
+| Var | Required | Default in image | Purpose |
+|-----|----------|------------------|---------|
+| `HEVY_API_KEY` | yes | — | Hevy sync |
+| `GROQ_API_KEY` | yes (no fallback to mock) | — | Vision extraction |
+| `MATCHING_MODE` | no | `fuzzy` | `fuzzy` / `vector` / `both` |
+| `EMBEDDING_SOURCE` | no | `off` | `auto` / `lm-studio` / `transformers` / `off` |
+| `EMBEDDING_BOOST_MAX` | no | `30` | Max additive embedding boost in `both` mode |
+| `EMBEDDING_COS_THRESHOLD` | no | `0.55` | Cosine score below this contributes 0 boost |
+
+Container ships with embeddings disabled. To enable:
+
+- **Transformers in-container** (~280MB model download on first request):
+  ```bash
+  -e MATCHING_MODE=both -e EMBEDDING_SOURCE=transformers \
+  -v hf-cache:/home/nextjs/.cache/huggingface
+  ```
+  Without the volume the model re-downloads every container start.
+- **External LM Studio** (no in-container model):
+  ```bash
+  -e MATCHING_MODE=both -e EMBEDDING_SOURCE=lm-studio \
+  -e LM_STUDIO_BASE_URL=http://host.docker.internal:1234/v1 \
+  -e LM_STUDIO_EMBEDDING_MODEL=text-embedding-qwen3-embedding-8b
+  ```
+
 ### TrueNAS Scale
-Apps → Custom App → Install. Set image repo, env vars (`HEVY_API_KEY`, `GROQ_API_KEY`), port mapping (container 3000). Configure Docker Hub creds for private repos.
+Apps → Custom App → Install. Set image repo, env vars (see table), port mapping (container 3000). Configure Docker Hub creds for private repos.
 
 Or load image directly: `docker load -i image.tar`.
 

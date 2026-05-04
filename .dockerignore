@@ -17,6 +17,8 @@ coverage
 *.test.js
 *.test.jsx
 __tests__
+__mocks__
+tests
 
 # Environment files
 .env
@@ -53,5 +55,16 @@ docker-compose.yml
 
 # Misc
 .cursor
+.continue
+.claude
 terminals
+
+# Dev-only scripts (build:embeddings stays — needed if rebuilding catalogs in CI)
+scripts/test-abbreviations.ts
+scripts/test-matching-improvements.ts
+scripts/debug-match.ts
+scripts/compare-modes.ts
+
+# Build-time-only type shims
+lib/*.d.ts
 
