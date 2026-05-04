@@ -1,9 +1,11 @@
+import "server-only";
+
 /**
  * Hevy API Integration
  * Handles transformation of workout data to Hevy's API format
  */
 
-import { Workout, HevyWorkoutEvent } from "./types";
+import { Workout, HevyWorkoutEvent } from "../types";
 import { format } from "date-fns";
 
 /**

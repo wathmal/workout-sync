@@ -3,8 +3,8 @@
  * This can be run to test various abbreviation scenarios
  */
 
-import { normalizeExerciseName, expandAbbreviations } from './fuzzy-match';
-import { matchExerciseWithFuzzy } from './hevy-exercises';
+import { normalizeExerciseName, expandAbbreviations } from '../lib/hevy/fuzzy-match';
+import { matchExerciseWithFuzzy } from '../lib/hevy/exercises';
 
 /**
  * Test abbreviation expansion
@@ -34,9 +34,9 @@ export function testAbbreviations() {
 /**
  * Test exercise matching with abbreviations
  */
-export function testExerciseMatching() {
+export async function testExerciseMatching() {
   console.log('\n🧪 Testing Exercise Matching with Abbreviations:\n');
-  
+
   const testCases = [
     'BB Bench Press',
     'DB Bench Press',
@@ -47,13 +47,13 @@ export function testExerciseMatching() {
     'BB Row',
     'DB Shoulder Press',
   ];
-  
-  testCases.forEach((input) => {
+
+  for (const input of testCases) {
     console.log(`\nInput: "${input}"`);
-    const match = matchExerciseWithFuzzy(input);
+    const match = await matchExerciseWithFuzzy(input);
     console.log(`Match: "${match.title}"`);
     console.log(`Official: ${!match.is_custom}`);
-  });
+  }
 }
 
 /**
@@ -81,6 +81,6 @@ export function testExpansion() {
 if (typeof window === 'undefined' && require.main === module) {
   testExpansion();
   testAbbreviations();
-  testExerciseMatching();
+  void testExerciseMatching();
 }
 

@@ -90,6 +90,8 @@ const EXERCISE_ABBREVIATIONS: Record<string, string> = {
   'bp': 'bench press',
   'sp': 'shoulder press',
   'ohp': 'overhead press',
+  'rdl': 'romanian deadlift',
+  'sldl': 'stiff leg deadlift',
   'dl': 'deadlift',
   'sq': 'squat',
   'row': 'row',

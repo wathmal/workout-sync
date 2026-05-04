@@ -63,7 +63,7 @@ npm run dev
 
 4. Create a `.env.local` file with your API keys (see `env.example`):
 ```bash
-cp env.example .env.local
+cp .env.example .env.local
 # Edit .env.local with your actual API keys
 ```
 
@@ -85,6 +85,8 @@ See `env.example` for a template.
 1. **Build the Podman image:**
 ```bash
 podman build -t workout-sync:latest .
+# 64bit image
+podman buildx build --platform linux/amd64 -t workout-sync:amd64 .
 ```
 
 2. **Test locally:**
@@ -127,7 +129,7 @@ podman push docker.io/YOUR_DOCKERHUB_USERNAME/workout-sync:v1.0.0
 
 ### Deploying to TrueNAS Scale
 
-For detailed deployment instructions on TrueNAS Scale, see [docs/DOCKER_DEPLOYMENT.md](docs/DOCKER_DEPLOYMENT.md).
+For deployment + full architecture, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 **Quick steps:**
 1. Push your image to Docker Hub (see above)

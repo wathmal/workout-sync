@@ -6,7 +6,7 @@ import { Dumbbell, Check, AlertCircle, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useWorkout } from "@/contexts/WorkoutContext";
+import { useWorkout } from "@/app/_providers/workout-provider";
 import { WorkoutSummaryCard } from "@/components/WorkoutSummaryCard";
 import { syncWorkoutToHevy, formatDuration, formatVolume } from "@/lib/mock-data";
 import { format } from "date-fns";

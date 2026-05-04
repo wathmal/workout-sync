@@ -6,7 +6,7 @@ import { Plus, ZoomIn, ZoomOut, Maximize2, Clock, AlertTriangle, X } from "lucid
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useWorkout } from "@/contexts/WorkoutContext";
+import { useWorkout } from "@/app/_providers/workout-provider";
 import { WorkoutSummaryCard } from "@/components/WorkoutSummaryCard";
 import { ExerciseCard } from "@/components/ExerciseCard";
 import { WorkoutExercise, Exercise, DuplicateWorkoutInfo } from "@/lib/types";
@@ -18,7 +18,7 @@ import { format } from "date-fns";
 import { ExerciseSearchCombobox } from "@/components/ExerciseSearchCombobox";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { checkForDuplicateWorkout } from "@/lib/hevy-api";
+import { checkForDuplicateWorkout } from "@/lib/hevy/api";
 
 export default function ReviewPage() {
   const router = useRouter();

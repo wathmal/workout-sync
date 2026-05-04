@@ -1,4 +1,35 @@
+import "server-only";
+
 import exifr from 'exifr';
+import convert from 'heic-convert';
+
+const HEIC_MIMES = ['image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'];
+const HEIC_EXT = /\.(heic|heif)$/i;
+const HEIC_BRANDS = ['heic', 'heix', 'mif1', 'msf1', 'heim', 'heis', 'hevc', 'hevx'];
+
+/**
+ * Detect HEIC/HEIF by mime, filename extension, or ISO BMFF brand at offset 4-12.
+ * iOS Safari frequently reports an empty file.type for HEIC, so the extension
+ * and magic-byte fallbacks are required, not optional.
+ */
+export function isHeic(mimeType?: string | null, filename?: string | null, buffer?: Buffer): boolean {
+  if (mimeType && HEIC_MIMES.includes(mimeType.toLowerCase())) return true;
+  if (filename && HEIC_EXT.test(filename)) return true;
+  if (buffer && buffer.length >= 12) {
+    const ftyp = buffer.slice(4, 8).toString('ascii');
+    if (ftyp === 'ftyp') {
+      const brand = buffer.slice(8, 12).toString('ascii').toLowerCase();
+      if (HEIC_BRANDS.includes(brand)) return true;
+    }
+  }
+  return false;
+}
+
+export async function convertHeicToJpeg(buffer: Buffer, quality = 0.9): Promise<Buffer> {
+  const output = await convert({ buffer, format: 'JPEG', quality });
+  return Buffer.from(output);
+}
+
 
 /**
  * Extract date from image EXIF metadata (server-side)

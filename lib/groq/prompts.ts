@@ -1,3 +1,5 @@
+import "server-only";
+
 /**
  * System prompt for Groq Vision API to extract workout data from images
  */

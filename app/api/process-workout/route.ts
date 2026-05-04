@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
-import { parseGroqResponse } from "@/lib/groq-helpers";
+import { parseGroqResponse } from "@/lib/groq/helpers";
 import {
   WORKOUT_EXTRACTION_SYSTEM_PROMPT,
   WORKOUT_EXTRACTION_USER_PROMPT,
-} from "@/lib/prompts";
-import { extractImageDateFromBuffer, calculateWorkoutStartTime } from "@/lib/image-utils";
+} from "@/lib/groq/prompts";
+import {
+  extractImageDateFromBuffer,
+  calculateWorkoutStartTime,
+  isHeic,
+  convertHeicToJpeg,
+} from "@/lib/image-utils";
 
 // Initialize Groq client lazily
 function getGroqClient() {
@@ -21,7 +26,11 @@ export async function POST(request: NextRequest) {
   try {
     // Parse the request body
     const body = await request.json();
-    const { image, mimeType } = body;
+    const { image, mimeType, filename } = body as {
+      image?: string;
+      mimeType?: string;
+      filename?: string;
+    };
 
     if (!image) {
       return NextResponse.json(
@@ -41,18 +50,45 @@ export async function POST(request: NextRequest) {
     console.log("🔄 Processing workout image with Groq Vision API...");
     console.log("📊 Image size:", Math.round(image.length / 1024), "KB (base64)");
 
-    // Extract date from EXIF metadata
+    const originalBuffer = Buffer.from(image, 'base64');
+
+    // Extract date from EXIF on the original buffer (exifr supports HEIC).
     let extractedDate: Date | null = null;
     let workoutStartTime: { date: Date; timeString: string } | null = null;
     try {
-      const imageBuffer = Buffer.from(image, 'base64');
-      extractedDate = await extractImageDateFromBuffer(imageBuffer);
+      extractedDate = await extractImageDateFromBuffer(originalBuffer);
       if (extractedDate) {
         workoutStartTime = calculateWorkoutStartTime(extractedDate);
         console.log("📅 Extracted workout date/time from image EXIF:", workoutStartTime);
       }
     } catch (error) {
       console.warn("⚠️ Could not extract date from image EXIF:", error);
+    }
+
+    // HEIC → JPEG conversion if needed. Groq vision officially lists JPEG/PNG/WEBP.
+    let groqImageBase64 = image;
+    let groqMimeType = mimeType || "image/jpeg";
+    let convertedImageBase64: string | null = null;
+    if (isHeic(mimeType, filename, originalBuffer)) {
+      try {
+        console.log("🔁 Converting HEIC → JPEG...");
+        const jpegBuffer = await convertHeicToJpeg(originalBuffer);
+        groqImageBase64 = jpegBuffer.toString('base64');
+        groqMimeType = "image/jpeg";
+        convertedImageBase64 = groqImageBase64;
+        console.log(
+          `✅ HEIC converted: ${Math.round(originalBuffer.length / 1024)}KB → ${Math.round(jpegBuffer.length / 1024)}KB`
+        );
+      } catch (error) {
+        console.error("❌ HEIC conversion failed:", error);
+        return NextResponse.json(
+          {
+            error: "Failed to convert HEIC image. Please upload a JPEG or PNG.",
+            details: error instanceof Error ? error.message : "Unknown error",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Get Groq client
@@ -76,7 +112,7 @@ export async function POST(request: NextRequest) {
             {
               type: "image_url",
               image_url: {
-                url: `data:${mimeType || "image/jpeg"};base64,${image}`,
+                url: `data:${groqMimeType};base64,${groqImageBase64}`,
               },
             },
           ],
@@ -100,13 +136,14 @@ export async function POST(request: NextRequest) {
     console.log("---");
 
     // Parse the response
-    const workoutExercises = parseGroqResponse(responseContent);
+    const workoutExercises = await parseGroqResponse(responseContent);
 
     console.log("📋 Parsed Exercises:");
     console.log(JSON.stringify(workoutExercises, null, 2));
     console.log("---");
 
-    // Return the parsed workout data along with extracted date/time
+    // Return the parsed workout data along with extracted date/time.
+    // convertedImageBase64 is set only when input was HEIC — client uses it for preview.
     return NextResponse.json({
       success: true,
       exercises: workoutExercises,
@@ -114,6 +151,7 @@ export async function POST(request: NextRequest) {
       extractedDate: extractedDate?.toISOString() || null,
       workoutStartDate: workoutStartTime?.date.toISOString() || null,
       workoutStartTime: workoutStartTime?.timeString || null,
+      convertedImageBase64,
     });
   } catch (error) {
     console.error("❌ Error processing workout image:", error);

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Camera, AlertCircle, Info, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useWorkout } from "@/contexts/WorkoutContext";
+import { useWorkout } from "@/app/_providers/workout-provider";
 import { processWorkoutImage } from "@/lib/mock-data";
 
 export default function UploadPage() {
@@ -53,6 +53,11 @@ export default function UploadPage() {
       // Process the image (server extracts date from EXIF)
       const result = await processWorkoutImage(uploadedImage);
       setProcessedExercises(result.exercises);
+
+      // If server converted HEIC → JPEG, swap the context file so review preview renders.
+      if (result.convertedImageFile) {
+        setUploadedImage(result.convertedImageFile);
+      }
       
       // Set extracted date/time from server response
       if (result.workoutStartDate && result.workoutStartTime) {
@@ -181,7 +186,7 @@ export default function UploadPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             onChange={handleFileSelect}
             className="hidden"
           />

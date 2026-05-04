@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { transformToHevyFormat, validateWorkout, getErrorMessage } from "@/lib/hevy-api";
+import { transformToHevyFormat, validateWorkout, getErrorMessage } from "@/lib/hevy/api";
 import { Workout } from "@/lib/types";
 
 /**

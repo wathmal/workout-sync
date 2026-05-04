@@ -44,7 +44,7 @@ export const MOCK_EXERCISES: Exercise[] = [
   },
 ];
 
-import { convertFileToBase64, validateImageFile } from "./groq-helpers";
+import { convertFileToBase64, validateImageFile } from "./upload-utils";
 
 // Result type for image processing
 export interface ProcessWorkoutImageResult {
@@ -52,6 +52,8 @@ export interface ProcessWorkoutImageResult {
   extractedDate: Date | null;
   workoutStartDate: Date | null;
   workoutStartTime: string | null;
+  /** Server-converted JPEG when input was HEIC. Use for browser-renderable preview. */
+  convertedImageFile: File | null;
 }
 
 // Mock image processing function with fallback
@@ -77,6 +79,7 @@ export async function processWorkoutImage(imageFile: File): Promise<ProcessWorko
       body: JSON.stringify({
         image: base64Image,
         mimeType: imageFile.type,
+        filename: imageFile.name,
       }),
     });
 
@@ -113,6 +116,9 @@ export async function processWorkoutImage(imageFile: File): Promise<ProcessWorko
         extractedDate: data.extractedDate ? new Date(data.extractedDate) : null,
         workoutStartDate: data.workoutStartDate ? new Date(data.workoutStartDate) : null,
         workoutStartTime: data.workoutStartTime || null,
+        convertedImageFile: data.convertedImageBase64
+          ? base64ToJpegFile(data.convertedImageBase64, imageFile.name)
+          : null,
       };
     }
 
@@ -121,23 +127,32 @@ export async function processWorkoutImage(imageFile: File): Promise<ProcessWorko
   } catch (error) {
     console.error("⚠️ Error processing image with Groq API:", error);
     console.log("🔄 Falling back to mock data...");
-    
+
     // Re-throw validation errors (don't fall back for these)
     if (error instanceof Error && (
-      error.message.includes("Invalid file type") || 
+      error.message.includes("Invalid file type") ||
       error.message.includes("size exceeds")
     )) {
       throw error;
     }
-    
+
     // Fallback to mock data for API failures
     return {
       exercises: getMockWorkoutData(),
       extractedDate: null,
       workoutStartDate: null,
       workoutStartTime: null,
+      convertedImageFile: null,
     };
   }
+}
+
+function base64ToJpegFile(base64: string, originalName: string): File {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const jpegName = originalName.replace(/\.(heic|heif)$/i, '.jpg');
+  return new File([bytes], jpegName, { type: 'image/jpeg' });
 }
 
 // Separate mock data function for fallback

@@ -18,7 +18,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Exercise } from "@/lib/types";
-import { searchExercises, HEVY_EXERCISES } from "@/lib/hevy-exercises";
+import { searchExercises, HEVY_EXERCISES } from "@/lib/hevy/exercises";
 
 interface ExerciseSearchComboboxProps {
   currentExerciseTitle: string;
@@ -42,15 +42,31 @@ export function ExerciseSearchCombobox({
     is_custom: hevyEx.is_custom,
   });
 
-  // Get filtered exercises based on search query
-  const filteredExercises = React.useMemo(() => {
-    if (!searchQuery || searchQuery.trim().length === 0) {
-      // Show first 50 exercises when no search query
-      return HEVY_EXERCISES.slice(0, 50);
+  // Filtered list:
+  // - empty query → top 50 closest matches to currentExerciseTitle
+  // - typed query → top 50 matches to query
+  const [filteredExercises, setFilteredExercises] = React.useState<typeof HEVY_EXERCISES>(
+    () => HEVY_EXERCISES.slice(0, 50),
+  );
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const query = searchQuery.trim().length > 0 ? searchQuery : currentExerciseTitle;
+    if (!query) {
+      setFilteredExercises(HEVY_EXERCISES.slice(0, 50));
+      return;
     }
-    // Use searchExercises with limit of 50
-    return searchExercises(searchQuery, 50);
-  }, [searchQuery]);
+    searchExercises(query, 50).then((results) => {
+      if (!cancelled) {
+        setFilteredExercises(
+          results.length > 0 ? results : HEVY_EXERCISES.slice(0, 50),
+        );
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [searchQuery, currentExerciseTitle, open]);
 
   const handleSelect = (exercise: any) => {
     onExerciseSelect(convertToExercise(exercise));

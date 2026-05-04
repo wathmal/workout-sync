@@ -1,0 +1,71 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Commands
+
+```bash
+npm run dev                       # Next.js dev server (http://localhost:3000)
+npm run build                     # production build
+npm run lint                      # ESLint
+npm test                          # Jest, all suites
+npm run test:watch                # Jest watch mode
+npx jest path/to/file.test.ts     # single test file
+npx jest -t "test name pattern"   # filter by test name
+
+npm run build:embeddings          # build embedding catalog (auto provider)
+npm run build:embeddings:both     # build both LM Studio + Transformers.js catalogs
+npm run build:embeddings:check    # exit 0 if catalogs up-to-date
+
+# E2E (slow, hits real APIs)
+npm run e2e:matching              # matching only
+npm run e2e:full                  # Groq + matching, needs GROQ_API_KEY
+npm run e2e:heic                  # HEIC detect + convert + Groq, needs GROQ_API_KEY
+
+# Debug
+npm run debug:match -- "DB Curl"  # score breakdown for one input
+```
+
+`npm run dev` requires `.env.local` with `HEVY_API_KEY` and `GROQ_API_KEY`. Without `GROQ_API_KEY`, image processing falls back to mock data (UI shows yellow warning banner).
+
+## Architecture
+
+Full details in `docs/ARCHITECTURE.md`. Big picture:
+
+**Pipeline.** Photo upload → `/api/process-workout` (Groq vision) → fuzzy + embedding match against Hevy catalog → review/edit → `/api/hevy-sync` → Hevy API. EXIF date extracted from image, manual override available.
+
+**Domain layout in `lib/`.**
+- `lib/hevy/` — Hevy API client, exercise catalog (453 exercises from 5 merged JSON snapshots), fuzzy-match algorithm. `fuzzy-match.ts` is exercise-name-specific (knows abbreviations, equipment ordering) — not a generic string utility.
+- `lib/groq/` — Groq client helpers + extraction prompts.
+- `lib/embeddings/` — pluggable provider system (LM Studio / Transformers.js). Server-only — lazy-imported by `lib/hevy/exercises.ts` so client bundles stay clean. Pre-computed catalogs stored in `lib/data/exercise-embeddings/` and built via `npm run build:embeddings`.
+- `lib/data/` — static data (exercise JSON snapshots, embedding catalogs).
+- `lib/mock-data.ts` — mixed: fixtures + live workout helpers (`calculateWorkoutMetrics`, `formatVolume`, etc.). App imports both. Known smell — split planned.
+- `lib/types.ts`, `lib/utils.ts`, `lib/image-utils.ts` — shared utilities.
+
+**Matching scoring.** Threshold ≥60. Levenshtein base (0-100) + word overlap (+10 per match) + same starting word (+20) + equipment match (+15) + official bonus (+5). Max 150. Vector mode (cosine) blends with fuzzy via env vars `MATCHING_MODE` (`fuzzy|vector|both`) and `EMBEDDING_SOURCE` (`lm-studio|transformers|auto|off`). Abbreviation expansion: `BB→barbell, DB→dumbbell, KB→kettlebell, EZ→ez bar, SZ→sz bar, Swiss→swiss bar, Trap→trap bar`. Equipment word reordered to end so "DB Curl" matches "Bicep Curl (Dumbbell)".
+
+**Tests.** Unit tests colocated (`lib/foo.test.ts` next to `lib/foo.ts`). E2E in `tests/e2e/`. Ad-hoc scripts in `scripts/`. `lib/test-*.ts` files were misnamed scripts and have been moved to `scripts/`.
+
+**State.** `app/_providers/workout-provider.tsx` holds workout, image, sync prefs across pages.
+
+**API routes.** `app/api/process-workout/`, `app/api/hevy-sync/`, `app/api/hevy-workouts/` (used for duplicate detection). All call external services server-side only — API keys never reach client.
+
+## Gotchas
+
+- **Next.js client/server split.** `lib/hevy/exercises.ts` lazy-imports embedding code (`@huggingface/transformers`, `fs`). Don't break this — adding a top-level import will pull Node-only deps into client bundle and break build.
+- **Mock fallback detection** uses string match: `exercises[0].title === "Push Press"`. Fragile. If you change mock fixture exercises, update the check (or replace with explicit flag).
+- **Path alias** `@/*` maps to repo root (see `tsconfig.json`). Use `@/lib/...` from app/components, `../lib/...` from scripts/tests.
+- **Tailwind v4** uses CSS variables under `@theme` directive in `app/globals.css`. shadcn config (`components.json`) targets New York style.
+- **Jest picks up `.next/standalone/lib/*.test.ts`** build artifacts — duplicates of real tests. Add `testPathIgnorePatterns: ['/node_modules/', '/.next/']` to `jest.config.js` if cleaning up.
+- **Image limits**: ≤20MB, ≤33 megapixels (Groq), base64 request ≤4MB.
+- **HEIC/HEIF**: accepted on upload, converted server-side via `heic-convert` before forwarding to Groq. EXIF runs on the original buffer (exifr supports HEIC). Server returns the converted JPEG as `convertedImageBase64`; client swaps it into context so the review-page preview renders. Detection uses mime + filename extension + ISO BMFF brand bytes (iOS Safari often reports empty `file.type`).
+- **Hevy sync** is sequential per exercise (~1.5s each) — UI animates progress.
+- **E2E fixtures** in `tests/fixtures/`: `workout-revl-1.jpeg` (full-e2e), `workout-revl-2.heic` (heic-e2e).
+- **`server-only` + tsx**: scripts that import server-marked modules (prompts, embeddings, hevy/api) must run with `NODE_OPTIONS=--conditions=react-server` so the package resolves to its empty.js entry instead of the throwing default. All `npm run` scripts already set this — only matters if you invoke `tsx` directly.
+
+## When extending
+
+- New API route: drop in `app/api/<name>/route.ts`. Server-only secrets read via `process.env`.
+- New shadcn component: `npx shadcn@latest add <name>` — installs to `components/ui/`.
+- New lib module: pick a domain (`hevy/`, `groq/`, `embeddings/`) or place at `lib/` root if cross-cutting. Don't recreate sibling utils that already exist in `lib/utils.ts`.
+- Touching matching: regenerate embeddings (`npm run build:embeddings:both`) if exercise catalog JSON files change. Run `tsx scripts/debug-match.ts "<input>"` to inspect score components.
