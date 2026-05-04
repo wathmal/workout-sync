@@ -1,25 +1,31 @@
 #!/bin/bash
-# Build + push container image (linux/arm64 only).
-# Tags: <version> from package.json, latest, sha-<short>.
+# Build + push multi-arch container image (linux/amd64 for TrueNAS Scale,
+# linux/arm64 for Apple Silicon dev). Single manifest, single tag works
+# on either arch.
+#
+# Tags pushed: <version>, latest, sha-<short>
+#
+# amd64 builds via QEMU emulation on M-series Macs — slow (10-20min).
+# Requires `podman login docker.io` first.
 set -euo pipefail
 
 VERSION=$(node -p "require('./package.json').version")
 SHA=$(git rev-parse --short HEAD)
-LOCAL_TAG="workout-sync:${VERSION}"
 REPO="docker.io/wathmal/workout-sync"
-PLATFORM="linux/arm64"
+PLATFORMS="linux/amd64,linux/arm64"
 
-echo "→ build  ${LOCAL_TAG}  (${PLATFORM}, sha=${SHA})"
-podman buildx build --platform "${PLATFORM}" -t "${LOCAL_TAG}" .
+PRIMARY_TAG="${VERSION}"
+echo "→ build+push  ${REPO}:${PRIMARY_TAG}  (${PLATFORMS}, sha=${SHA})"
+podman buildx build \
+  --platform "${PLATFORMS}" \
+  --manifest "${REPO}:${PRIMARY_TAG}" \
+  --push \
+  .
 
-for TAG in "${VERSION}" "latest" "sha-${SHA}"; do
-  echo "→ tag    ${REPO}:${TAG}"
-  podman tag "${LOCAL_TAG}" "${REPO}:${TAG}"
-done
-
-for TAG in "${VERSION}" "latest" "sha-${SHA}"; do
-  echo "→ push   ${REPO}:${TAG}"
-  podman push "${REPO}:${TAG}"
+# Alias under additional tags without rebuilding.
+for TAG in "latest" "sha-${SHA}"; do
+  echo "→ alias       ${REPO}:${TAG}"
+  podman manifest push "${REPO}:${PRIMARY_TAG}" "docker://${REPO}:${TAG}"
 done
 
 echo "✓ done"
