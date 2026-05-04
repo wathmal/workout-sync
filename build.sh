@@ -15,8 +15,16 @@ REPO="docker.io/wathmal/workout-sync"
 PLATFORMS="linux/amd64,linux/arm64"
 LOCAL_MANIFEST="workout-sync:${VERSION}"
 
-# Idempotent: remove stale local manifest before re-building
+# Idempotent cleanup: nuke any conflicting prior tag so --manifest can
+# create a fresh manifest list. `manifest rm` only removes lists; a
+# stale single-arch image with the same tag would otherwise cause
+# "image is not a manifest list" at push time.
 podman manifest rm "${LOCAL_MANIFEST}" 2>/dev/null || true
+podman rmi -f "${LOCAL_MANIFEST}" 2>/dev/null || true
+
+# Pre-create the manifest list so `podman build --manifest` adds to it
+# instead of silently re-tagging as a single-arch image.
+podman manifest create "${LOCAL_MANIFEST}"
 
 echo "→ build  ${LOCAL_MANIFEST}  (${PLATFORMS}, sha=${SHA})"
 podman build --platform "${PLATFORMS}" --manifest "${LOCAL_MANIFEST}" .
