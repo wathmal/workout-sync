@@ -23,7 +23,9 @@ podman build --platform "${PLATFORMS}" --manifest "${LOCAL_MANIFEST}" .
 
 for TAG in "${VERSION}" "latest" "sha-${SHA}"; do
   echo "→ push   ${REPO}:${TAG}"
-  podman manifest push "${LOCAL_MANIFEST}" "docker://${REPO}:${TAG}"
+  # --all uploads all platform blobs alongside the manifest list.
+  # Without it, podman may push only a single arch.
+  podman manifest push --all "${LOCAL_MANIFEST}" "docker://${REPO}:${TAG}"
 done
 
 echo "✓ done"
