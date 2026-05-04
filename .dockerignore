@@ -65,6 +65,3 @@ scripts/test-matching-improvements.ts
 scripts/debug-match.ts
 scripts/compare-modes.ts
 
-# Build-time-only type shims
-lib/*.d.ts
-
