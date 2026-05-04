@@ -13,19 +13,17 @@ VERSION=$(node -p "require('./package.json').version")
 SHA=$(git rev-parse --short HEAD)
 REPO="docker.io/wathmal/workout-sync"
 PLATFORMS="linux/amd64,linux/arm64"
+LOCAL_MANIFEST="workout-sync:${VERSION}"
 
-PRIMARY_TAG="${VERSION}"
-echo "→ build+push  ${REPO}:${PRIMARY_TAG}  (${PLATFORMS}, sha=${SHA})"
-podman buildx build \
-  --platform "${PLATFORMS}" \
-  --manifest "${REPO}:${PRIMARY_TAG}" \
-  --push \
-  .
+# Idempotent: remove stale local manifest before re-building
+podman manifest rm "${LOCAL_MANIFEST}" 2>/dev/null || true
 
-# Alias under additional tags without rebuilding.
-for TAG in "latest" "sha-${SHA}"; do
-  echo "→ alias       ${REPO}:${TAG}"
-  podman manifest push "${REPO}:${PRIMARY_TAG}" "docker://${REPO}:${TAG}"
+echo "→ build  ${LOCAL_MANIFEST}  (${PLATFORMS}, sha=${SHA})"
+podman build --platform "${PLATFORMS}" --manifest "${LOCAL_MANIFEST}" .
+
+for TAG in "${VERSION}" "latest" "sha-${SHA}"; do
+  echo "→ push   ${REPO}:${TAG}"
+  podman manifest push "${LOCAL_MANIFEST}" "docker://${REPO}:${TAG}"
 done
 
 echo "✓ done"
