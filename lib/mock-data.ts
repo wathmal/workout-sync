@@ -54,6 +54,8 @@ export interface ProcessWorkoutImageResult {
   workoutStartTime: string | null;
   /** Server-converted JPEG when input was HEIC. Use for browser-renderable preview. */
   convertedImageFile: File | null;
+  modelName: string | null;
+  confidence: number | null;
 }
 
 // Mock image processing function with fallback
@@ -119,6 +121,8 @@ export async function processWorkoutImage(imageFile: File): Promise<ProcessWorko
         convertedImageFile: data.convertedImageBase64
           ? base64ToJpegFile(data.convertedImageBase64, imageFile.name)
           : null,
+        modelName: data.modelName ?? null,
+        confidence: typeof data.confidence === "number" ? data.confidence : null,
       };
     }
 
@@ -143,6 +147,8 @@ export async function processWorkoutImage(imageFile: File): Promise<ProcessWorko
       workoutStartDate: null,
       workoutStartTime: null,
       convertedImageFile: null,
+      modelName: null,
+      confidence: null,
     };
   }
 }

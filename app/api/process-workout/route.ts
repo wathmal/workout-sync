@@ -4,6 +4,9 @@ import { parseGroqResponse } from "@/lib/groq/helpers";
 import {
   WORKOUT_EXTRACTION_SYSTEM_PROMPT,
   WORKOUT_EXTRACTION_USER_PROMPT,
+  LM_VISION_SYSTEM_PROMPT,
+  LM_VISION_USER_PROMPT,
+  WORKOUT_EXTRACTION_JSON_SCHEMA,
 } from "@/lib/groq/prompts";
 import {
   extractImageDateFromBuffer,
@@ -11,6 +14,14 @@ import {
   isHeic,
   convertHeicToJpeg,
 } from "@/lib/image-utils";
+
+type VisionProvider = "groq" | "lm-studio";
+
+const VISION_PROVIDER: VisionProvider =
+  (process.env.VISION_PROVIDER as VisionProvider) || "groq";
+const LM_STUDIO_URL = process.env.LM_STUDIO_URL || "http://localhost:1234/v1";
+const LM_STUDIO_VISION_MODEL =
+  process.env.LM_STUDIO_VISION_MODEL || "qwen/qwen2.5-vl-7b";
 
 // Initialize Groq client lazily
 function getGroqClient() {
@@ -20,6 +31,86 @@ function getGroqClient() {
   return new Groq({
     apiKey: process.env.GROQ_API_KEY,
   });
+}
+
+async function callGroqVision(
+  imageBase64: string,
+  mimeType: string
+): Promise<string> {
+  const groq = getGroqClient();
+  const completion = await groq.chat.completions.create({
+    model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    messages: [
+      { role: "system", content: WORKOUT_EXTRACTION_SYSTEM_PROMPT },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: WORKOUT_EXTRACTION_USER_PROMPT },
+          {
+            type: "image_url",
+            image_url: { url: `data:${mimeType};base64,${imageBase64}` },
+          },
+        ],
+      },
+    ],
+    response_format: { type: "json_object" },
+    temperature: 0.2,
+    max_completion_tokens: 2048,
+    top_p: 1,
+    stream: false,
+  });
+  const content = completion.choices[0]?.message?.content;
+  if (!content) throw new Error("Empty response from Groq API");
+  return content;
+}
+
+async function callLMStudioVision(
+  imageBase64: string,
+  mimeType: string
+): Promise<string> {
+  const res = await fetch(`${LM_STUDIO_URL}/chat/completions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: LM_STUDIO_VISION_MODEL,
+      messages: [
+        { role: "system", content: LM_VISION_SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: LM_VISION_USER_PROMPT },
+            {
+              type: "image_url",
+              image_url: { url: `data:${mimeType};base64,${imageBase64}` },
+            },
+          ],
+        },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "workout_extraction",
+          strict: true,
+          schema: WORKOUT_EXTRACTION_JSON_SCHEMA,
+        },
+      },
+      temperature: 0.1,
+      max_tokens: 4096,
+      stream: false,
+    }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(
+      `LM Studio HTTP ${res.status}: ${text.slice(0, 300)}`
+    );
+  }
+  const json = (await res.json()) as {
+    choices: Array<{ message: { content: string } }>;
+  };
+  const content = json.choices[0]?.message?.content;
+  if (!content) throw new Error("Empty response from LM Studio");
+  return content;
 }
 
 export async function POST(request: NextRequest) {
@@ -39,7 +130,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!process.env.GROQ_API_KEY) {
+    if (VISION_PROVIDER === "groq" && !process.env.GROQ_API_KEY) {
       console.error("GROQ_API_KEY is not set in environment variables");
       return NextResponse.json(
         { error: "API configuration error. Please contact support." },
@@ -47,7 +138,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("🔄 Processing workout image with Groq Vision API...");
+    console.log(
+      `🔄 Processing workout image with vision provider: ${VISION_PROVIDER}` +
+        (VISION_PROVIDER === "lm-studio"
+          ? ` (${LM_STUDIO_VISION_MODEL} @ ${LM_STUDIO_URL})`
+          : "")
+    );
     console.log("📊 Image size:", Math.round(image.length / 1024), "KB (base64)");
 
     const originalBuffer = Buffer.from(image, 'base64');
@@ -91,47 +187,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Get Groq client
-    const groq = getGroqClient();
+    const responseContent =
+      VISION_PROVIDER === "lm-studio"
+        ? await callLMStudioVision(groqImageBase64, groqMimeType)
+        : await callGroqVision(groqImageBase64, groqMimeType);
 
-    // Call Groq Vision API
-    const completion = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
-      messages: [
-        {
-          role: "system",
-          content: WORKOUT_EXTRACTION_SYSTEM_PROMPT,
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: WORKOUT_EXTRACTION_USER_PROMPT,
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:${groqMimeType};base64,${groqImageBase64}`,
-              },
-            },
-          ],
-        },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.2,
-      max_completion_tokens: 2048,
-      top_p: 1,
-      stream: false,
-    });
-
-    const responseContent = completion.choices[0]?.message?.content;
-
-    if (!responseContent) {
-      throw new Error("Empty response from Groq API");
-    }
-
-    console.log("✅ Groq API Response:");
+    console.log(`✅ ${VISION_PROVIDER} response:`);
     console.log(responseContent);
     console.log("---");
 
@@ -141,6 +202,15 @@ export async function POST(request: NextRequest) {
     console.log("📋 Parsed Exercises:");
     console.log(JSON.stringify(workoutExercises, null, 2));
     console.log("---");
+
+    // Compute average match score → confidence percentage (0-100).
+    const scores = workoutExercises
+      .map((ex) => ex.matchScore ?? 0)
+      .filter((s) => s > 0);
+    const avgScore = scores.length > 0
+      ? scores.reduce((a, b) => a + b, 0) / scores.length
+      : 0;
+    const confidence = Math.round((avgScore / 150) * 100);
 
     // Return the parsed workout data along with extracted date/time.
     // convertedImageBase64 is set only when input was HEIC — client uses it for preview.
@@ -152,6 +222,11 @@ export async function POST(request: NextRequest) {
       workoutStartDate: workoutStartTime?.date.toISOString() || null,
       workoutStartTime: workoutStartTime?.timeString || null,
       convertedImageBase64,
+      modelName:
+        VISION_PROVIDER === "lm-studio"
+          ? `${LM_STUDIO_VISION_MODEL} · LM Studio`
+          : "Llama 4 Scout · Groq",
+      confidence,
     });
   } catch (error) {
     console.error("❌ Error processing workout image:", error);

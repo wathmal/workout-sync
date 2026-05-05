@@ -3,6 +3,17 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { Workout, WorkoutExercise } from "@/lib/types";
 
+export interface SyncedWorkoutSummary {
+  date: Date;
+  time: string | null;
+  duration_minutes: number;
+  total_volume_kg: number;
+  total_sets: number;
+  exercises: WorkoutExercise[];
+  caption?: string;
+  hevy_url?: string;
+}
+
 interface WorkoutContextType {
   currentWorkout: Workout | null;
   setCurrentWorkout: (workout: Workout | null) => void;
@@ -16,6 +27,12 @@ interface WorkoutContextType {
   setExtractedWorkoutDate: (date: Date | null) => void;
   extractedWorkoutTime: string | null;
   setExtractedWorkoutTime: (time: string | null) => void;
+  detectionModel: string | null;
+  setDetectionModel: (m: string | null) => void;
+  detectionConfidence: number | null;
+  setDetectionConfidence: (c: number | null) => void;
+  lastSyncedWorkout: SyncedWorkoutSummary | null;
+  setLastSyncedWorkout: (s: SyncedWorkoutSummary | null) => void;
 }
 
 const WorkoutContext = createContext<WorkoutContextType | undefined>(undefined);
@@ -27,6 +44,9 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   const [caption, setCaption] = useState("");
   const [extractedWorkoutDate, setExtractedWorkoutDate] = useState<Date | null>(null);
   const [extractedWorkoutTime, setExtractedWorkoutTime] = useState<string | null>(null);
+  const [detectionModel, setDetectionModel] = useState<string | null>(null);
+  const [detectionConfidence, setDetectionConfidence] = useState<number | null>(null);
+  const [lastSyncedWorkout, setLastSyncedWorkout] = useState<SyncedWorkoutSummary | null>(null);
 
   return (
     <WorkoutContext.Provider
@@ -43,6 +63,12 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
         setExtractedWorkoutDate,
         extractedWorkoutTime,
         setExtractedWorkoutTime,
+        detectionModel,
+        setDetectionModel,
+        detectionConfidence,
+        setDetectionConfidence,
+        lastSyncedWorkout,
+        setLastSyncedWorkout,
       }}
     >
       {children}
@@ -57,4 +83,3 @@ export function useWorkout() {
   }
   return context;
 }
-
