@@ -3,6 +3,8 @@
  * Implements Levenshtein distance algorithm for string similarity
  */
 
+import { expandAbbreviations } from "../exercise-abbreviations";
+
 /**
  * Calculate Levenshtein distance between two strings
  * Returns the minimum number of edits needed to transform one string into another
@@ -58,134 +60,6 @@ export function calculateSimilarity(str1: string, str2: string): number {
   const similarity = ((maxLength - distance) / maxLength) * 100;
   
   return Math.round(similarity);
-}
-
-/**
- * Equipment abbreviation mapping
- * Maps abbreviations to their full names for better matching
- */
-const EQUIPMENT_ABBREVIATIONS: Record<string, string> = {
-  'bb': 'barbell',
-  'db': 'dumbbell',
-  'kb': 'kettlebell',
-  'ez': 'ez bar',
-  'sz': 'sz bar',
-  'swiss': 'swiss bar',
-  'trap': 'trap bar',
-};
-
-/**
- * Exercise name abbreviation mapping
- * Maps common exercise abbreviations to their full names
- */
-const EXERCISE_ABBREVIATIONS: Record<string, string> = {
-  'tbt': 'toes to bar',
-  'ttb': 'toes to bar',
-  'tth': 'toe touch',
-  'k2c': 'knee to chest',
-  'k2k': 'knee to knee',
-  'k2e': 'knee to elbow',
-  'hkr': 'hanging knee raise',
-  'lkr': 'lying knee raise',
-  'bp': 'bench press',
-  'sp': 'shoulder press',
-  'ohp': 'overhead press',
-  'rdl': 'romanian deadlift',
-  'sldl': 'stiff leg deadlift',
-  'dl': 'deadlift',
-  'sq': 'squat',
-  'row': 'row',
-  'curl': 'curl',
-  'ext': 'extension',
-  'press': 'press',
-};
-
-/**
- * Expand equipment abbreviations in exercise name
- * Converts "BB Bench Press" to "Barbell Bench Press"
- */
-export function expandAbbreviations(name: string): string {
-  let expanded = name.toLowerCase().trim();
-  
-  // Handle slash-separated equipment abbreviations at the start (BB/DB Curl → BB Curl)
-  // Check if the first part before slash is an equipment abbreviation
-  const slashPattern = /^([a-z]+)\/([a-z]+)\s/i;
-  const slashMatch = expanded.match(slashPattern);
-  if (slashMatch) {
-    const firstPart = slashMatch[1];
-    const secondPart = slashMatch[2];
-    
-    // Check if both parts are equipment abbreviations
-    const isFirstEquipment = firstPart in EQUIPMENT_ABBREVIATIONS;
-    const isSecondEquipment = secondPart in EQUIPMENT_ABBREVIATIONS;
-    
-    // If both are equipment abbreviations, take only the first one
-    if (isFirstEquipment && isSecondEquipment) {
-      expanded = expanded.replace(slashPattern, '$1 ');
-    }
-  }
-  
-  // Handle slash-separated compound exercises (TBT/TTH/K2C → try each part)
-  // Check if this looks like multiple exercises separated by slashes
-  const slashParts = expanded.split('/').map(p => p.trim()).filter(p => p.length > 0);
-  if (slashParts.length > 1) {
-    // For compound abbreviations, try to expand each part
-    // This helps with cases like "TBT/TTH/K2C" → "toes to bar / toe touch / knee to chest"
-    const expandedParts = slashParts.map(part => {
-      let partExpanded = part;
-      
-      // Try exercise abbreviations first
-      Object.entries(EXERCISE_ABBREVIATIONS).forEach(([abbr, full]) => {
-        const regex = new RegExp(`^${abbr}$`, 'i');
-        if (regex.test(partExpanded)) {
-          partExpanded = full;
-        }
-      });
-      
-      // Then try equipment abbreviations
-      Object.entries(EQUIPMENT_ABBREVIATIONS).forEach(([abbr, full]) => {
-        if (abbr === 'ez' || abbr === 'sz') {
-          const regex = new RegExp(`\\b${abbr}\\b(?!\\s+bar)`, 'gi');
-          partExpanded = partExpanded.replace(regex, full);
-        } else {
-          const regex = new RegExp(`\\b${abbr}\\b`, 'gi');
-          partExpanded = partExpanded.replace(regex, full);
-        }
-      });
-      
-      return partExpanded;
-    });
-    
-    // Join with space (will try to match any of these)
-    expanded = expandedParts.join(' ');
-  } else {
-    // Special handling for multi-word equipment (EZ Bar, SZ Bar)
-    // Replace "ez bar", "sz bar" patterns first to avoid duplication
-    expanded = expanded.replace(/\bez\s+bar\b/gi, 'ez bar');
-    expanded = expanded.replace(/\bsz\s+bar\b/gi, 'sz bar');
-  
-    // Try exercise abbreviations first
-    Object.entries(EXERCISE_ABBREVIATIONS).forEach(([abbr, full]) => {
-      const regex = new RegExp(`\\b${abbr}\\b`, 'gi');
-      expanded = expanded.replace(regex, full);
-    });
-    
-    // Then replace equipment abbreviations
-    Object.entries(EQUIPMENT_ABBREVIATIONS).forEach(([abbr, full]) => {
-      // Skip if this abbreviation is part of a multi-word equipment we already handled
-      if (abbr === 'ez' || abbr === 'sz') {
-        // Only replace if not followed by "bar"
-        const regex = new RegExp(`\\b${abbr}\\b(?!\\s+bar)`, 'gi');
-        expanded = expanded.replace(regex, full);
-      } else {
-        // Match abbreviation as whole word (with word boundaries)
-        const regex = new RegExp(`\\b${abbr}\\b`, 'gi');
-        expanded = expanded.replace(regex, full);
-      }
-    });
-  }
-  
-  return expanded;
 }
 
 /**

@@ -3,7 +3,8 @@
  * This can be run to test various abbreviation scenarios
  */
 
-import { normalizeExerciseName, expandAbbreviations } from '../lib/hevy/fuzzy-match';
+import { normalizeExerciseName } from '../lib/hevy/fuzzy-match';
+import { expandAbbreviations } from '../lib/exercise-abbreviations';
 import { matchExerciseWithEmbeddings as matchExerciseWithFuzzy } from '../lib/hevy/match-server';
 
 /**

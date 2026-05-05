@@ -4,7 +4,6 @@
  */
 
 import {
-  expandAbbreviations,
   normalizeExerciseName,
   reorderEquipmentToEnd,
   calculateSimilarity,
@@ -12,6 +11,7 @@ import {
   hasSameStartingWord,
   containsEquipment,
 } from './fuzzy-match';
+import { expandAbbreviations } from '../exercise-abbreviations';
 
 describe('Equipment Reordering', () => {
   describe('reorderEquipmentToEnd', () => {
