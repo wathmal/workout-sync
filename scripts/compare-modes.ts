@@ -9,6 +9,7 @@ import {
   type CosineLookup,
 } from "../lib/hevy/exercises";
 import { computeCosines } from "../lib/embeddings/match";
+import { expandAbbreviations } from "../lib/exercise-abbreviations";
 
 const INPUTS = [
   "Bench Press (Barbell)",
@@ -57,7 +58,7 @@ async function main() {
     // Compute cosines once per input (used by vector + both)
     let cosines: CosineLookup | null = null;
     try {
-      cosines = await computeCosines(input);
+      cosines = await computeCosines(expandAbbreviations(input));
     } catch (err) {
       console.error(`cosine failed for "${input}":`, err);
     }
