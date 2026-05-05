@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, AlertCircle, Info, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Camera, Clipboard, AlertCircle, Info, X } from "lucide-react";
 import { useWorkout } from "@/app/_providers/workout-provider";
 import { processWorkoutImage } from "@/lib/mock-data";
+import { Overline } from "@/app/_components/overline";
+import { WPrimary, WGhost } from "@/app/_components/web-button";
+
+const ACCEPTED = "image/*,.heic,.heif";
 
 export default function UploadPage() {
   const router = useRouter();
@@ -14,248 +16,384 @@ export default function UploadPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
-  
+  const [dragActive, setDragActive] = useState(false);
+
   const {
-    uploadedImage,
     setUploadedImage,
     setProcessedExercises,
     setExtractedWorkoutDate,
     setExtractedWorkoutTime,
+    setDetectionModel,
+    setDetectionConfidence,
   } = useWorkout();
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setUploadedImage(file);
-      setError(null); // Clear any previous errors
-      setIsUsingFallback(false);
-      // Clear previous extracted date/time - will be set from server response
-      setExtractedWorkoutDate(null);
-      setExtractedWorkoutTime(null);
-    }
-  };
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleCompleteUpload = async () => {
-    if (!uploadedImage) {
-      setError("Please upload a photo first");
-      return;
-    }
-
-    setIsProcessing(true);
+  const processFile = async (file: File) => {
+    setUploadedImage(file);
     setError(null);
     setIsUsingFallback(false);
-    
+    setExtractedWorkoutDate(null);
+    setExtractedWorkoutTime(null);
+    setIsProcessing(true);
     try {
-      // Process the image (server extracts date from EXIF)
-      const result = await processWorkoutImage(uploadedImage);
+      const result = await processWorkoutImage(file);
       setProcessedExercises(result.exercises);
-
-      // If server converted HEIC → JPEG, swap the context file so review preview renders.
       if (result.convertedImageFile) {
         setUploadedImage(result.convertedImageFile);
       }
-      
-      // Set extracted date/time from server response
       if (result.workoutStartDate && result.workoutStartTime) {
         setExtractedWorkoutDate(result.workoutStartDate);
         setExtractedWorkoutTime(result.workoutStartTime);
-      } else {
-        setExtractedWorkoutDate(null);
-        setExtractedWorkoutTime(null);
       }
-      
-      // Check if we're using fallback data
-      if (result.exercises.length === 1 && result.exercises[0].exercise.title === "Push Press" && result.exercises[0].sets.length === 5) {
+      setDetectionModel(result.modelName);
+      setDetectionConfidence(result.confidence);
+      if (
+        result.exercises.length === 1 &&
+        result.exercises[0].exercise.title === "Push Press" &&
+        result.exercises[0].sets.length === 5
+      ) {
         setIsUsingFallback(true);
       }
-      
-      // Navigate to review page
       router.push("/review");
-    } catch (error) {
-      console.error("Error processing image:", error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-      
-      // Set user-friendly error message
-      if (errorMessage.includes("API key") || errorMessage.includes("configuration")) {
-        setError("API not configured. Please add your GROQ_API_KEY to continue, or use mock data.");
-      } else if (errorMessage.includes("rate limit")) {
-        setError("Rate limit exceeded. Please wait a moment and try again.");
-      } else if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
-        setError("Network error. Please check your connection and try again.");
-      } else if (errorMessage.includes("Invalid file")) {
-        setError(errorMessage);
-      } else if (errorMessage.includes("size exceeds")) {
-        setError(errorMessage);
+    } catch (err) {
+      console.error("Error processing image:", err);
+      const message = err instanceof Error ? err.message : "Unknown error occurred";
+      if (message.includes("API key") || message.includes("configuration")) {
+        setError("API not configured. Add your GROQ_API_KEY to continue.");
+      } else if (message.includes("rate limit")) {
+        setError("Rate limit exceeded. Wait a moment and try again.");
+      } else if (message.includes("network") || message.includes("fetch")) {
+        setError("Network error. Check your connection and try again.");
+      } else if (message.includes("Invalid file") || message.includes("size exceeds")) {
+        setError(message);
       } else {
-        setError("Failed to process image: " + errorMessage);
+        setError("Failed to process image: " + message);
       }
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleDiscard = () => {
-    setUploadedImage(null);
-    setExtractedWorkoutDate(null);
-    setExtractedWorkoutTime(null);
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
   };
 
+  const handleChooseFile = () => fileInputRef.current?.click();
+
+  const handlePasteClick = async () => {
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const imageType = item.types.find((t: string) => t.startsWith("image/"));
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          const file = new File([blob], `pasted.${imageType.split("/")[1]}`, { type: imageType });
+          await processFile(file);
+          return;
+        }
+      }
+      setError("No image on clipboard. Copy an image first.");
+    } catch (err) {
+      console.error(err);
+      setError("Could not read clipboard. Allow clipboard access or use Choose file.");
+    }
+  };
+
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(true);
+  };
+  const onDragLeave = () => setDragActive(false);
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
+  };
+
+  // Global paste handler
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            processFile(file);
+            return;
+          }
+        }
+      }
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <div className="min-h-screen bg-muted animate-fade-in">
-      {/* Header */}
-      <div className="bg-background border-b border-border px-4 py-3 flex items-center justify-between sticky top-0 z-10 safe-top">
-        <div className="w-20"></div>
-        <h1 className="text-lg font-semibold">Upload Photo</h1>
-        <div className="w-20"></div>
-      </div>
-
-      <div className="p-4 max-w-2xl mx-auto">
-        {/* Error Message */}
-        {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <div className="flex items-start justify-between gap-2">
-              <AlertDescription>{error}</AlertDescription>
-              <button
-                onClick={() => setError(null)}
-                className="p-1 rounded-md hover:bg-muted transition-colors"
-                aria-label="Dismiss error"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </Alert>
-        )}
-
-        {/* Fallback Warning */}
-        {isUsingFallback && (
-          <Alert className="mb-4">
-            <Info className="h-4 w-4" />
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1">
-                <AlertDescription>
-                  Using sample data. Add your GROQ_API_KEY to process real workout images.{" "}
-                  <a
-                    href="https://console.groq.com/keys"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline hover:no-underline"
-                  >
-                    Get API Key →
-                  </a>
-                </AlertDescription>
-              </div>
-              <button
-                onClick={() => setIsUsingFallback(false)}
-                className="p-1 rounded-md hover:bg-muted transition-colors"
-                aria-label="Dismiss warning"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </Alert>
-        )}
-
-        {/* Upload Area */}
-        <div className="mb-6">
-          <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">
-            Workout Screenshot
-          </label>
-          
-          <button
-            onClick={handleUploadClick}
-            className="w-full border-2 border-dashed border-input rounded-2xl bg-background p-12 flex flex-col items-center justify-center hover:border-border hover:bg-muted/50 transition-all active:scale-[0.98] min-h-[280px]"
+    <div
+      style={{
+        padding: "20px 40px 24px",
+        maxWidth: 1280,
+        margin: "0 auto",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        gap: 20,
+      }}
+    >
+      {/* Errors / fallback banners */}
+      {error && (
+        <Banner tone="error" onDismiss={() => setError(null)} icon={<AlertCircle size={18} />}>
+          {error}
+        </Banner>
+      )}
+      {isUsingFallback && (
+        <Banner tone="info" onDismiss={() => setIsUsingFallback(false)} icon={<Info size={18} />}>
+          Using sample data. Add your GROQ_API_KEY to process real workout images.{" "}
+          <a
+            href="https://console.groq.com/keys"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ textDecoration: "underline" }}
           >
-            <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mb-4">
-              <Camera className="w-10 h-10 text-secondary-foreground" />
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">Tap to upload</h3>
-            <p className="text-sm text-muted-foreground">Take a photo or select from library</p>
-            
-            {uploadedImage && (
-              <div className="mt-4 text-sm text-muted-foreground font-medium">
-                ✓ {uploadedImage.name}
-              </div>
-            )}
-          </button>
-          
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,.heic,.heif"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-          
-          <p className="text-xs text-muted-foreground text-center mt-3">
-            Upload a screenshot or photo of your workout summary from the gym.
+            Get API Key →
+          </a>
+        </Banner>
+      )}
+
+      {/* Hero stack: heading top, drop area below */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
+        {/* Heading block */}
+        <div>
+          <Overline>STEP 01 · CAPTURE</Overline>
+          <h1
+            className="text-display-sm"
+            style={{
+              color: "var(--color-text-primary)",
+              margin: "8px 0 8px",
+              maxWidth: 720,
+              fontSize: 40,
+              lineHeight: 1.02,
+            }}
+          >
+            From the gym&nbsp;board to Hevy in one&nbsp;shot.
+          </h1>
+          <p
+            className="text-body-sm"
+            style={{
+              color: "var(--color-text-secondary)",
+              margin: 0,
+              maxWidth: 640,
+            }}
+          >
+            Drop a photo of any workout board, screenshot, or note. Vision parses every exercise,
+            set, and rep — you review, then sync.
           </p>
         </div>
 
-        {/* How it Works Section */}
-        <div className="mb-6 p-6 bg-background rounded-2xl shadow-sm">
-          <h3 className="font-semibold text-foreground mb-4">How it works</h3>
-          <div className="space-y-4">
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center font-semibold flex-shrink-0">
-                1
-              </div>
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground">Upload a photo of your workout screen from the gym</p>
-              </div>
+        {/* Drop area fills remaining vertical space */}
+        <div
+          style={{
+            background: "var(--color-low)",
+            borderRadius: "var(--radius-lg)",
+            padding: 12,
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+            minHeight: 0,
+          }}
+        >
+          <div
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+            style={{
+              minHeight: 280,
+              flex: 1,
+              borderRadius: "var(--radius-lg)",
+              background:
+                "repeating-linear-gradient(45deg, var(--color-card) 0 18px, var(--color-low) 18px 36px)",
+              position: "relative",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              padding: 18,
+              outline: dragActive ? "2px solid var(--color-primary)" : "none",
+              outlineOffset: -6,
+              transition: "outline 0.15s ease",
+            }}
+          >
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: "var(--radius-lg)",
+                background: "var(--gradient-primary)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 12px 24px -8px rgba(145,0,208,0.40)",
+              }}
+            >
+              <Camera size={26} color="#fff" strokeWidth={1.6} />
             </div>
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center font-semibold flex-shrink-0">
-                2
-              </div>
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground">Review and edit exercises, add/remove sets, set date and time</p>
-              </div>
+            <div
+              className="text-headline-sm"
+              style={{ color: "var(--color-text-primary)", marginTop: 2, textAlign: "center" }}
+            >
+              {isProcessing ? "Processing…" : "Drop your workout photo"}
             </div>
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center font-semibold flex-shrink-0">
-                3
+            <div
+              className="text-body-sm"
+              style={{
+                color: "var(--color-text-tertiary)",
+                textAlign: "center",
+                fontSize: 12,
+              }}
+            >
+              PNG · JPG · HEIC up to 20 MB · or paste from clipboard
+            </div>
+            <div
+              style={{
+                marginTop: 4,
+                display: "flex",
+                gap: 8,
+                flexWrap: "wrap",
+                justifyContent: "center",
+              }}
+            >
+              <WPrimary
+                icon={<Camera size={14} color="#fff" strokeWidth={1.7} />}
+                onClick={handleChooseFile}
+                disabled={isProcessing}
+              >
+                Choose file
+              </WPrimary>
+              <WGhost onClick={handlePasteClick} disabled={isProcessing} icon={<Clipboard size={13} />}>
+                Paste image
+              </WGhost>
+            </div>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED}
+            onChange={handleFileSelect}
+            style={{ display: "none" }}
+          />
+        </div>
+      </div>
+
+      {/* How it works — compact 3-up below fold */}
+      <div
+        className="web-grid-howitworks"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr 1fr",
+          gap: 20,
+        }}
+      >
+        {(
+          [
+            ["01", "Capture", "Whiteboard, screenshot, or handwritten note — all work."],
+            ["02", "Parse", "Vision extracts exercises, sets, reps, and matches Hevy's catalog."],
+            ["03", "Sync", "Edit anything, then push the session to your training log."],
+          ] as const
+        ).map(([n, t, d]) => (
+          <div key={n} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <div
+              style={{
+                color: "var(--color-primary)",
+                fontFamily: "var(--font-display)",
+                fontSize: 22,
+                fontWeight: 500,
+                lineHeight: 1,
+                flexShrink: 0,
+              }}
+            >
+              {n}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div
+                className="text-title-md"
+                style={{ color: "var(--color-text-primary)", fontWeight: 500 }}
+              >
+                {t}
               </div>
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground">Add a caption and sync to your Hevy account with one tap</p>
+              <div
+                className="text-body-sm"
+                style={{ color: "var(--color-text-secondary)", marginTop: 2, fontSize: 12 }}
+              >
+                {d}
               </div>
             </div>
           </div>
-        </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-        {/* Complete Upload Button */}
-        <Button
-          onClick={handleCompleteUpload}
-          disabled={!uploadedImage || isProcessing}
-          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-6 rounded-xl text-base font-semibold mb-4"
+function Banner({
+  tone,
+  icon,
+  onDismiss,
+  children,
+}: {
+  tone: "error" | "info";
+  icon: React.ReactNode;
+  onDismiss?: () => void;
+  children: React.ReactNode;
+}) {
+  const palette =
+    tone === "error"
+      ? { bg: "rgba(186,26,26,0.08)", fg: "var(--color-error)" }
+      : { bg: "rgba(184,134,11,0.10)", fg: "var(--color-warning)" };
+  return (
+    <div
+      className="animate-slide-down"
+      style={{
+        background: palette.bg,
+        color: palette.fg,
+        borderRadius: "var(--radius-md)",
+        padding: "10px 14px",
+        display: "flex",
+        gap: 10,
+        alignItems: "center",
+      }}
+    >
+      <span style={{ display: "flex", alignItems: "center" }}>{icon}</span>
+      <div className="text-body-sm" style={{ flex: 1, color: palette.fg }}>
+        {children}
+      </div>
+      {onDismiss && (
+        <button
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          style={{
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            color: palette.fg,
+            display: "flex",
+            alignItems: "center",
+          }}
         >
-          {isProcessing ? (
-            <>
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-xl animate-spin mr-2" />
-              Processing...
-            </>
-          ) : (
-            <>
-              Upload
-            </>
-          )}
-        </Button>
-
-        {/* Discard */}
-        {uploadedImage && (
-          <Button
-            onClick={handleDiscard}
-            variant="destructive"
-            className="w-full py-6 rounded-xl text-base font-semibold"
-          >
-            Discard
-          </Button>
-        )}
-        </div>
+          <X size={16} />
+        </button>
+      )}
     </div>
   );
 }

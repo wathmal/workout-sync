@@ -1,6 +1,13 @@
 # Workout Sync Design System: The Training Log
 
-**Version 1.0 · Photo → Hevy Workout Pipeline**
+**Version 1.1 · Photo → Hevy Workout Pipeline**
+
+> **Changelog v1.1 (Density pass).** Outer paddings, card paddings, type
+> sizes and component dimensions tightened across the web column to favor
+> data density without sacrificing the editorial voice. The principles in
+> §1 are unchanged; only the geometric specs in §2.3 (Spacing), §2.4
+> (Radius), §3 (Components), and §4 (Layout) reflect the tighter values.
+> Mobile column unchanged.
 
 ---
 
@@ -100,12 +107,12 @@ The scale uses **two values** per token: `mobile / web`. Mobile values tuned for
 
 | Token         | Family        | Weight | Size (mobile / web) | Letter-spacing    | Use                                |
 |---------------|---------------|--------|---------------------|-------------------|------------------------------------|
-| `display-lg`  | Space Grotesk | 500    | 48px / 72px         | -1.5px            | Exercise name on focused review    |
-| `display-md`  | Space Grotesk | 500    | 36px / 56px         | -1.2px            | Sync progress percentage, set totals |
-| `display-sm`  | Space Grotesk | 500    | 28px / 40px         | -0.8px            | Page-level greetings, workout date |
-| `headline-lg` | Space Grotesk | 500    | 22px / 32px         | -0.5px            | Exercise card titles               |
-| `headline-md` | Space Grotesk | 500    | 18px / 24px         | -0.3px            | Section titles ("Sets", "Match")   |
-| `headline-sm` | Space Grotesk | 500    | 16px / 20px         | -0.2px            | Compact card titles                |
+| `display-lg`  | Space Grotesk | 500    | 48px / 80px         | -1.5px            | Sync-complete celebration moment    |
+| `display-md`  | Space Grotesk | 500    | 36px / 56px         | -1.2px            | Page hero (when present)            |
+| `display-sm`  | Space Grotesk | 500    | 28px / 40px         | -0.8px            | Editorial overline + headline pair  |
+| `headline-lg` | Space Grotesk | 500    | 22px / 28px         | -0.5px            | Edit-page heading line              |
+| `headline-md` | Space Grotesk | 500    | 18px / 24px         | -0.3px            | Section titles ("Sets", "Match")    |
+| `headline-sm` | Space Grotesk | 500    | 16px / 20px         | -0.2px            | Compact card titles                 |
 | `title-lg`    | Inter         | 500    | 16px / 18px         | 0                 | Buttons, prominent labels          |
 | `title-md`    | Inter         | 500    | 14px / 16px         | 0                 | List item titles, set row labels   |
 | `title-sm`    | Inter         | 500    | 13px / 14px         | 0                 | Compact labels                     |
@@ -144,33 +151,33 @@ When a low-confidence match is highlighted, the score number inherits `semantic-
 
 A 4px-based scale. Use named tokens, not raw pixel values.
 
-| Token       | Value | Common use                      |
-|-------------|-------|---------------------------------|
-| `space-2xs` | 4px   | Icon-to-text gaps               |
-| `space-xs`  | 8px   | Chip padding, set-cell padding  |
-| `space-sm`  | 12px  | Card-internal padding           |
-| `space-md`  | 16px  | Standard gap between elements   |
-| `space-lg`  | 20px  | Card-to-card vertical rhythm    |
-| `space-xl`  | 24px  | Section spacing on mobile       |
-| `space-2xl` | 32px  | Section spacing on web          |
-| `space-3xl` | 48px  | Page-level breathing room       |
-| `space-4xl` | 64px  | Hero section padding (web only) |
+| Token       | Value | Common use                                |
+|-------------|-------|-------------------------------------------|
+| `space-2xs` | 4px   | Icon-to-text gaps                         |
+| `space-xs`  | 8px   | Chip padding, set-cell padding            |
+| `space-sm`  | 12px  | Card-internal padding (web compact cards) |
+| `space-md`  | 16px  | Standard gap between elements             |
+| `space-lg`  | 20px  | Card-to-card vertical rhythm              |
+| `space-xl`  | 24px  | Section spacing on mobile, header padding |
+| `space-2xl` | 32px  | Section spacing on web                    |
+| `space-3xl` | 40px  | Hero section padding (web)                |
+| `space-4xl` | 64px  | Reserved for marketing canvases (rare)    |
 
 **Mobile** caps outer container padding at `space-lg` (20px). Going larger eats screen real estate on small phones.
 
-**Web** opens up to `space-3xl`–`space-4xl` for outer padding on hero sections, and uses `space-xl`–`space-2xl` for section gaps.
+**Web (v1.1 density pass).** Outer container padding caps at `space-3xl` (40px). Sections gap at `space-md`–`space-lg`. Cards lean on `space-sm` (12px) for compact rows and `space-md` (16px) for hero cards. Save `space-3xl`+ for the Synced celebration page only.
 
 ### 2.4 Radius
 
-| Token         | Value | Use                                    |
-|---------------|-------|----------------------------------------|
-| `radius-sm`   | 8px   | Set-cell corners, equipment chips      |
-| `radius-md`   | 12px  | Inputs, compact cards                  |
-| `radius-lg`   | 18px  | Standard exercise cards                |
-| `radius-xl`   | 24px  | Hero review cards, photo preview frame |
-| `radius-full` | 999px | Buttons, avatar, glass nav, pill chips |
+| Token         | Value | Use                                       |
+|---------------|-------|-------------------------------------------|
+| `radius-sm`   | 8px   | Set-cell corners, picker rows, list items |
+| `radius-md`   | 12px  | Inputs, compact cards, dropdowns          |
+| `radius-lg`   | 18px  | Standard exercise cards, photo card       |
+| `radius-xl`   | 24px  | Reserved — celebration hero only          |
+| `radius-full` | 999px | Buttons, avatar, glass nav, pill chips    |
 
-Cards on mobile lean toward `radius-lg` (18px). Cards on web can use `radius-xl` (24px) for a more editorial feel given the larger canvas.
+Standard cards (web v1.1) use `radius-lg`. Reserve `radius-xl` for the Sync-complete celebration. Compact picker rows and list items use `radius-sm` to read as dense, scannable groups.
 
 ### 2.5 Elevation: tonal layering
 
@@ -203,7 +210,37 @@ backdrop-filter: blur(16px);
 border-radius: var(--radius-full); /* for nav */
 ```
 
-### 2.6 Motion
+### 2.6 Density (v1.1)
+
+Web pages target a **dense, scannable** layout. The editorial voice from
+v1.0 stays — overlines, asymmetric grids, one display moment per page —
+but every padding, gap, and font-size in the web column has been pulled
+in to fit more content above the fold without scrolling.
+
+| Surface                | v1.0 (web)        | v1.1 (web)        |
+|------------------------|-------------------|-------------------|
+| Page outer padding     | 56–64px           | 24–40px           |
+| Section vertical gap   | 28–32px           | 16–20px           |
+| Card padding           | 24–28px           | 14–18px           |
+| Card radius (default)  | radius-xl (24px)  | radius-lg (18px)  |
+| Card radius (compact)  | radius-lg (18px)  | radius-md (12px)  |
+| Stat strip padding     | 22/26             | 14/18             |
+| Set-row padding        | 6/0               | 3/0               |
+| Set cell input         | 18px / 12·14 pad  | 14px / 7·10 pad   |
+| Done-check button      | 36×36             | 28×28             |
+| Add-set button         | 38h, fontSize 14  | 30h, fontSize 13  |
+| Add-exercise button    | 56h, fontSize 16  | 40h, fontSize 14  |
+| Sticky photo height    | 420               | 320               |
+| Detection summary pad  | 22                | 14                |
+| Picker dropdown w/h    | 520 × 600         | 460 × 520         |
+| Picker row padding     | 12/16             | 7/12              |
+| Sync "Synced." display | 132px             | 80px              |
+| Sync container padding | 64                | 24/40             |
+
+The mobile column is unchanged — narrower viewports already require
+tight vertical rhythm.
+
+### 2.7 Motion
 
 | Token               | Easing                         | Duration | Use                                 |
 |---------------------|--------------------------------|----------|-------------------------------------|
@@ -292,17 +329,32 @@ Error:         box-shadow: 0 0 0 2px semantic-error
 
 The exercise-search combobox always has a leading 16px search icon at `text-tertiary` color. Set/rep/weight cells right-align numeric input and use `mono-md`.
 
-#### Date picker (workout date override)
+#### Date / time picker (workout override, v1.1)
 
-Pill chip showing the EXIF-extracted date with a chevron. Tappable to override.
+Date and time both render as **pill chips** sitting inline in the page heading. Tapping the date chip opens a Popover containing the calendar; the time chip is a native `<input type="time">` styled as a pill.
 
 ```
-Background:    surface-low
-Padding:       6px 12px
-Radius:        radius-full
-Text:          label-md, text-primary
-Suffix:        small "EXIF" or "MANUAL" tag at label-sm, text-tertiary
+Pill chip (inline in heading line):
+  Background:   surface-low
+  Padding:      2px 12px
+  Radius:       radius-full
+  Text:         inherits surrounding heading font-family, font-size,
+                line-height (e.g. 28px headline-lg on the Edit page);
+                color text-tertiary, weight 400 — visually a quiet
+                token within the heading rather than a separate label.
+
+Calendar popover:
+  Background:   surface-card
+  Border:       none
+  Radius:       radius-md
+  Padding:      8
+  Shadow:       0 16px 40px -10px rgba(28,27,27,0.10)
+                + 1px outline at rgba(28,27,27,0.06)
+  Internals:    react-day-picker (shadcn Calendar) — keep default day-grid
+                styling, only the popover container is restyled.
 ```
+
+Both controls keep the dashed-underline pattern out of the heading so the editable affordance reads as a deliberate token rather than a form field.
 
 ### 3.3 Chips & Badges
 
@@ -351,7 +403,7 @@ Padding:    4px 10px, radius-full, label-sm
 
 ```
 Background:  surface-card
-Padding:     16px (mobile) / 20px (web)
+Padding:     14px (mobile) / 16px (web)
 Radius:      radius-lg
 No border, no shadow.
 ```
@@ -362,10 +414,12 @@ Used for the currently reviewed exercise on the Review page and the active sync 
 
 ```
 Background:  surface-elevated
-Padding:     20px (mobile) / 28px (web)
-Radius:      radius-xl
+Padding:     16px (mobile) / 20px (web)
+Radius:      radius-lg
 Optional:    radial gradient corner accent at 15% brand-primary opacity
 ```
+
+The Sync-complete celebration card is the **only** card permitted to use `radius-xl` (24px) and `padding-2xl` (32px).
 
 #### Featured/active card
 
@@ -544,20 +598,22 @@ Pulse:        currently-syncing exercise row in the list above pulses
 
 If a single exercise fails, its row shifts to `semantic-error` background at 8%, an inline retry button appears, and the overall progress continues. The completion celebration only fires when **all** exercises succeed.
 
-#### Match-confidence bar
+#### Match-confidence indicator (text-only, v1.1)
 
-Shows fuzzy/vector match score (0–150 scale, threshold ≥60). Uses the **monochromatic green track** pattern.
+Shows fuzzy/vector match score (0–150 internally) as a **percentage text token** rather than a bar. The bar pattern was retired in the v1.1 density pass — bars consumed vertical space without adding scannable value next to the percentage they labeled.
 
 ```
-Track:    brand-secondary at 15% opacity (light) / 12% darker green (dark)
-          height 6px, radius-full
-Bar:      brand-secondary, fills width % equal to (score / 150 × 100)
-          motion-decelerate animation on appear
-Label:    score number in mono-md, brand-secondary
-          "/150" suffix in body-sm, text-muted
+Display:   percentage rounded from (score / 150 × 100)
+Format:    "{n}<span class='%'>%</span>"
+Type:      headline-sm or title-md depending on context
+Color:     ≥60% → brand-secondary (success green)
+           <60%  → semantic-warning (amber)
+Sub-label: "MATCH" overline below in label-sm, text-tertiary (optional)
 ```
 
-Below threshold (<60), the bar shifts to `semantic-warning` and a "Low confidence" label appears in `label-sm`.
+Detection-summary side panel uses the same convention: surface confidence as a single colored percentage row (`Confidence  94%`) — no bar.
+
+Manual or user-confirmed exercises replace the percentage with a `MANUAL` warning-toned pill.
 
 ### 3.7 Sync-complete celebration
 
@@ -604,22 +660,23 @@ The nav floats over content with a 24px safe area below it. Content scrolls unde
 
 During an active sync, the nav is hidden — sync flow is non-interruptible at the navigation level.
 
-#### Web: left sidebar
+#### Web: left sidebar (v1.1 — tightened)
 
 ```
-Width:        240px
+Width:        220px
 Background:   surface-low
-Padding:      24px 16px
+Padding:      16px 10px
 
-Logo:         top, 32px height
-Nav items:    32px tall, radius-md, padding 8px 12px
-              icon + title-md
-Active item:  background: brand-primary at 12% opacity
+Logo:         top, 26px square gradient tile + title-md wordmark
+Nav items:    32px tall, radius-sm, padding 0 10px, gap 10
+              icon (16px) + title-sm
+Active item:  background: brand-primary at 10% opacity
               icon + text: brand-primary
-Hover:        background: surface-card
+Hevy chip:    surface-card, radius-md, padding 10/12, dot 7px,
+              title-sm name + body-sm fontSize 10 handle
 ```
 
-The sidebar sticks to the viewport. Main content area starts at 240px left margin and is centered with max-width 1200px.
+The sidebar sticks to the viewport. Main content starts at 220px left margin. Below 960px the sidebar collapses to a 64px icon-only column. Below 600px it hides entirely.
 
 ---
 

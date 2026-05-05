@@ -1,202 +1,191 @@
 @import "tailwindcss";
 
-@theme {
-  /* Map CSS variables to Tailwind v4 color utilities */
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-}
+/* ════════════════════════════════════════════════════════════════
+   Workout Sync — "The Training Log" tokens
+   Source: DESIGN.md §2 + training-log.jsx
+   ════════════════════════════════════════════════════════════════ */
 
-@layer base {
-  :root {
-    --radius: 0.625rem;
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.13 0.028 261.692);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.13 0.028 261.692);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.13 0.028 261.692);
-    --primary: oklch(0.21 0.034 264.665);
-    --primary-foreground: oklch(0.985 0.002 247.839);
-    --secondary: oklch(0.967 0.003 264.542);
-    --secondary-foreground: oklch(0.21 0.034 264.665);
-    --muted: oklch(0.967 0.003 264.542);
-    --muted-foreground: oklch(0.551 0.027 264.364);
-    --accent: oklch(0.967 0.003 264.542);
-    --accent-foreground: oklch(0.21 0.034 264.665);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.928 0.006 264.531);
-    --input: oklch(0.928 0.006 264.531);
-    --ring: oklch(0.707 0.022 261.325);
-    --chart-1: oklch(0.646 0.222 41.116);
-    --chart-2: oklch(0.6 0.118 184.704);
-    --chart-3: oklch(0.398 0.07 227.392);
-    --chart-4: oklch(0.828 0.189 84.429);
-    --chart-5: oklch(0.769 0.188 70.08);
-    --sidebar: oklch(0.985 0.002 247.839);
-    --sidebar-foreground: oklch(0.13 0.028 261.692);
-    --sidebar-primary: oklch(0.21 0.034 264.665);
-    --sidebar-primary-foreground: oklch(0.985 0.002 247.839);
-    --sidebar-accent: oklch(0.967 0.003 264.542);
-    --sidebar-accent-foreground: oklch(0.21 0.034 264.665);
-    --sidebar-border: oklch(0.928 0.006 264.531);
-    --sidebar-ring: oklch(0.707 0.022 261.325);
-  }
-  
-  .dark {
-    --background: oklch(0.13 0.028 261.692);
-    --foreground: oklch(0.985 0.002 247.839);
-    --card: oklch(0.21 0.034 264.665);
-    --card-foreground: oklch(0.985 0.002 247.839);
-    --popover: oklch(0.21 0.034 264.665);
-    --popover-foreground: oklch(0.985 0.002 247.839);
-    --primary: oklch(0.928 0.006 264.531);
-    --primary-foreground: oklch(0.21 0.034 264.665);
-    --secondary: oklch(0.278 0.033 256.848);
-    --secondary-foreground: oklch(0.985 0.002 247.839);
-    --muted: oklch(0.278 0.033 256.848);
-    --muted-foreground: oklch(0.707 0.022 261.325);
-    --accent: oklch(0.278 0.033 256.848);
-    --accent-foreground: oklch(0.985 0.002 247.839);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.551 0.027 264.364);
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: oklch(0.21 0.034 264.665);
-    --sidebar-foreground: oklch(0.985 0.002 247.839);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0.002 247.839);
-    --sidebar-accent: oklch(0.278 0.033 256.848);
-    --sidebar-accent-foreground: oklch(0.985 0.002 247.839);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.551 0.027 264.364);
-  }
+@theme {
+  /* Brand */
+  --color-primary: #9100D0;
+  --color-primary-light: #AE33ED;
+  --color-secondary: #006C4C;
+  --color-secondary-light: #4DD4A3;
+  --color-tertiary: #FF7849;
+
+  /* Semantic */
+  --color-success: #006C4C;
+  --color-warning: #B8860B;
+  --color-error: #BA1A1A;
+  --color-info: #0066CC;
+  --color-destructive: #BA1A1A;
+
+  /* Surface */
+  --color-base: #FCF9F8;
+  --color-low: #F6F3F2;
+  --color-card: #FFFFFF;
+  --color-elevated: #FFFFFF;
+  --color-glass: rgba(255, 255, 255, 0.85);
+
+  /* Text */
+  --color-text-primary: #1C1B1B;
+  --color-text-secondary: #5F5E5A;
+  --color-text-tertiary: #888780;
+  --color-text-muted: #B4B2A9;
+  --color-on-brand: #FFFFFF;
+
+  /* Outline (subtle, sparingly) */
+  --color-outline: rgba(28, 27, 27, 0.08);
+
+  /* shadcn aliases (so existing primitives keep working) */
+  --color-background: var(--color-base);
+  --color-foreground: var(--color-text-primary);
+  --color-card-foreground: var(--color-text-primary);
+  --color-popover: var(--color-card);
+  --color-popover-foreground: var(--color-text-primary);
+  --color-primary-foreground: var(--color-on-brand);
+  --color-secondary-foreground: var(--color-on-brand);
+  --color-muted: var(--color-low);
+  --color-muted-foreground: var(--color-text-tertiary);
+  --color-accent: var(--color-low);
+  --color-accent-foreground: var(--color-text-primary);
+  --color-destructive-foreground: var(--color-on-brand);
+  --color-border: var(--color-outline);
+  --color-input: var(--color-outline);
+  --color-ring: var(--color-primary);
+
+  /* Gradient */
+  --gradient-primary: linear-gradient(135deg, #9100D0 0%, #AE33ED 100%);
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-full: 999px;
+  --radius: var(--radius-md);
+
+  /* Font families — literal names match @font-face declarations
+     emitted by next/font (Space_Grotesk / Inter / JetBrains_Mono). */
+  --font-display: "Space Grotesk", "Space Grotesk Fallback", system-ui, sans-serif;
+  --font-body: "Inter", "Inter Fallback", -apple-system, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "JetBrains Mono Fallback", ui-monospace, "SF Mono", monospace;
+  --font-sans: var(--font-body);
 }
 
 @layer base {
   body {
-    background: var(--background);
-    color: var(--foreground);
+    background: var(--color-base);
+    color: var(--color-text-primary);
+    font-family: var(--font-body);
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-/* @layer utilities {
-  .tap-highlight-none {
-    -webkit-tap-highlight-color: transparent;
-  }
-  
-  .safe-top {
-    padding-top: env(safe-area-inset-top);
-  }
-  
-  .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-} */
-
-/* Smooth transitions for all interactive elements */
-/* button, a {
-  transition: all 0.2s ease-in-out;
-  -webkit-tap-highlight-color: transparent;
-} */
-
-/* Custom scrollbar for webkit browsers */
-::-webkit-scrollbar {
-  width: 8px;
+/* ────────────────────────────────────────────────────────────────
+   Web type scale (DESIGN.md §2.2 web column)
+   ──────────────────────────────────────────────────────────────── */
+@layer utilities {
+  .text-display-lg  { font-family: var(--font-display); font-weight: 500; font-size: 84px; line-height: 0.94; letter-spacing: -2.4px; }
+  .text-display-md  { font-family: var(--font-display); font-weight: 500; font-size: 56px; line-height: 1.0;  letter-spacing: -1.6px; }
+  .text-display-sm  { font-family: var(--font-display); font-weight: 500; font-size: 40px; line-height: 1.05; letter-spacing: -1.0px; }
+  .text-headline-lg { font-family: var(--font-display); font-weight: 500; font-size: 32px; line-height: 1.1;  letter-spacing: -0.7px; }
+  .text-headline-md { font-family: var(--font-display); font-weight: 500; font-size: 24px; line-height: 1.2;  letter-spacing: -0.4px; }
+  .text-headline-sm { font-family: var(--font-display); font-weight: 500; font-size: 20px; line-height: 1.25; letter-spacing: -0.3px; }
+  .text-title-lg    { font-family: var(--font-body); font-weight: 500; font-size: 18px; }
+  .text-title-md    { font-family: var(--font-body); font-weight: 500; font-size: 16px; }
+  .text-title-sm    { font-family: var(--font-body); font-weight: 500; font-size: 14px; }
+  .text-body-lg     { font-family: var(--font-body); font-weight: 400; font-size: 18px; line-height: 1.55; }
+  .text-body-md     { font-family: var(--font-body); font-weight: 400; font-size: 16px; line-height: 1.55; }
+  .text-body-sm     { font-family: var(--font-body); font-weight: 400; font-size: 14px; line-height: 1.5; }
+  .text-label-lg    { font-family: var(--font-body); font-weight: 600; font-size: 13px; letter-spacing: 1.2px; text-transform: uppercase; }
+  .text-label-md    { font-family: var(--font-body); font-weight: 600; font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; }
+  .text-label-sm    { font-family: var(--font-body); font-weight: 600; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; }
+  .font-mono-lg     { font-family: var(--font-mono); font-weight: 500; font-size: 22px; }
+  .font-mono-md     { font-family: var(--font-mono); font-weight: 400; font-size: 16px; }
+  .font-mono-sm     { font-family: var(--font-mono); font-weight: 400; font-size: 13px; }
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+/* ────────────────────────────────────────────────────────────────
+   Scrollbars + animations
+   ──────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-}
+html { scroll-behavior: smooth; }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-/* Smooth scroll behavior */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Focus visible for accessibility */
-/* *:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px white, 0 0 0 4px #2563eb;
-} */
-
-/* Animation keyframes */
-/* @keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.animate-slide-up {
-  animation: slideUp 0.3s ease-out;
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.2s ease-in;
-} */
-
-/* Slide down animation for warnings/alerts */
 @keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-down { animation: slideDown 0.3s ease-out; }
+
+@keyframes tl-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.animate-tl-spin { animation: tl-spin 1.2s linear infinite; }
+
+/* ────────────────────────────────────────────────────────────────
+   Responsive layout helpers
+   ──────────────────────────────────────────────────────────────── */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--color-base);
+}
+
+.app-shell > main {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Sidebar collapses to icon column below 960px */
+@media (max-width: 960px) {
+  .app-sidebar {
+    width: 64px !important;
+    padding: 24px 8px !important;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  .app-sidebar [data-sidebar-label],
+  .app-sidebar [data-sidebar-overline],
+  .app-sidebar [data-sidebar-logo-text],
+  .app-sidebar [data-sidebar-chip-body] {
+    display: none !important;
+  }
+  .app-sidebar [data-sidebar-chip] {
+    justify-content: center !important;
+    padding: 12px !important;
   }
 }
 
-.animate-slide-down {
-  animation: slideDown 0.3s ease-out;
+/* Hide sidebar entirely on phone widths — out of scope for v3 */
+@media (max-width: 600px) {
+  .app-sidebar { display: none !important; }
+}
+
+/* Edit page: stack right rail under workspace below 960px */
+@media (max-width: 960px) {
+  .edit-grid { grid-template-columns: 1fr !important; }
+  .edit-rail {
+    position: static !important;
+    max-height: none !important;
+  }
+}
+
+/* Generic 60/40 grids collapse to single column */
+@media (max-width: 960px) {
+  .web-grid-6040 {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+  }
+  .web-grid-howitworks {
+    grid-template-columns: 1fr !important;
+  }
+  .web-stat-strip {
+    grid-template-columns: 1fr 1fr !important;
+  }
 }

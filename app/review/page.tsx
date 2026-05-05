@@ -1,627 +1,904 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, ZoomIn, ZoomOut, Maximize2, Clock, AlertTriangle, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useWorkout } from "@/app/_providers/workout-provider";
-import { WorkoutSummaryCard } from "@/components/WorkoutSummaryCard";
 import { ExerciseCard } from "@/components/ExerciseCard";
 import { WorkoutExercise, Exercise, DuplicateWorkoutInfo } from "@/lib/types";
-import { calculateWorkoutMetrics, formatVolume } from "@/lib/mock-data";
+import { calculateWorkoutMetrics, formatVolume, syncWorkoutToHevy } from "@/lib/mock-data";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { ExerciseSearchCombobox } from "@/components/ExerciseSearchCombobox";
-import { Card } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ExercisePickerDropdown } from "@/components/ExercisePickerDropdown";
 import { checkForDuplicateWorkout } from "@/lib/hevy/api";
+import { Overline } from "@/app/_components/overline";
+import { WGhost, WPrimary } from "@/app/_components/web-button";
+import {
+  AlertTriangle,
+  X,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Send,
+  Plus,
+} from "lucide-react";
+
+function partOfDay(date: Date) {
+  const h = date.getHours();
+  if (h >= 5 && h < 12) return "morning";
+  if (h >= 12 && h < 17) return "afternoon";
+  if (h >= 17 && h < 21) return "evening";
+  return "night";
+}
+
+function fmtTime12(timeHHMM: string) {
+  const [h, m] = timeHHMM.split(":").map(Number);
+  const period = h >= 12 ? "p" : "a";
+  const hh = ((h + 11) % 12) + 1;
+  return `${hh}:${m.toString().padStart(2, "0")}${period}`;
+}
 
 export default function ReviewPage() {
   const router = useRouter();
-  const { 
-    processedExercises, 
-    setProcessedExercises, 
-    setCurrentWorkout, 
-    uploadedImage, 
-    caption, 
+  const {
+    processedExercises,
+    setProcessedExercises,
+    uploadedImage,
+    caption,
     setCaption,
     extractedWorkoutDate,
     extractedWorkoutTime,
+    detectionModel,
+    detectionConfidence,
+    setLastSyncedWorkout,
   } = useWorkout();
-  const [exercises, setExercises] = useState<WorkoutExercise[]>(processedExercises);
-  const [durationMinutes, setDurationMinutes] = useState(45); // Fixed at 45 minutes
-  const [isEditingDuration, setIsEditingDuration] = useState(false);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
-  const [workoutDate, setWorkoutDate] = useState<Date>(extractedWorkoutDate || new Date());
-  const [workoutTime, setWorkoutTime] = useState<string>(extractedWorkoutTime || "08:00");
-  const [isAddingExercise, setIsAddingExercise] = useState(false);
-  
-  // Duplicate workout check state
-  const [duplicateWorkout, setDuplicateWorkout] = useState<DuplicateWorkoutInfo | null>(null);
-  const [showDuplicateWarning, setShowDuplicateWarning] = useState(true);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [exercises, setExercises] = useState<WorkoutExercise[]>(processedExercises);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [duplicate, setDuplicate] = useState<DuplicateWorkoutInfo | null>(null);
+  const [showDup, setShowDup] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [addPickerOpen, setAddPickerOpen] = useState(false);
+
+  const [workoutDate, setWorkoutDate] = useState<Date>(extractedWorkoutDate ?? new Date());
+  const [workoutTime, setWorkoutTime] = useState<string>(extractedWorkoutTime ?? "08:00");
+  const [durationMinutes, setDurationMinutes] = useState<number>(45);
+  const [pickerOpenIndex, setPickerOpenIndex] = useState<number | null>(null);
+  const [datePopoverOpen, setDatePopoverOpen] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Reflect EXIF-extracted date/time when first loaded.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (extractedWorkoutDate) setWorkoutDate(extractedWorkoutDate);
+  }, [extractedWorkoutDate]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (extractedWorkoutTime) setWorkoutTime(extractedWorkoutTime);
+  }, [extractedWorkoutTime]);
+
+  // Bounce back to upload if no exercises
   useEffect(() => {
     if (processedExercises.length === 0) {
       router.push("/");
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setExercises(processedExercises);
     }
   }, [processedExercises, router]);
 
-  // Create image preview URL from uploaded file
+  // Manage blob URL for image preview — recreate on file change, revoke on unmount.
   useEffect(() => {
-    if (uploadedImage) {
-      const url = URL.createObjectURL(uploadedImage);
-      setImagePreviewUrl(url);
-      
-      // Cleanup URL when component unmounts
-      return () => URL.revokeObjectURL(url);
+    if (!uploadedImage) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setImageUrl(null);
+      return;
     }
+    const url = URL.createObjectURL(uploadedImage);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setImageUrl(url);
+    return () => URL.revokeObjectURL(url);
   }, [uploadedImage]);
 
-  // Function to perform duplicate check
-  const performDuplicateCheck = async () => {
-    setDuplicateWorkout(null);
-    setShowDuplicateWarning(true);
-
+  // Duplicate check
+  const runDuplicateCheck = React.useCallback(async () => {
+    setDuplicate(null);
     try {
-      // Pass only the date (without time) to check for duplicates
-      const result = await checkForDuplicateWorkout(workoutDate);
-
-      if (result.hasDuplicate && result.duplicateWorkout) {
-        setDuplicateWorkout(result.duplicateWorkout);
+      const res = await checkForDuplicateWorkout(workoutDate);
+      if (res.hasDuplicate && res.duplicateWorkout) {
+        setDuplicate(res.duplicateWorkout);
       }
-    } catch (error) {
-      console.error("Error checking for duplicate workout:", error);
-      // Fail silently - don't block the user
+    } catch (err) {
+      console.error(err);
     }
-  };
+  }, [workoutDate]);
 
-  // Check for duplicates on mount
   useEffect(() => {
-    performDuplicateCheck();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Check for duplicates when date or time changes (with debouncing)
-  useEffect(() => {
-    // Clear existing timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    // Set new timer
-    debounceTimerRef.current = setTimeout(() => {
-      performDuplicateCheck();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      runDuplicateCheck();
     }, 300);
-
-    // Cleanup on unmount
     return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workoutDate, workoutTime]);
+  }, [runDuplicateCheck]);
 
-  const handleUpdateSet = (exerciseIndex: number, setIndex: number, field: "kg" | "reps" | "distance" | "duration" | "completed", value: number | boolean) => {
-    const updatedExercises = [...exercises];
-    const set = updatedExercises[exerciseIndex].sets[setIndex];
-    const exerciseType = updatedExercises[exerciseIndex].exercise.type;
-
+  // Set updates. For weight (and reps when changing the first row), if the
+  // user fills a value into one set we propagate it down to all subsequent
+  // sets that still hold the default 0 — so users editing a freshly-detected
+  // exercise don't have to retype the same weight on every row.
+  const handleUpdateSet = (
+    exerciseIndex: number,
+    setIndex: number,
+    field: "kg" | "reps" | "distance" | "duration" | "completed",
+    value: number | boolean,
+  ) => {
+    const next = [...exercises];
+    const ex = next[exerciseIndex];
+    const set = ex.sets[setIndex];
+    const t = ex.exercise.type;
     if (field === "completed") {
       set.completed = value as boolean;
     } else if (typeof value === "number") {
-      // Handle different field types based on exercise type
-      if (field === "kg") {
-        // For weight_reps type, update weight_kg
-        if (exerciseType === "weight_reps") {
-          set.weight_kg = value;
-          // Keep legacy kg field for backward compatibility
-          set.kg = value;
+      if (field === "kg" && t === "weight_reps") {
+        const prev = set.weight_kg ?? set.kg ?? 0;
+        set.weight_kg = value;
+        set.kg = value;
+        if (value > 0) {
+          // Propagate down. A row is "trailing" if its weight is 0 (default)
+          // or equals the source's previous value (so multi-keystroke edits
+          // like "3" → "34" → "340" keep the downstream rows in lockstep
+          // until the user explicitly overrides one).
+          for (let j = setIndex + 1; j < ex.sets.length; j++) {
+            const downstream = ex.sets[j];
+            const dw = downstream.weight_kg ?? downstream.kg ?? 0;
+            if (dw === 0 || dw === prev) {
+              downstream.weight_kg = value;
+              downstream.kg = value;
+            }
+          }
         }
-      } else if (field === "reps") {
-        // For weight_reps and reps_only types
-        if (exerciseType === "weight_reps" || exerciseType === "reps_only") {
-          set.reps = value;
+      } else if (field === "reps" && (t === "weight_reps" || t === "reps_only")) {
+        const prev = set.reps ?? 0;
+        set.reps = value;
+        if (value > 0) {
+          for (let j = setIndex + 1; j < ex.sets.length; j++) {
+            const downstream = ex.sets[j];
+            const dr = downstream.reps ?? 0;
+            if (dr === 0 || dr === prev) {
+              downstream.reps = value;
+            }
+          }
         }
-      } else if (field === "distance") {
-        // For distance_duration type
-        if (exerciseType === "distance_duration") {
-          set.distance_meters = value;
-        }
-      } else if (field === "duration") {
-        // For duration and distance_duration types
-        if (exerciseType === "duration" || exerciseType === "distance_duration") {
-          set.duration_seconds = value;
-    }
+      } else if (field === "distance" && t === "distance_duration") {
+        set.distance_meters = value;
+      } else if (field === "duration" && (t === "duration" || t === "distance_duration")) {
+        set.duration_seconds = value;
       }
     }
-    
-    setExercises(updatedExercises);
-    setProcessedExercises(updatedExercises);
-  };
-
-  const handleUpdateNotes = (exerciseIndex: number, notes: string) => {
-    const updatedExercises = [...exercises];
-    updatedExercises[exerciseIndex].notes = notes;
-    setExercises(updatedExercises);
-    setProcessedExercises(updatedExercises);
-  };
-
-  const handleAddSet = (exerciseIndex: number) => {
-    const updatedExercises = [...exercises];
-    const exercise = updatedExercises[exerciseIndex];
-    const lastSet = exercise.sets[exercise.sets.length - 1];
-    const exerciseType = exercise.exercise.type;
-    
-    // Create new set based on exercise type
-    const newSet: any = {
-      set_number: exercise.sets.length + 1,
-      completed: false,
-    };
-
-    switch (exerciseType) {
-      case "weight_reps":
-        newSet.weight_kg = lastSet.weight_kg ?? lastSet.kg ?? 0;
-        newSet.reps = lastSet.reps ?? 0;
-        newSet.kg = newSet.weight_kg; // Legacy field
-        newSet.previous_weight_kg = lastSet.weight_kg ?? lastSet.kg ?? 0;
-        newSet.previous_reps = lastSet.reps ?? 0;
-        break;
-      case "reps_only":
-        newSet.reps = lastSet.reps ?? 0;
-        newSet.previous_reps = lastSet.reps ?? 0;
-        break;
-      case "duration":
-        newSet.duration_seconds = lastSet.duration_seconds ?? 0;
-        newSet.previous_duration_seconds = lastSet.duration_seconds ?? 0;
-        break;
-      case "distance_duration":
-        newSet.distance_meters = lastSet.distance_meters ?? 0;
-        newSet.duration_seconds = lastSet.duration_seconds ?? 0;
-        newSet.previous_distance_meters = lastSet.distance_meters ?? 0;
-        newSet.previous_duration_seconds = lastSet.duration_seconds ?? 0;
-        break;
-    }
-    
-    exercise.sets.push(newSet);
-    
-    setExercises(updatedExercises);
-    setProcessedExercises(updatedExercises);
+    setExercises(next);
+    setProcessedExercises(next);
   };
 
   const handleDeleteSet = (exerciseIndex: number, setIndex: number) => {
-    const updatedExercises = [...exercises];
-    const exercise = updatedExercises[exerciseIndex];
-    
-    // Don't allow deleting the last set
-    if (exercise.sets.length <= 1) {
-      alert("Cannot delete the last set. Delete the exercise instead.");
-      return;
-    }
-    
-    // Remove the set
-    exercise.sets.splice(setIndex, 1);
-    
-    // Renumber remaining sets
-    exercise.sets.forEach((set, index) => {
-      set.set_number = index + 1;
+    const next = [...exercises];
+    const ex = next[exerciseIndex];
+    if (ex.sets.length <= 1) return;
+    ex.sets.splice(setIndex, 1);
+    ex.sets.forEach((s, idx) => {
+      s.set_number = idx + 1;
     });
-    
-    setExercises(updatedExercises);
-    setProcessedExercises(updatedExercises);
+    setExercises(next);
+    setProcessedExercises(next);
+  };
+
+  const handleAddSet = (exerciseIndex: number) => {
+    const next = [...exercises];
+    const ex = next[exerciseIndex];
+    const last = ex.sets[ex.sets.length - 1];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const newSet: any = { set_number: ex.sets.length + 1, completed: false };
+    switch (ex.exercise.type) {
+      case "weight_reps":
+        newSet.weight_kg = last.weight_kg ?? last.kg ?? 0;
+        newSet.reps = last.reps ?? 0;
+        newSet.kg = newSet.weight_kg;
+        break;
+      case "reps_only":
+        newSet.reps = last.reps ?? 0;
+        break;
+      case "duration":
+        newSet.duration_seconds = last.duration_seconds ?? 0;
+        break;
+      case "distance_duration":
+        newSet.distance_meters = last.distance_meters ?? 0;
+        newSet.duration_seconds = last.duration_seconds ?? 0;
+        break;
+    }
+    ex.sets.push(newSet);
+    setExercises(next);
+    setProcessedExercises(next);
   };
 
   const handleExerciseChange = (exerciseIndex: number, newExercise: Exercise) => {
-    const updatedExercises = [...exercises];
-    const oldExercise = updatedExercises[exerciseIndex].exercise;
-    const oldType = oldExercise.type;
+    const next = [...exercises];
+    const oldType = next[exerciseIndex].exercise.type;
     const newType = newExercise.type;
-    
-    // Update exercise
-    updatedExercises[exerciseIndex].exercise = newExercise;
-    
-    // If exercise type changed, migrate sets to new format
+    next[exerciseIndex].exercise = newExercise;
+    next[exerciseIndex].matchScore = 150;
     if (oldType !== newType) {
-      updatedExercises[exerciseIndex].sets = updatedExercises[exerciseIndex].sets.map((set) => {
-        const migratedSet: any = {
-          set_number: set.set_number,
-          completed: set.completed,
-        };
-
+      next[exerciseIndex].sets = next[exerciseIndex].sets.map((s) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const m: any = { set_number: s.set_number, completed: s.completed };
         switch (newType) {
           case "weight_reps":
-            // Try to preserve weight and reps if available
-            const weight = set.weight_kg ?? set.kg ?? 0;
-            const reps = set.reps ?? 0;
-            migratedSet.weight_kg = weight;
-            migratedSet.reps = reps;
-            migratedSet.kg = weight; // Legacy field
-            migratedSet.previous_weight_kg = weight;
-            migratedSet.previous_reps = reps;
+            m.weight_kg = s.weight_kg ?? s.kg ?? 0;
+            m.reps = s.reps ?? 0;
+            m.kg = m.weight_kg;
             break;
           case "reps_only":
-            // Preserve reps if available
-            const repsOnly = set.reps ?? 0;
-            migratedSet.reps = repsOnly;
-            migratedSet.previous_reps = repsOnly;
+            m.reps = s.reps ?? 0;
             break;
           case "duration":
-            // Initialize with 0 duration
-            migratedSet.duration_seconds = set.duration_seconds ?? 0;
-            migratedSet.previous_duration_seconds = set.duration_seconds ?? 0;
+            m.duration_seconds = s.duration_seconds ?? 0;
             break;
           case "distance_duration":
-            // Initialize with 0 distance and duration
-            migratedSet.distance_meters = set.distance_meters ?? 0;
-            migratedSet.duration_seconds = set.duration_seconds ?? 0;
-            migratedSet.previous_distance_meters = set.distance_meters ?? 0;
-            migratedSet.previous_duration_seconds = set.duration_seconds ?? 0;
+            m.distance_meters = s.distance_meters ?? 0;
+            m.duration_seconds = s.duration_seconds ?? 0;
             break;
         }
-
-        return migratedSet;
+        return m;
       });
     }
-    
-    setExercises(updatedExercises);
-    setProcessedExercises(updatedExercises);
+    setExercises(next);
+    setProcessedExercises(next);
   };
 
   const handleDeleteExercise = (exerciseIndex: number) => {
     if (confirm("Delete this exercise?")) {
-      const updated = exercises.filter((_, i) => i !== exerciseIndex);
-      setExercises(updated);
-      setProcessedExercises(updated);
+      const next = exercises.filter((_, i) => i !== exerciseIndex);
+      setExercises(next);
+      setProcessedExercises(next);
     }
   };
 
-  const handleAddExercise = (exercise: Exercise) => {
-    // Create sets based on exercise type
-    const createSets = () => {
-      return Array.from({ length: 3 }, (_, i) => {
-        const baseSet: any = {
-          set_number: i + 1,
-          completed: false,
-        };
-
-        switch (exercise.type) {
-          case "weight_reps":
-            baseSet.weight_kg = 0;
-            baseSet.reps = 0;
-            baseSet.kg = 0; // Legacy field
-            baseSet.previous_weight_kg = 0;
-            baseSet.previous_reps = 0;
-            break;
-          case "reps_only":
-            baseSet.reps = 0;
-            baseSet.previous_reps = 0;
-            break;
-          case "duration":
-            baseSet.duration_seconds = 0;
-            baseSet.previous_duration_seconds = 0;
-            break;
-          case "distance_duration":
-            baseSet.distance_meters = 0;
-            baseSet.duration_seconds = 0;
-            baseSet.previous_distance_meters = 0;
-            baseSet.previous_duration_seconds = 0;
-            break;
-        }
-
-        return baseSet;
-      });
-    };
-
-    const newExercise: WorkoutExercise = {
-      exercise,
-      sets: createSets(),
-      notes: "",
-      rest_timer_enabled: false,
-    };
-    
-    const updated = [...exercises, newExercise];
-    setExercises(updated);
-    setProcessedExercises(updated);
-    setIsAddingExercise(false);
+  const handleAddExercise = (ex: Exercise) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sets: any[] = Array.from({ length: 3 }, (_, i) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const base: any = { set_number: i + 1, completed: false };
+      switch (ex.type) {
+        case "weight_reps":
+          base.weight_kg = 0;
+          base.reps = 0;
+          base.kg = 0;
+          break;
+        case "reps_only":
+          base.reps = 0;
+          break;
+        case "duration":
+          base.duration_seconds = 0;
+          break;
+        case "distance_duration":
+          base.distance_meters = 0;
+          base.duration_seconds = 0;
+          break;
+      }
+      return base;
+    });
+    const next = [
+      ...exercises,
+      { exercise: ex, sets, notes: "", rest_timer_enabled: false, matchScore: 150 } as WorkoutExercise,
+    ];
+    setExercises(next);
+    setProcessedExercises(next);
+    setAddPickerOpen(false);
   };
 
-  const handleFinish = () => {
-    // Combine date and time
-    const [hours, minutes] = workoutTime.split(':').map(Number);
-    const combinedDate = new Date(workoutDate);
-    combinedDate.setHours(hours, minutes, 0, 0);
-    
-    // Calculate metrics
-    const metrics = calculateWorkoutMetrics(exercises);
-    
-    // Create workout object
+  const metrics = calculateWorkoutMetrics(exercises);
+  const totalCount = exercises.length;
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    setSyncError(null);
+    const [hh, mm] = workoutTime.split(":").map(Number);
+    const combined = new Date(workoutDate);
+    combined.setHours(hh, mm, 0, 0);
     const workout = {
       id: `workout-${Date.now()}`,
       duration_minutes: durationMinutes,
       total_volume_kg: metrics.total_volume_kg,
       total_sets: metrics.total_sets,
       exercises,
-      date: combinedDate, // Now includes the time
-      caption: caption,
+      date: combined,
+      caption,
       sync_to_hevy: true,
       share_to_instagram: false,
     };
-    
-    setCurrentWorkout(workout);
-    router.push("/sync");
-  };
-
-  const handleDiscard = () => {
-    if (confirm("Are you sure you want to discard this workout?")) {
-      router.push("/");
+    const res = await syncWorkoutToHevy(workout);
+    if (res.success) {
+      setLastSyncedWorkout({
+        date: combined,
+        time: workoutTime,
+        duration_minutes: durationMinutes,
+        total_volume_kg: metrics.total_volume_kg,
+        total_sets: metrics.total_sets,
+        exercises,
+        caption,
+      });
+      router.push("/sync");
+    } else {
+      setSyncError(res.error ?? "Sync failed");
+      setIsSyncing(false);
     }
   };
 
-  // Calculate current metrics
-  const currentMetrics = calculateWorkoutMetrics(exercises);
+  const handleDiscard = () => {
+    if (confirm("Discard this workout?")) router.push("/");
+  };
+
+  const headlineDate = format(workoutDate, "MMM dd");
+  const headlineTime = fmtTime12(workoutTime);
+  const dayName = format(workoutDate, "EEEE");
+  const [hh, mm] = workoutTime.split(":").map(Number);
+  const _dayDt = new Date(workoutDate);
+  _dayDt.setHours(hh, mm, 0, 0);
+  const dayPart = partOfDay(_dayDt);
 
   return (
-    <div className="min-h-screen bg-muted pb-20 animate-fade-in">
+    <div style={{ maxWidth: 1200, margin: "0 auto" }}>
       {/* Header */}
-      <div className="bg-background border-b border-border px-4 py-3 flex items-center justify-between sticky top-0 z-10 safe-top">
-        <div className="w-20"></div>
-        <h1 className="text-lg font-semibold">Log Workout</h1>
-        <div className="w-20"></div>
+      <div style={{ padding: "24px 40px 16px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            gap: 24,
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <Overline>STEP 02 · EDIT</Overline>
+            <h1
+              className="text-headline-lg"
+              style={{
+                color: "var(--color-text-primary)",
+                margin: "8px 0 0",
+                fontSize: 28,
+                lineHeight: 1.15,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <span>
+                {dayName} {dayPart},
+              </span>
+              <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    style={{
+                      background: "var(--color-low)",
+                      border: "none",
+                      color: "var(--color-text-tertiary)",
+                      borderRadius: "var(--radius-full)",
+                      cursor: "pointer",
+                      padding: "2px 12px",
+                      fontFamily: "inherit",
+                      fontSize: "inherit",
+                      fontWeight: 400,
+                      lineHeight: "inherit",
+                    }}
+                  >
+                    {headlineDate}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  sideOffset={6}
+                  style={{
+                    width: "auto",
+                    padding: 8,
+                    background: "var(--color-card)",
+                    border: "none",
+                    borderRadius: "var(--radius-md)",
+                    boxShadow:
+                      "0 16px 40px -10px rgba(28,27,27,0.10), 0 0 0 1px rgba(28,27,27,0.06)",
+                  }}
+                >
+                  <Calendar
+                    mode="single"
+                    selected={workoutDate}
+                    onSelect={(d) => {
+                      if (d) {
+                        setWorkoutDate(d);
+                        setDatePopoverOpen(false);
+                      }
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
+              <input
+                type="time"
+                lang="en-US"
+                step={60}
+                value={workoutTime}
+                onChange={(e) => setWorkoutTime(e.target.value || "08:00")}
+                style={{
+                  background: "var(--color-low)",
+                  border: "none",
+                  color: "var(--color-text-tertiary)",
+                  borderRadius: "var(--radius-full)",
+                  outline: "none",
+                  padding: "2px 12px",
+                  width: 170,
+                  fontFamily: "inherit",
+                  fontSize: "inherit",
+                  fontWeight: 400,
+                  lineHeight: "inherit",
+                }}
+              />
+            </h1>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <WGhost onClick={handleDiscard} disabled={isSyncing}>
+              Discard
+            </WGhost>
+            <WPrimary
+              onClick={handleSync}
+              disabled={isSyncing || exercises.length === 0}
+              icon={<Send size={16} color="#fff" strokeWidth={1.7} />}
+            >
+              {isSyncing ? "Syncing…" : "Sync to Hevy"}
+            </WPrimary>
+          </div>
+        </div>
+        {syncError && (
+          <div
+            className="text-body-sm animate-slide-down"
+            style={{
+              marginTop: 16,
+              padding: "10px 14px",
+              background: "rgba(186,26,26,0.08)",
+              color: "var(--color-error)",
+              borderRadius: "var(--radius-md)",
+            }}
+          >
+            {syncError}
+          </div>
+        )}
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 max-w-7xl mx-auto px-0">
-        {/* Main Content - Left Side */}
-        <div className="flex-1 p-4 lg:p-6 max-w-2xl mx-auto lg:mx-0 w-full min-w-0">
-        
-        {/* Duplicate Workout Warning Banner */}
-        {duplicateWorkout && showDuplicateWarning && (
-          <Alert className="mb-4 animate-slide-down">
-            <AlertTriangle className="h-4 w-4" />
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1">
-                <AlertTitle>Duplicate Workout Detected</AlertTitle>
-                <AlertDescription>
-                  A workout already exists for{" "}
-                  <span className="font-semibold">
-                    {format(duplicateWorkout.date, "MMM dd, yyyy")}
-                  </span>{" "}
-                  at{" "}
-                  <span className="font-semibold">{duplicateWorkout.time}</span>{" "}
-                  named{" "}
-                  <span className="font-semibold">&ldquo;{duplicateWorkout.name}&rdquo;</span>
-                </AlertDescription>
-              </div>
-              <button
-                onClick={() => setShowDuplicateWarning(false)}
-                className="p-1 rounded-md hover:bg-muted transition-colors"
-                aria-label="Dismiss warning"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </Alert>
-        )}
-        {/* Summary Cards - Top Row: Duration, Date, Time */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 mb-4">
-          <div className="flex flex-col text-center min-w-0">
-            <span className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Duration</span>
-            {isEditingDuration ? (
-              <input
-                type="number"
-                value={durationMinutes}
-                onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                onBlur={() => setIsEditingDuration(false)}
-                className="text-xl sm:text-2xl font-semibold text-foreground text-center bg-transparent border-b-2 border-foreground focus:outline-none w-12 sm:w-16 mx-auto"
-                autoFocus
-              />
-            ) : (
-              <button
-                onClick={() => setIsEditingDuration(true)}
-                className="text-xl sm:text-2xl font-semibold text-foreground hover:text-foreground/80 truncate"
-              >
-                {durationMinutes}m
-              </button>
-            )}
-          </div>
-          <div className="flex flex-col text-center min-w-0">
-            <span className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Date</span>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="text-xl sm:text-2xl font-semibold text-foreground hover:text-foreground/80 h-auto p-0 truncate"
+      {/* Tonal break */}
+      <div style={{ background: "var(--color-low)", padding: "20px 40px 32px" }}>
+        <div
+          className="edit-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1.6fr 1fr",
+            gap: 20,
+            alignItems: "start",
+          }}
+        >
+          {/* LEFT */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {/* Stat strip */}
+            <div
+              className="web-stat-strip"
+              style={{
+                background: "var(--color-card)",
+                borderRadius: "var(--radius-lg)",
+                padding: "14px 18px",
+                display: "grid",
+                gridTemplateColumns: "1.3fr 1.3fr 1fr 1fr",
+                gap: 18,
+                alignItems: "flex-end",
+              }}
+            >
+              <div>
+                <Overline>DURATION</Overline>
+                <div
+                  className="text-headline-md"
+                  style={{
+                    color: "var(--color-text-primary)",
+                    marginTop: 2,
+                    fontWeight: 500,
+                    display: "flex",
+                    alignItems: "baseline",
+                  }}
                 >
-                  {format(workoutDate, "MMM dd")}
-                </Button>
+                  <input
+                    type="number"
+                    min={1}
+                    value={durationMinutes}
+                    onChange={(e) => setDurationMinutes(Math.max(1, Number(e.target.value) || 0))}
+                    style={{
+                      width: 56,
+                      background: "transparent",
+                      border: "none",
+                      outline: "none",
+                      fontFamily: "var(--font-display)",
+                      fontWeight: 500,
+                      fontSize: 24,
+                      color: "var(--color-text-primary)",
+                      padding: 0,
+                    }}
+                  />
+                  <span
+                    className="text-body-sm"
+                    style={{
+                      color: "var(--color-text-tertiary)",
+                      marginLeft: 3,
+                      fontWeight: 500,
+                    }}
+                  >
+                    m
+                  </span>
+                </div>
+              </div>
+              {(
+                [
+                  ["VOLUME", formatVolume(metrics.total_volume_kg), "kg"],
+                  ["SETS", String(metrics.total_sets), null],
+                  ["EXERCISES", String(totalCount), null],
+                ] as const
+              ).map(([label, value, suffix]) => (
+                <div key={label}>
+                  <Overline>{label}</Overline>
+                  <div
+                    className="text-headline-md"
+                    style={{
+                      color: "var(--color-text-primary)",
+                      marginTop: 2,
+                      fontWeight: 500,
+                    }}
+                  >
+                    {value}
+                    {suffix && (
+                      <span
+                        className="text-body-sm"
+                        style={{
+                          color: "var(--color-text-tertiary)",
+                          marginLeft: 3,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {suffix}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Duplicate banner */}
+            {duplicate && showDup && (
+              <div
+                className="animate-slide-down"
+                style={{
+                  background: "rgba(184,134,11,0.10)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "10px 14px",
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "center",
+                }}
+              >
+                <AlertTriangle size={16} color="var(--color-warning)" strokeWidth={1.6} />
+                <div className="text-body-sm" style={{ flex: 1, color: "var(--color-warning)" }}>
+                  <span style={{ fontWeight: 600 }}>Possible duplicate.</span> A workout was logged
+                  on {format(duplicate.date, "MMM dd")} at {duplicate.time} — &ldquo;{duplicate.name}&rdquo;.
+                </div>
+                <button
+                  onClick={() => setShowDup(false)}
+                  aria-label="Dismiss"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    border: "none",
+                    borderRadius: "var(--radius-full)",
+                    cursor: "pointer",
+                    background: "transparent",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <X size={14} color="var(--color-warning)" />
+                </button>
+              </div>
+            )}
+
+            {/* Section header */}
+            <div style={{ padding: "12px 4px 0" }}>
+              <Overline>{totalCount} EXERCISES DETECTED</Overline>
+            </div>
+
+            {exercises.map((ex, i) => (
+              <ExerciseCard
+                key={i}
+                workoutExercise={ex}
+                featured={pickerOpenIndex === i}
+                onUpdateSet={(setIndex, field, value) =>
+                  handleUpdateSet(i, setIndex, field, value)
+                }
+                onAddSet={() => handleAddSet(i)}
+                onDeleteSet={(setIndex) => handleDeleteSet(i, setIndex)}
+                onExerciseChange={(newEx) => handleExerciseChange(i, newEx)}
+                onDelete={() => handleDeleteExercise(i)}
+                onPickerOpenChange={(open) => setPickerOpenIndex(open ? i : null)}
+              />
+            ))}
+
+            {/* Add exercise */}
+            <Popover open={addPickerOpen} onOpenChange={setAddPickerOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  style={{
+                    height: 40,
+                    border: "none",
+                    borderRadius: "var(--radius-md)",
+                    cursor: "pointer",
+                    background: "transparent",
+                    color: "var(--color-text-secondary)",
+                    fontFamily: "var(--font-body)",
+                    fontWeight: 500,
+                    fontSize: 14,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    boxShadow: "inset 0 0 0 1.5px var(--color-outline)",
+                  }}
+                >
+                  <Plus size={13} color="var(--color-text-secondary)" /> Add exercise
+                </button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="center">
-                <Calendar
-                  mode="single"
-                  selected={workoutDate}
-                  onSelect={(date) => date && setWorkoutDate(date)}
-                  initialFocus
+              <PopoverContent
+                align="center"
+                sideOffset={8}
+                className="p-0 border-0 bg-transparent shadow-none"
+                style={{ width: 520 }}
+              >
+                <ExercisePickerDropdown
+                  onSelect={handleAddExercise}
+                  onCancel={() => setAddPickerOpen(false)}
                 />
               </PopoverContent>
             </Popover>
-          </div>
-          <div className="flex flex-col text-center min-w-0">
-            <span className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Time</span>
-            <div className="flex items-center justify-center gap-1 sm:gap-2">
-              <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
-              <Input
-                type="time"
-                value={workoutTime}
-                onChange={(e) => setWorkoutTime(e.target.value)}
-                className="w-20 sm:w-28 text-center text-sm sm:text-lg font-semibold text-foreground border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0"
+
+            {/* Caption */}
+            <div style={{ marginTop: 8 }}>
+              <Overline style={{ marginBottom: 6 }}>
+                CAPTION · SYNCED AS WORKOUT DESCRIPTION
+              </Overline>
+              <textarea
+                placeholder="Add a note about this workout…"
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                className="text-body-sm"
+                style={{
+                  background: "var(--color-card)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "10px 14px",
+                  color: "var(--color-text-primary)",
+                  minHeight: 56,
+                  width: "100%",
+                  border: "none",
+                  outline: "none",
+                  resize: "vertical",
+                  fontFamily: "var(--font-body)",
+                }}
               />
             </div>
           </div>
-        </div>
 
-        {/* Summary Cards - Bottom Row: Volume, Sets */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-6">
-          <WorkoutSummaryCard
-            label="Volume"
-            value={formatVolume(currentMetrics.total_volume_kg)}
-            unit="kg"
-            className="text-center"
-          />
-          <WorkoutSummaryCard
-            label="Sets"
-            value={currentMetrics.total_sets}
-            className="text-center"
-          />
-        </div>
-
-        {/* Exercise Cards */}
-        {exercises.map((exercise, index) => (
-          <ExerciseCard
-            key={index}
-            workoutExercise={exercise}
-            onUpdateSet={(setIndex, field, value) => handleUpdateSet(index, setIndex, field, value)}
-            onUpdateNotes={(notes) => handleUpdateNotes(index, notes)}
-            onAddSet={() => handleAddSet(index)}
-            onExerciseChange={(newExercise) => handleExerciseChange(index, newExercise)}
-            onDelete={() => handleDeleteExercise(index)}
-            onDeleteSet={(setIndex) => handleDeleteSet(index, setIndex)}
-          />
-        ))}
-
-        {/* Add Exercise Section */}
-        {isAddingExercise ? (
-          <Card className="p-4 mb-4 animate-slide-up">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold text-foreground">Add Exercise</h3>
-              <button
-                onClick={() => setIsAddingExercise(false)}
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Cancel
-              </button>
-            </div>
-            <ExerciseSearchCombobox
-              currentExerciseTitle=""
-              onExerciseSelect={handleAddExercise}
-            />
-          </Card>
-        ) : (
-          <Button
-            onClick={() => setIsAddingExercise(true)}
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-6 rounded-xl text-base font-semibold mb-4"
+          {/* RIGHT — sticky */}
+          <div
+            className="edit-rail"
+            style={{
+              position: "sticky",
+              top: 16,
+              alignSelf: "start",
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+              maxHeight: "calc(100vh - 32px)",
+            }}
           >
-            <Plus className="w-5 h-5 mr-2" />
-            Add Exercise
-          </Button>
-        )}
-
-        {/* Workout Caption */}
-        <div className="mb-6">
-          <label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">
-            Workout Description
-          </label>
-          <Textarea
-            placeholder="Add a note about this workout..."
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            className="resize-none bg-background text-foreground placeholder:text-muted-foreground"
-            rows={3}
-          />
-          <p className="text-xs text-muted-foreground mt-2">
-            This will be synced to Hevy as your workout description
-          </p>
-        </div>
-
-        {/* Finish Button */}
-        <Button
-          onClick={handleFinish}
-          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-6 rounded-xl text-base font-semibold mb-4"
-        >
-          Finish Workout
-        </Button>
-
-        {/* Bottom Actions */}
-        <div className="flex gap-4">
-          <Button
-            variant="destructive"
-            onClick={handleDiscard}
-            className="flex-1 py-6 rounded-xl bg-background text-base"
-          >
-            Discard Workout
-          </Button>
-        </div>
-        </div>
-
-        {/* Image Preview - Right Side (Desktop Only) */}
-        {imagePreviewUrl && (
-          <div className="hidden lg:block w-80 xl:w-96 p-4 pr-6">
-            <div className="sticky top-20">
-              <div className="bg-background rounded-lg shadow-lg overflow-hidden border border-border">
-                <div className="p-3 bg-muted border-b border-border">
-                  <h3 className="text-sm font-semibold text-foreground">Uploaded Image</h3>
-                </div>
-                <div className="aspect-[3/4] relative bg-secondary">
-                  <TransformWrapper
-                    initialScale={1}
-                    minScale={0.5}
-                    maxScale={4}
-                    centerOnInit={true}
-                    wheel={{ step: 0.3 }}
-                    doubleClick={{ mode: "reset" }}
-                  >
-                    {({ zoomIn, zoomOut, resetTransform }) => (
-                      <>
-                        {/* Zoom Controls */}
-                        <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
-                          <button
-                            onClick={() => zoomIn()}
-                            className="w-8 h-8 bg-background/90 hover:bg-background rounded-md shadow-md flex items-center justify-center transition-colors border border-border"
-                            title="Zoom In"
-                          >
-                            <ZoomIn className="w-4 h-4 text-foreground" />
-                          </button>
-                          <button
-                            onClick={() => zoomOut()}
-                            className="w-8 h-8 bg-background/90 hover:bg-background rounded-md shadow-md flex items-center justify-center transition-colors border border-border"
-                            title="Zoom Out"
-                          >
-                            <ZoomOut className="w-4 h-4 text-foreground" />
-                          </button>
-                          <button
-                            onClick={() => resetTransform()}
-                            className="w-8 h-8 bg-background/90 hover:bg-background rounded-md shadow-md flex items-center justify-center transition-colors border border-border"
-                            title="Reset Zoom"
-                          >
-                            <Maximize2 className="w-4 h-4 text-foreground" />
-                          </button>
+            {/* Source photo */}
+            <div
+              style={{
+                background: "var(--color-card)",
+                borderRadius: "var(--radius-lg)",
+                padding: 12,
+              }}
+            >
+              {imageUrl ? (
+                <TransformWrapper
+                  initialScale={1}
+                  minScale={0.5}
+                  maxScale={4}
+                  centerOnInit
+                  wheel={{ step: 0.3 }}
+                  doubleClick={{ mode: "reset" }}
+                >
+                  {({ zoomIn, zoomOut, resetTransform }) => (
+                    <>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "0 2px 8px",
+                        }}
+                      >
+                        <Overline>SOURCE PHOTO</Overline>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <ZoomBtn ariaLabel="Zoom in" onClick={() => zoomIn()}>
+                            <ZoomIn size={13} color="var(--color-text-tertiary)" />
+                          </ZoomBtn>
+                          <ZoomBtn ariaLabel="Zoom out" onClick={() => zoomOut()}>
+                            <ZoomOut size={13} color="var(--color-text-tertiary)" />
+                          </ZoomBtn>
+                          <ZoomBtn ariaLabel="Reset zoom" onClick={() => resetTransform()}>
+                            <Maximize2 size={13} color="var(--color-text-tertiary)" />
+                          </ZoomBtn>
                         </div>
-                        {/* Image */}
+                      </div>
+                      <div
+                        style={{
+                          height: 320,
+                          borderRadius: "var(--radius-xl)",
+                          overflow: "hidden",
+                          background: "var(--color-low)",
+                          position: "relative",
+                        }}
+                      >
                         <TransformComponent
                           wrapperClass="!w-full !h-full"
                           contentClass="!w-full !h-full"
                         >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={imagePreviewUrl}
-                            alt="Workout upload"
-                            className="w-full h-full object-contain cursor-grab active:cursor-grabbing"
+                            src={imageUrl}
+                            alt="Workout source"
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "contain",
+                              cursor: "grab",
+                            }}
                           />
                         </TransformComponent>
-                      </>
-                    )}
-                  </TransformWrapper>
-                </div>
+                      </div>
+                    </>
+                  )}
+                </TransformWrapper>
+              ) : (
+                <>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "0 4px 12px",
+                    }}
+                  >
+                    <Overline>SOURCE PHOTO</Overline>
+                  </div>
+                  <div
+                    className="text-body-md"
+                    style={{
+                      height: 320,
+                      borderRadius: "var(--radius-md)",
+                      background: "var(--color-low)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "var(--color-text-muted)",
+                    }}
+                  >
+                    No image
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Detection summary */}
+            <div
+              style={{
+                background: "var(--color-card)",
+                borderRadius: "var(--radius-lg)",
+                padding: 14,
+              }}
+            >
+              <Overline>DETECTION SUMMARY</Overline>
+              <div
+                style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}
+              >
+                {(() => {
+                  const confColor =
+                    detectionConfidence === null
+                      ? "var(--color-text-primary)"
+                      : detectionConfidence >= 60
+                        ? "var(--color-secondary)"
+                        : "var(--color-warning)";
+                  const rows: Array<[string, string, string]> = [
+                    ["Model", detectionModel ?? "—", "var(--color-text-primary)"],
+                    [
+                      "Confidence",
+                      detectionConfidence !== null ? `${detectionConfidence}%` : "—",
+                      confColor,
+                    ],
+                    [
+                      "EXIF date",
+                      extractedWorkoutDate
+                        ? `${format(extractedWorkoutDate, "MMM dd")} · ${headlineTime}`
+                        : "—",
+                      "var(--color-text-primary)",
+                    ],
+                  ];
+                  return rows.map(([k, v, c]) => (
+                    <div
+                      key={k}
+                      className="text-body-sm"
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "baseline",
+                      }}
+                    >
+                      <span style={{ color: "var(--color-text-tertiary)" }}>{k}</span>
+                      <span
+                        className="text-title-sm"
+                        style={{ color: c, fontWeight: 500 }}
+                      >
+                        {v}
+                      </span>
+                    </div>
+                  ));
+                })()}
               </div>
             </div>
+
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
 }
 
+function ZoomBtn({
+  children,
+  onClick,
+  ariaLabel,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  ariaLabel: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={ariaLabel}
+      style={{
+        width: 28,
+        height: 28,
+        border: "none",
+        borderRadius: 8,
+        background: "var(--color-low)",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {children}
+    </button>
+  );
+}

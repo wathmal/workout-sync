@@ -1,21 +1,33 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { WorkoutProvider } from "@/app/_providers/workout-provider";
+import { Sidebar } from "@/app/_components/sidebar";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
+  weight: ["500", "700"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
   title: "Workout Sync",
-  description: "Upload and sync your workout photos",
+  description: "From the gym board to Hevy in one shot.",
 };
 
 export default function RootLayout({
@@ -26,9 +38,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        <WorkoutProvider>{children}</WorkoutProvider>
+        <WorkoutProvider>
+          <div className="app-shell">
+            {/* Sidebar hidden for now — uncomment to restore */}
+            {/* <Sidebar /> */}
+            <main>{children}</main>
+          </div>
+        </WorkoutProvider>
       </body>
     </html>
   );

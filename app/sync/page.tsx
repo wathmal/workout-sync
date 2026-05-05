@@ -1,301 +1,279 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Dumbbell, Check, AlertCircle, Loader2, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useWorkout } from "@/app/_providers/workout-provider";
-import { WorkoutSummaryCard } from "@/components/WorkoutSummaryCard";
-import { syncWorkoutToHevy, formatDuration, formatVolume } from "@/lib/mock-data";
 import { format } from "date-fns";
+import { ExternalLink, Check } from "lucide-react";
+import { useWorkout } from "@/app/_providers/workout-provider";
+import { Overline } from "@/app/_components/overline";
+import { WPrimary, WGhost, WText } from "@/app/_components/web-button";
+import { EquipBadge } from "@/app/_components/equip-badge";
+import { formatVolume } from "@/lib/mock-data";
+
+function fmtTime12(timeHHMM: string | null) {
+  if (!timeHHMM) return "";
+  const [h, m] = timeHHMM.split(":").map(Number);
+  const period = h >= 12 ? "p" : "a";
+  const hh = ((h + 11) % 12) + 1;
+  return `${hh}:${m.toString().padStart(2, "0")}${period}`;
+}
+
+function guessEquipment(title: string): string {
+  const m = title.match(/\(([^)]+)\)/);
+  if (m) return m[1].toUpperCase();
+  if (/barbell/i.test(title)) return "BARBELL";
+  if (/dumbbell/i.test(title)) return "DUMBBELL";
+  if (/kettlebell/i.test(title)) return "KETTLEBELL";
+  if (/machine/i.test(title)) return "MACHINE";
+  if (/cable/i.test(title)) return "CABLE";
+  return "BODYWEIGHT";
+}
 
 export default function SyncPage() {
   const router = useRouter();
-  const { currentWorkout } = useWorkout();
-  const [syncState, setSyncState] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
-  const [errorMessage, setErrorMessage] = useState<string>('');
-  const [showSuccessAlert, setShowSuccessAlert] = useState(true);
-  const [showErrorAlert, setShowErrorAlert] = useState(true);
+  const { lastSyncedWorkout, setLastSyncedWorkout, setProcessedExercises, setUploadedImage, setCaption } =
+    useWorkout();
 
   useEffect(() => {
-    if (!currentWorkout) {
-      router.push("/");
-    }
-  }, [currentWorkout, router]);
+    if (!lastSyncedWorkout) router.push("/");
+  }, [lastSyncedWorkout, router]);
 
-  const handleSync = async () => {
-    if (!currentWorkout) return;
-    
-    setSyncState('syncing');
-    setErrorMessage('');
-    setShowSuccessAlert(true);
-    setShowErrorAlert(true);
-    
-    const result = await syncWorkoutToHevy(currentWorkout);
-    
-    if (result.success) {
-      setSyncState('success');
-    } else {
-      setSyncState('error');
-      setErrorMessage(result.error || 'Sync failed');
-    }
-  };
+  if (!lastSyncedWorkout) return null;
 
-  const handleDone = () => {
+  const { date, time, duration_minutes, total_volume_kg, total_sets, exercises } = lastSyncedWorkout;
+  const dateStr = format(date, "MMM dd");
+  const timeStr = fmtTime12(time);
+
+  const handleSyncAnother = () => {
+    setLastSyncedWorkout(null);
+    setProcessedExercises([]);
+    setUploadedImage(null);
+    setCaption("");
     router.push("/");
   };
 
-  if (!currentWorkout) {
-    return null;
-  }
-
-  const workoutDate = format(currentWorkout.date, 'MMMM dd, yyyy');
-  const workoutTime = format(currentWorkout.date, 'HH:mm');
-
   return (
-    <div className="min-h-screen bg-muted animate-fade-in pb-20">
-      {/* Header */}
-      <div className="bg-background border-b border-border px-4 py-3 flex items-center justify-between sticky top-0 z-10 safe-top">
-        <div className="w-20"></div>
-        <h1 className="text-lg font-semibold">Sync Workout</h1>
-        <div className="w-20"></div>
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 40px" }}>
+      {/* Hero */}
+      <div
+        className="web-grid-6040"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1.4fr 1fr",
+          gap: 28,
+          alignItems: "start",
+          marginBottom: 16,
+        }}
+      >
+        <div>
+          <Overline color="var(--color-tertiary)">STEP 03 · SYNCED</Overline>
+
+          <h1
+            className="text-display-md"
+            style={{
+              fontSize: 80,
+              lineHeight: 0.92,
+              letterSpacing: "-2.4px",
+              margin: "10px 0 10px",
+              color: "var(--color-text-primary)",
+            }}
+          >
+            Synced.
+          </h1>
+          <p
+            className="text-body-md"
+            style={{ color: "var(--color-text-secondary)", margin: 0, maxWidth: 440 }}
+          >
+            Your workout is in your training log. Logged at{" "}
+            <span style={{ color: "var(--color-text-primary)", fontWeight: 500 }}>
+              {dateStr}
+              {timeStr && ` · ${timeStr}`}
+            </span>
+            .
+          </p>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 18, flexWrap: "wrap" }}>
+            <WPrimary
+              icon={<ExternalLink size={14} color="#fff" strokeWidth={1.6} />}
+              onClick={() => window.open("https://hevy.com", "_blank")}
+            >
+              Open in Hevy
+            </WPrimary>
+            <WGhost onClick={handleSyncAnother}>Sync another</WGhost>
+          </div>
+        </div>
+
+        {/* Stat tile */}
+        <div
+          style={{
+            background: "var(--color-low)",
+            borderRadius: "var(--radius-lg)",
+            padding: 14,
+          }}
+        >
+          <Overline>THIS WORKOUT</Overline>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 8,
+              marginTop: 10,
+            }}
+          >
+            {(
+              [
+                ["DURATION", `${duration_minutes}m`],
+                ["VOLUME", `${formatVolume(total_volume_kg)} kg`],
+                ["TOTAL SETS", String(total_sets)],
+                ["EXERCISES", String(exercises.length)],
+              ] as const
+            ).map(([k, v]) => (
+              <div
+                key={k}
+                style={{
+                  background: "var(--color-card)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "10px 12px",
+                }}
+              >
+                <Overline style={{ fontSize: 9 }}>{k}</Overline>
+                <div
+                  className="text-headline-md"
+                  style={{ color: "var(--color-text-primary)", marginTop: 2 }}
+                >
+                  {v}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="p-4 max-w-2xl mx-auto">
-        {/* Workout Summary Card */}
-        <Card className="p-6 mb-6 animate-slide-up">
-          <div className="mb-4">
-            <h2 className="text-2xl font-bold text-foreground mb-1">Workout Summary</h2>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-              <span>{workoutDate}</span>
-              <span>•</span>
-              <span>{workoutTime}</span>
-            </div>
-            {currentWorkout.caption && (
-              <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                {currentWorkout.caption}
-              </p>
-            )}
-          </div>
-          
-          {/* Metrics */}
-          <div className="grid grid-cols-3 gap-4">
-            <WorkoutSummaryCard
-              label="Duration"
-              value={formatDuration(currentWorkout.duration_minutes)}
-              className="text-center"
-            />
-            <WorkoutSummaryCard
-              label="Volume"
-              value={formatVolume(currentWorkout.total_volume_kg)}
-              unit="kg"
-              className="text-center"
-            />
-            <WorkoutSummaryCard
-              label="Sets"
-              value={currentWorkout.total_sets}
-              className="text-center"
-            />
-          </div>
-        </Card>
+      {/* Logged exercises */}
+      <div
+        style={{
+          background: "var(--color-low)",
+          borderRadius: "var(--radius-lg)",
+          padding: 16,
+          marginTop: 12,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            marginBottom: 10,
+          }}
+        >
+          <Overline>LOGGED EXERCISES · {exercises.length}</Overline>
+          <WText onClick={() => router.push("/review")}>Edit workout</WText>
+        </div>
 
-        {/* Exercise List */}
-        <div className="mb-6">
-          <h3 className="text-xs text-muted-foreground uppercase tracking-wide mb-3">
-            Exercises
-          </h3>
-          <Card className="divide-y divide-border">
-            {currentWorkout.exercises.map((workoutExercise, index) => {
-              const exerciseType = workoutExercise.exercise.type;
-              
-              // Format set display based on exercise type
-              const formatSetDisplay = (set: typeof workoutExercise.sets[0]) => {
-                switch (exerciseType) {
-                  case "weight_reps":
-                    const weight = set.weight_kg ?? set.kg ?? 0;
-                    const reps = set.reps ?? 0;
-                    return `${weight}kg × ${reps} reps`;
-                  case "reps_only":
-                    const repsOnly = set.reps ?? 0;
-                    return `${repsOnly} reps`;
-                  case "duration":
-                    const duration = set.duration_seconds ?? 0;
-                    const mins = Math.floor(duration / 60);
-                    const secs = duration % 60;
-                    return `${mins}:${secs.toString().padStart(2, "0")}`;
-                  case "distance_duration":
-                    const distance = set.distance_meters ?? 0;
-                    const dur = set.duration_seconds ?? 0;
-                    const durMins = Math.floor(dur / 60);
-                    const durSecs = dur % 60;
-                    return `${distance}m / ${durMins}:${durSecs.toString().padStart(2, "0")}`;
-                  default:
-                    return "N/A";
-                }
-              };
-
-              // Get best set summary based on exercise type
-              const getBestSetSummary = () => {
-                switch (exerciseType) {
-                  case "weight_reps":
-                    const bestSet = workoutExercise.sets.reduce((max, set) => {
-                      const weight = set.weight_kg ?? set.kg ?? 0;
-                      const reps = set.reps ?? 0;
-                      const maxWeight = max.weight_kg ?? max.kg ?? 0;
-                      const maxReps = max.reps ?? 0;
-                      return weight * reps > maxWeight * maxReps ? set : max;
-                    });
-                    const bestWeight = bestSet.weight_kg ?? bestSet.kg ?? 0;
-                    const bestReps = bestSet.reps ?? 0;
-                    return `Best: ${bestWeight}kg × ${bestReps} reps`;
-                  case "reps_only":
-                    const bestRepsSet = workoutExercise.sets.reduce((max, set) =>
-                      (set.reps ?? 0) > (max.reps ?? 0) ? set : max
-                    );
-                    return `Best: ${bestRepsSet.reps ?? 0} reps`;
-                  case "duration":
-                    const bestDurationSet = workoutExercise.sets.reduce((max, set) =>
-                      (set.duration_seconds ?? 0) > (max.duration_seconds ?? 0) ? set : max
-                    );
-                    const bestDur = bestDurationSet.duration_seconds ?? 0;
-                    const bestMins = Math.floor(bestDur / 60);
-                    const bestSecs = bestDur % 60;
-                    return `Best: ${bestMins}:${bestSecs.toString().padStart(2, "0")}`;
-                  case "distance_duration":
-                    return `${workoutExercise.sets.length} sets`;
-                  default:
-                    return `${workoutExercise.sets.length} sets`;
-                }
-              };
-              
-              return (
-                <div key={index} className="p-4">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                      <Dumbbell className="w-5 h-5 text-secondary-foreground" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-foreground">
-                        {workoutExercise.exercise.title}
-                      </h4>
-                      <p className="text-sm text-muted-foreground">
-                        {workoutExercise.sets.length} sets • {getBestSetSummary()}
-                      </p>
-                    </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {exercises.map((we, i) => {
+            const ex = we.exercise;
+            const setsCount = we.sets.length;
+            const summary = `${setsCount} ${setsCount === 1 ? "set" : "sets"}`;
+            let volume = "";
+            switch (ex.type) {
+              case "weight_reps": {
+                const vol = we.sets.reduce(
+                  (acc, s) => acc + (s.weight_kg ?? s.kg ?? 0) * (s.reps ?? 0),
+                  0,
+                );
+                volume = `${formatVolume(vol)} kg`;
+                break;
+              }
+              case "reps_only": {
+                const reps = we.sets.reduce((acc, s) => acc + (s.reps ?? 0), 0);
+                volume = `${reps} reps`;
+                break;
+              }
+              case "duration": {
+                const sec = we.sets.reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0);
+                const mins = Math.floor(sec / 60);
+                volume = `${mins}m`;
+                break;
+              }
+              case "distance_duration": {
+                const dist = we.sets.reduce((acc, s) => acc + (s.distance_meters ?? 0), 0);
+                volume = `${dist} m`;
+                break;
+              }
+            }
+            const muscleSecondary = ex.secondary_muscle_groups?.length
+              ? ex.secondary_muscle_groups.slice(0, 2).join(" · ")
+              : null;
+            return (
+              <div
+                key={i}
+                style={{
+                  background: "var(--color-card)",
+                  borderRadius: "var(--radius-md)",
+                  display: "grid",
+                  gridTemplateColumns: "1fr 100px 120px 22px",
+                  gap: 14,
+                  alignItems: "center",
+                  padding: "10px 14px",
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <EquipBadge official={!ex.is_custom}>{guessEquipment(ex.title)}</EquipBadge>
+                    <span
+                      className="text-body-sm"
+                      style={{ color: "var(--color-text-tertiary)", fontSize: 12 }}
+                    >
+                      {capitalize(ex.primary_muscle_group)}
+                      {muscleSecondary && (
+                        <span style={{ color: "var(--color-text-muted)" }}>
+                          {" "}· {muscleSecondary}
+                        </span>
+                      )}
+                    </span>
                   </div>
-                  
-                  {/* Set Details */}
-                  <div className="ml-13 space-y-1">
-                    {workoutExercise.sets.map((set, setIndex) => (
-                      <div key={setIndex} className="text-sm text-muted-foreground">
-                        Set {set.set_number}: {formatSetDisplay(set)}
-                      </div>
-                    ))}
+                  <div
+                    className="text-title-md"
+                    style={{ color: "var(--color-text-primary)", marginTop: 2, fontWeight: 500 }}
+                  >
+                    {ex.title}
                   </div>
                 </div>
-              );
-            })}
-          </Card>
-        </div>
-
-        {/* Sync Button */}
-        <div className="mb-6">
-          {syncState === 'idle' && (
-            <Button
-              onClick={handleSync}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-6 rounded-xl text-base font-semibold"
-            >
-              Sync to Hevy
-            </Button>
-          )}
-
-          {syncState === 'syncing' && (
-            <Button
-              disabled
-              className="w-full bg-primary text-primary-foreground py-6 rounded-xl text-base font-semibold"
-            >
-              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              Syncing...
-            </Button>
-          )}
-
-          {syncState === 'success' && (
-            <Button
-              disabled
-              className="w-full bg-primary text-primary-foreground py-6 rounded-xl text-base font-semibold"
-            >
-              <Check className="w-5 h-5 mr-2" />
-              Synced
-            </Button>
-          )}
-
-          {syncState === 'error' && (
-            <Button
-              onClick={handleSync}
-              className="w-full bg-destructive hover:bg-destructive/90 text-destructive-foreground py-6 rounded-xl text-base font-semibold"
-            >
-              <AlertCircle className="w-5 h-5 mr-2" />
-              Retry Sync
-            </Button>
-          )}
-        </div>
-
-        {/* Status Messages */}
-        {syncState === 'success' && showSuccessAlert && (
-          <Alert className="mb-6 animate-slide-up">
-            <Check className="h-4 w-4" />
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1">
-                <AlertTitle>Successfully synced to Hevy!</AlertTitle>
-                <AlertDescription>
-                  Your workout has been saved and is now available in Hevy.
-                </AlertDescription>
+                <div
+                  className="text-body-sm"
+                  style={{ color: "var(--color-text-tertiary)", fontWeight: 500, fontSize: 12 }}
+                >
+                  {summary}
+                </div>
+                <div
+                  className="font-mono-sm"
+                  style={{ color: "var(--color-text-primary)", fontWeight: 500 }}
+                >
+                  {volume}
+                </div>
+                <div
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: 999,
+                    background: "var(--color-secondary)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Check size={10} color="#fff" strokeWidth={2.4} />
+                </div>
               </div>
-              <button
-                onClick={() => setShowSuccessAlert(false)}
-                className="p-1 rounded-md hover:bg-muted transition-colors"
-                aria-label="Dismiss success message"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </Alert>
-        )}
-
-        {syncState === 'error' && errorMessage && showErrorAlert && (
-          <Alert variant="destructive" className="mb-6 animate-slide-up">
-            <AlertCircle className="h-4 w-4" />
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1">
-                <AlertTitle>Sync Failed</AlertTitle>
-                <AlertDescription>
-                  {errorMessage}
-                </AlertDescription>
-              </div>
-              <button
-                onClick={() => setShowErrorAlert(false)}
-                className="p-1 rounded-md hover:bg-muted transition-colors"
-                aria-label="Dismiss error message"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </Alert>
-        )}
-
-        {/* Done Button */}
-        <div className="mt-6">
-          <Button
-            onClick={handleDone}
-            variant="outline"
-            className="w-full py-6 rounded-xl text-base font-semibold"
-          >
-            Done
-          </Button>
+            );
+          })}
         </div>
       </div>
     </div>
   );
+}
+
+function capitalize(s: string) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
