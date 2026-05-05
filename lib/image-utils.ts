@@ -37,8 +37,16 @@ export async function convertHeicToJpeg(buffer: Buffer, quality = 0.9): Promise<
  */
 export async function extractImageDateFromBuffer(buffer: Buffer): Promise<Date | null> {
   try {
+    // Broad parse — `pick` plus HEIC sometimes returns nothing because exifr
+    // skips segments when the picked tags don't appear in the first parsed
+    // block. Letting exifr walk the full TIFF/EXIF chain then reading the
+    // fields manually is more reliable for HEIC.
     const exifData = await exifr.parse(buffer, {
-      pick: ['DateTimeOriginal', 'CreateDate', 'ModifyDate'],
+      tiff: true,
+      exif: true,
+      translateValues: true,
+      reviveValues: true,
+      mergeOutput: true,
     });
 
     // Try DateTimeOriginal first (most accurate - when photo was taken)
@@ -69,9 +77,44 @@ export async function extractImageDateFromBuffer(buffer: Buffer): Promise<Date |
     }
 
     console.log('⚠️ No date found in image EXIF metadata');
-    return null;
+    return parseExifWithReader(buffer);
   } catch (error) {
+    // exifr v7's HEIC detector requires ftyp box length ≤50 AND `heic` in
+    // compatibleBrands list (offset 16+). Many real iOS HEIC files have a
+    // 0x34 (52)-byte ftyp with brands like {mif1, MiHB, MiHA, heix} — exifr
+    // bails with "Unknown file format" even though the major brand IS heic.
+    // Fall back to exifreader, which parses these correctly.
+    const message = error instanceof Error ? error.message : String(error);
+    if (/unknown file format/i.test(message)) {
+      const fallback = await parseExifWithReader(buffer);
+      if (fallback) return fallback;
+    }
     console.warn('⚠️ Error reading EXIF data:', error);
+    return null;
+  }
+}
+
+async function parseExifWithReader(buffer: Buffer): Promise<Date | null> {
+  try {
+    const ExifReader = (await import('exifreader')).default;
+    const tags = ExifReader.load(buffer, { expanded: false });
+    const fields = ['DateTimeOriginal', 'DateTimeDigitized', 'DateTime', 'CreateDate'] as const;
+    for (const f of fields) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const tag = (tags as any)[f];
+      if (!tag) continue;
+      // EXIF dates: "YYYY:MM:DD HH:MM:SS" — Date constructor needs ISO format.
+      const raw = String(tag.description ?? tag.value);
+      const iso = raw.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3').replace(' ', 'T');
+      const date = new Date(iso);
+      if (!isNaN(date.getTime())) {
+        console.log(`📅 Extracted date via exifreader (${f}):`, date);
+        return date;
+      }
+    }
+    return null;
+  } catch (err) {
+    console.warn('⚠️ exifreader fallback failed:', err);
     return null;
   }
 }
