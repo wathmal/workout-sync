@@ -35,6 +35,10 @@ export interface WorkoutExercise {
   sets: WorkoutSet[];
   notes?: string;
   rest_timer_enabled: boolean;
+  /** 0-150 scale score from the matcher; surfaced as % in the UI. */
+  matchScore?: number;
+  /** Original string Groq detected, before any matching/normalization. */
+  rawDetection?: string;
 }
 
 // Complete Workout

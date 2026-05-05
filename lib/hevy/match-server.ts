@@ -1,7 +1,12 @@
 import "server-only";
 
 import type { Exercise } from "../types";
-import { matchExerciseImpl, type CosineLookup, type MatchingMode } from "./exercises";
+import {
+  matchExerciseImpl,
+  matchExerciseImplScored,
+  type CosineLookup,
+  type MatchingMode,
+} from "./exercises";
 import { getMatchingMode, computeCosines } from "../embeddings/match";
 import { expandAbbreviations } from "../exercise-abbreviations";
 
@@ -23,4 +28,23 @@ export async function matchExerciseWithEmbeddings(detectedName: string): Promise
     }
   }
   return matchExerciseImpl(detectedName, mode, cosines);
+}
+
+/**
+ * Same as matchExerciseWithEmbeddings, but also returns the chosen score
+ * (0-150 scale) so the UI can show a match-confidence percentage.
+ */
+export async function matchExerciseWithEmbeddingsScored(
+  detectedName: string,
+): Promise<{ exercise: Exercise; score: number }> {
+  let mode: MatchingMode = getMatchingMode();
+  let cosines: CosineLookup | null = null;
+  if (mode !== "fuzzy") {
+    cosines = await computeCosines(expandAbbreviations(detectedName));
+    if (mode === "vector" && !cosines) {
+      console.warn("[matching] vector mode requested but embedding source unavailable, falling back to fuzzy");
+      mode = "fuzzy";
+    }
+  }
+  return matchExerciseImplScored(detectedName, mode, cosines);
 }

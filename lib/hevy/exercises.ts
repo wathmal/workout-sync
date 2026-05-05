@@ -2,10 +2,10 @@
  * Hevy Exercise Database
  * Loads and merges all Hevy exercise JSON files for exercise matching.
  *
- * This module is isomorphic — it is imported by both server routes and the
- * ExerciseSearchCombobox client component, so it MUST NOT import server-only
- * code, even dynamically (Turbopack graph-walks `await import()` for client
- * SSR). Embedding-enhanced matching lives in `./match-server.ts`.
+ * This module is isomorphic — it is imported by both server routes and
+ * client components (e.g. ExercisePickerDropdown), so it MUST NOT import
+ * server-only code, even dynamically (Turbopack graph-walks `await import()`
+ * for client SSR). Embedding-enhanced matching lives in `./match-server.ts`.
  */
 
 import { Exercise } from "../types";
@@ -176,6 +176,33 @@ export async function searchExercises(query: string, limit = 10): Promise<HevyEx
 }
 
 /**
+ * Pure fuzzy search returning scored matches with the raw 0-150 score so the
+ * picker UI can render match-confidence percentages.
+ *
+ * `kind` filters: 'all' = both, 'official' = is_custom=false, 'custom' = is_custom=true.
+ * Empty query returns the full list (sorted by official, alpha) up to `limit`.
+ */
+export function searchExercisesScored(
+  query: string,
+  opts: { limit?: number; kind?: "all" | "official" | "custom" } = {},
+): ScoredExercise[] {
+  const { limit = 50, kind = "all" } = opts;
+  const trimmed = query.trim();
+
+  let pool: ScoredExercise[];
+  if (trimmed.length === 0) {
+    pool = HEVY_EXERCISES.map((ex) => ({ exercise: ex, score: 0 }));
+  } else {
+    pool = scoreAll(trimmed, "fuzzy", null).filter((m) => m.score > 0);
+  }
+
+  if (kind === "official") pool = pool.filter((m) => !m.exercise.is_custom);
+  if (kind === "custom") pool = pool.filter((m) => m.exercise.is_custom);
+
+  return sortMatches(pool).slice(0, limit);
+}
+
+/**
  * Pure fuzzy match (no embeddings). Server callers wanting embedding boost
  * should use `matchExerciseWithEmbeddings` from ./match-server.ts.
  */
@@ -193,6 +220,18 @@ export async function matchExerciseImpl(
   mode: MatchingMode,
   cosines: CosineLookup | null,
 ): Promise<Exercise> {
+  return (await matchExerciseImplScored(detectedName, mode, cosines)).exercise;
+}
+
+/**
+ * Same flow as matchExerciseImpl but also returns the raw 0-150 match score
+ * for the chosen exercise. Used to surface match% in the UI.
+ */
+export async function matchExerciseImplScored(
+  detectedName: string,
+  mode: MatchingMode,
+  cosines: CosineLookup | null,
+): Promise<{ exercise: Exercise; score: number }> {
   console.log(`🔍 Matching exercise: "${detectedName}"`);
 
   // 1. Exact match (fastest)
@@ -202,7 +241,7 @@ export async function matchExerciseImpl(
   );
   if (exactMatch) {
     console.log(`✅ Exact match found: "${exactMatch.title}"`);
-    return convertHevyToExercise(exactMatch);
+    return { exercise: convertHevyToExercise(exactMatch), score: SCORE_CAP };
   }
 
   // 1.5. Compound exercises ("BB/DB Curl") — prefer first part if not equipment-only
@@ -218,7 +257,7 @@ export async function matchExerciseImpl(
       if (firstBest) {
         console.log(`✅ Compound match (first part "${firstPart}"): "${firstBest.exercise.title}"`);
         console.log(`   Score: ${Math.round(firstBest.score)}%`);
-        return convertHevyToExercise(firstBest.exercise);
+        return { exercise: convertHevyToExercise(firstBest.exercise), score: firstBest.score };
       }
       console.log(`   First part "${firstPart}" had no match above threshold; falling through`);
     } else {
@@ -239,7 +278,7 @@ export async function matchExerciseImpl(
     if (validMatches.length > 1) {
       console.log(`   Alternatives: ${validMatches.slice(1, 3).map((m) => m.exercise.title).join(", ")}`);
     }
-    return convertHevyToExercise(best.exercise);
+    return { exercise: convertHevyToExercise(best.exercise), score: best.score };
   }
 
   // 3. Below threshold — best available anyway
@@ -255,7 +294,7 @@ export async function matchExerciseImpl(
     topMatches.forEach((m, i) => {
       console.log(`   ${i + 1}. "${m.exercise.title}" - Score: ${Math.round(m.score)}%`);
     });
-    return convertHevyToExercise(best.exercise);
+    return { exercise: convertHevyToExercise(best.exercise), score: best.score };
   }
 
   console.error(`❌ No exercises in database! Cannot match "${detectedName}"`);
