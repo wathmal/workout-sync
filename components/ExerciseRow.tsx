@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Check, X } from "lucide-react";
 import { WorkoutSet, Exercise } from "@/lib/types";
 import { secondsToMMSS, mmssToSeconds } from "@/lib/utils";
+import { NumberInput } from "./NumberInput";
 
 interface ExerciseRowProps {
   set: WorkoutSet;
@@ -112,31 +113,29 @@ export function ExerciseRow({
       <div style={{ ...cellShell, background: cellBg }}>
         {renderWeight ? (
           <>
-            <input
-              type="number"
+            <NumberInput
               value={weight}
-              onChange={(e) => onWeightChange!(Number(e.target.value))}
+              onValueChange={onWeightChange!}
               style={{ ...inputBase, color: ink }}
             />
             <SuffixLabel>KG</SuffixLabel>
           </>
         ) : renderReps && exerciseType === "reps_only" ? (
           <>
-            <input
-              type="number"
+            <NumberInput
               value={reps}
-              onChange={(e) => onRepsChange!(Number(e.target.value))}
+              onValueChange={onRepsChange!}
+              inputMode="numeric"
               style={{ ...inputBase, color: ink }}
             />
             <SuffixLabel>REPS</SuffixLabel>
           </>
         ) : renderDistance ? (
           <>
-            <input
-              type="number"
-              step="0.1"
+            <NumberInput
               value={set.distance_meters ?? 0}
-              onChange={(e) => onDistanceChange!(Number(e.target.value))}
+              onValueChange={onDistanceChange!}
+              step="0.1"
               style={{ ...inputBase, color: ink }}
             />
             <SuffixLabel>M</SuffixLabel>
@@ -167,10 +166,10 @@ export function ExerciseRow({
       <div style={{ ...cellShell, background: cellBg }}>
         {exerciseType === "weight_reps" && renderReps ? (
           <>
-            <input
-              type="number"
+            <NumberInput
               value={reps}
-              onChange={(e) => onRepsChange!(Number(e.target.value))}
+              onValueChange={onRepsChange!}
+              inputMode="numeric"
               style={{ ...inputBase, color: ink }}
             />
             <SuffixLabel>REPS</SuffixLabel>
