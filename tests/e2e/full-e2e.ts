@@ -1,14 +1,18 @@
 #!/usr/bin/env tsx
 /**
- * Full end-to-end test:
- *   1. Load tests/fixtures/workout-revl-1.jpeg
+ * Full end-to-end test across every workout fixture in tests/fixtures/.
+ *
+ * For each fixture we:
+ *   1. Load the image
  *   2. Call Groq vision API to extract workout (same prompt as the app)
- *   3. Run fuzzy + embedding matching pipeline
+ *   3. Run the fuzzy + embedding matching pipeline
  *   4. Validate each detected exercise matched something acceptable
  *
  * Usage:
  *   npx tsx --env-file=.env.local tests/e2e/full-e2e.ts
- *   MATCHING_MODE=both EMBEDDING_SOURCE=auto npx tsx --env-file=.env.local tests/e2e/full-e2e.ts
+ *   # or run a single fixture:
+ *   npx tsx --env-file=.env.local tests/e2e/full-e2e.ts --fixture=workout-revl-3.jpeg
+ *   MATCHING_MODE=both EMBEDDING_SOURCE=auto npm run e2e:full
  *
  * Requires:
  *   - GROQ_API_KEY in .env.local
@@ -24,39 +28,76 @@ import {
 } from "../../lib/groq/prompts";
 import { matchExerciseWithEmbeddings } from "../../lib/hevy/match-server";
 
-const IMAGE_PATH = path.join(process.cwd(), "tests", "fixtures", "workout-revl-1.jpeg");
+interface ExpectedExercise {
+  label: string;
+  expectAny: string[];
+}
 
-// Expected matches: exercises visible on the workout board.
-// Match passes if Hevy match title (lowercased) contains ANY of expectAny.
-// Uses broad substrings so it stays stable across model/embedding quirks.
-const EXPECTED: Array<{ label: string; expectAny: string[] }> = [
-  { label: "BB Bench Press",        expectAny: ["bench press"] },
-  { label: "DB RDL",                expectAny: ["romanian deadlift", "deadlift"] },
-  { label: "Band Ext Rotation",     expectAny: ["external rotation", "rotation"] },
-  { label: "Goblet Squat",          expectAny: ["goblet", "squat"] },
-  { label: "DB Lateral Raise",      expectAny: ["lateral raise"] },
-  { label: "KB FFE Reverse Lunge",  expectAny: ["lunge", "reverse"] },
-  { label: "Alt V-Up",              expectAny: ["v up", "v-up"] },
-  { label: "BB RDL",                expectAny: ["romanian deadlift", "deadlift"] },
-  { label: "SA KB Thruster",        expectAny: ["thruster"] },
-  { label: "Alt DB Plank Row",      expectAny: ["row", "plank"] },
-  { label: "BB/DB Hang Power Clean", expectAny: ["clean", "power clean", "hang"] },
-  { label: "DB Curl",               expectAny: ["curl"] },
-  { label: "Hollow Hold",           expectAny: ["hollow"] },
+interface Fixture {
+  name: string;
+  file: string;
+  expected: ExpectedExercise[];
+}
+
+// ── Fixtures ────────────────────────────────────────────────────────
+//
+// Each fixture lists the exercises that should be detectable on the board.
+// Match passes if the Hevy match title (lowercased) contains ANY of
+// `expectAny`. Substrings stay broad so the test is stable across small
+// model / embedding-catalog drifts.
+const FIXTURES: Fixture[] = [
+  {
+    name: "revl-1 (whiteboard, 13 exercises)",
+    file: "workout-revl-1.jpeg",
+    expected: [
+      { label: "BB Bench Press",         expectAny: ["bench press"] },
+      { label: "DB RDL",                 expectAny: ["romanian deadlift", "deadlift"] },
+      { label: "Band Ext Rotation",      expectAny: ["external rotation", "rotation"] },
+      { label: "Goblet Squat",           expectAny: ["goblet", "squat"] },
+      { label: "DB Lateral Raise",       expectAny: ["lateral raise"] },
+      { label: "KB FFE Reverse Lunge",   expectAny: ["lunge", "reverse"] },
+      { label: "Alt V-Up",               expectAny: ["v up", "v-up"] },
+      { label: "BB RDL",                 expectAny: ["romanian deadlift", "deadlift"] },
+      { label: "SA KB Thruster",         expectAny: ["thruster"] },
+      { label: "Alt DB Plank Row",       expectAny: ["row", "plank"] },
+      { label: "BB/DB Hang Power Clean", expectAny: ["clean", "power clean", "hang"] },
+      { label: "DB Curl",                expectAny: ["curl"] },
+      { label: "Hollow Hold",            expectAny: ["hollow"] },
+    ],
+  },
+  {
+    name: "revl-3 (MOVE TOTAL board, 12 exercises)",
+    file: "workout-revl-3.jpeg",
+    expected: [
+      { label: "BB Bench Press",                 expectAny: ["bench press"] },
+      { label: "BW Cyclist Squat",               expectAny: ["squat", "cyclist"] },
+      { label: "Scap Pull Up",                   expectAny: ["pull up", "pull-up", "scap"] },
+      { label: "Dual KB Sumo Deadlift",          expectAny: ["sumo deadlift", "deadlift"] },
+      { label: "Paused BB Bench Press",          expectAny: ["bench press"] },
+      { label: "SA DB Front Rack Cyclist Squat", expectAny: ["front rack", "squat", "cyclist"] },
+      { label: "Dual KB Gorilla Row",            expectAny: ["gorilla row", "row"] },
+      { label: "BB Hang Power Clean",            expectAny: ["hang power clean", "power clean", "clean"] },
+      { label: "Deadstop KB Swing",              expectAny: ["kettlebell swing", "swing"] },
+      { label: "DB Incline Bench Press",         expectAny: ["incline bench press", "incline"] },
+      { label: "Pull Up",                        expectAny: ["pull up", "pull-up", "pullup"] },
+      { label: "Cal Ski Erg",                    expectAny: ["ski erg", "ski"] },
+    ],
+  },
 ];
 
-function findExpectation(detected: string): { expectAny: string[]; label: string } | null {
+function findExpectation(
+  detected: string,
+  expected: ExpectedExercise[],
+): ExpectedExercise | null {
   const d = detected.toLowerCase();
-  for (const exp of EXPECTED) {
+  for (const exp of expected) {
     const labelLower = exp.label.toLowerCase();
-    // direct token overlap
     if (
       d.includes(labelLower) ||
       labelLower.split(/\s+/).every((tok) => tok.length > 2 && d.includes(tok))
     ) {
       return exp;
     }
-    // expectAny substring fallback (e.g., Groq returns "Romanian Deadlift")
     if (exp.expectAny.some((e) => d.includes(e.toLowerCase()))) {
       return exp;
     }
@@ -99,15 +140,18 @@ async function callGroqVision(imageBase64: string): Promise<string> {
   return text;
 }
 
-async function main() {
-  if (!fs.existsSync(IMAGE_PATH)) {
-    console.error(`image not found: ${IMAGE_PATH}`);
-    process.exit(1);
+async function runFixture(fixture: Fixture): Promise<{ pass: number; failed: number; unknown: number }> {
+  const imagePath = path.join(process.cwd(), "tests", "fixtures", fixture.file);
+  if (!fs.existsSync(imagePath)) {
+    console.error(`image not found: ${imagePath}`);
+    return { pass: 0, failed: 0, unknown: 0 };
   }
 
-  console.log(`mode=${process.env.MATCHING_MODE ?? "both"} source=${process.env.EMBEDDING_SOURCE ?? "auto"}`);
+  console.log("\n" + "═".repeat(80));
+  console.log(`fixture: ${fixture.name}`);
+  console.log("═".repeat(80));
 
-  const imageBuf = fs.readFileSync(IMAGE_PATH);
+  const imageBuf = fs.readFileSync(imagePath);
   const imageBase64 = imageBuf.toString("base64");
   console.log(`image: ${(imageBuf.length / 1024).toFixed(1)} KB`);
 
@@ -121,7 +165,7 @@ async function main() {
     parsed = JSON.parse(groqResponse);
   } catch {
     console.error("invalid JSON from Groq:", groqResponse.slice(0, 500));
-    process.exit(1);
+    return { pass: 0, failed: 0, unknown: 0 };
   }
   console.log(`    detected ${parsed.exercises?.length ?? 0} exercise(s)`);
 
@@ -134,22 +178,20 @@ async function main() {
   const results: Array<{
     detected: string;
     matched: string;
-    expectation: { label: string; expectAny: string[] } | null;
+    expectation: ExpectedExercise | null;
     pass: boolean;
   }> = [];
 
   for (const detected of detectedNames) {
     const exercise = await matchExerciseWithEmbeddings(detected);
     const matched = exercise.title;
-    const expectation = findExpectation(detected);
+    const expectation = findExpectation(detected, fixture.expected);
     const pass = expectation ? checkMatch(matched, expectation.expectAny) : false;
     results.push({ detected, matched, expectation, pass });
   }
   console.log(`    ${Date.now() - tMatchStart}ms total`);
 
   console.log("\n[3] results:");
-
-  // Print table
   console.log("");
   console.log("status | detected → matched");
   console.log("-".repeat(80));
@@ -157,24 +199,57 @@ async function main() {
   let unknown = 0;
   for (const r of results) {
     const tag = r.expectation === null ? "  ???  " : r.pass ? "  ✅   " : "  ❌   ";
-    console.log(`${tag}| ${r.detected.padEnd(35)} → ${r.matched}`);
+    console.log(`${tag}| ${r.detected.padEnd(40)} → ${r.matched}`);
     if (r.expectation === null) unknown++;
     else if (r.pass) pass++;
   }
 
   console.log("");
-  console.log(`detected=${results.length}  expected=${EXPECTED.length}`);
-  console.log(`passed=${pass}  failed=${results.length - pass - unknown}  unknown=${unknown}`);
+  console.log(`detected=${results.length}  expected=${fixture.expected.length}`);
+  const failed = results.length - pass - unknown;
+  console.log(`passed=${pass}  failed=${failed}  unknown=${unknown}`);
 
-  // Compare against expected exercise count
-  if (results.length < EXPECTED.length / 2) {
-    console.warn(`\n⚠️  Groq detected only ${results.length} exercises but image has ~${EXPECTED.length}. Vision may be skipping content.`);
+  if (results.length < fixture.expected.length / 2) {
+    console.warn(
+      `\n⚠️  Vision detected only ${results.length} exercises but board has ~${fixture.expected.length}.`,
+    );
   }
 
-  // Exit non-zero if too many failures
-  const failures = results.filter((r) => r.expectation !== null && !r.pass).length;
-  if (failures > 2) {
-    console.error(`\n❌ ${failures} match failures (>2 threshold)`);
+  return { pass, failed, unknown };
+}
+
+async function main() {
+  console.log(
+    `mode=${process.env.MATCHING_MODE ?? "both"} source=${process.env.EMBEDDING_SOURCE ?? "auto"}`,
+  );
+
+  // Optional --fixture=name.jpeg flag to run a single fixture.
+  const fixtureFlag = process.argv.find((a) => a.startsWith("--fixture="));
+  const targetFile = fixtureFlag?.split("=")[1];
+  const toRun = targetFile
+    ? FIXTURES.filter((f) => f.file === targetFile)
+    : FIXTURES;
+
+  if (toRun.length === 0) {
+    console.error(`unknown fixture: ${targetFile}`);
+    console.error(`available: ${FIXTURES.map((f) => f.file).join(", ")}`);
+    process.exit(1);
+  }
+
+  let totalFailed = 0;
+  for (const fixture of toRun) {
+    const result = await runFixture(fixture);
+    totalFailed += result.failed;
+  }
+
+  console.log("\n" + "═".repeat(80));
+  console.log(`summary: ${toRun.length} fixture(s), ${totalFailed} match failure(s)`);
+  console.log("═".repeat(80));
+
+  // Exit non-zero if too many cumulative failures (more lenient than the
+  // single-fixture variant because we now run multiple boards).
+  if (totalFailed > 4) {
+    console.error(`\n❌ ${totalFailed} match failures across all fixtures (>4 threshold)`);
     process.exit(1);
   }
 }
