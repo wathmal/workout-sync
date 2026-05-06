@@ -62,7 +62,7 @@ Full details in `docs/ARCHITECTURE.md`. Big picture:
 - **Hevy sync** is sequential per exercise (~1.5s each) — UI animates progress.
 - **E2E fixtures** in `tests/fixtures/`: `workout-revl-1.jpeg` (full-e2e), `workout-revl-2.heic` (heic-e2e).
 - **`server-only` + tsx**: scripts that import server-marked modules (prompts, embeddings, hevy/api) must run with `NODE_OPTIONS=--conditions=react-server` so the package resolves to its empty.js entry instead of the throwing default. All `npm run` scripts already set this — only matters if you invoke `tsx` directly.
-- **`prebuild` requires `HEVY_API_KEY`**. `npm run build` triggers `npm run refresh:hevy`, which paginates `GET /v1/exercise_templates` and rewrites `lib/data/hevy-exercises/catalog.json` so every shipped artifact has the latest officials + the developer's customs. Hard-fails when the key is missing — set it in `.env.local` (which the script auto-loads via `--env-file`) or export it in CI before invoking the build. Embeddings rebuild only when the catalog's exerciseId set changes (`--check-or-rebuild` skips otherwise).
+- **`prebuild` refreshes the Hevy catalog when possible**. `npm run build` triggers `npm run refresh:hevy`, which paginates `GET /v1/exercise_templates` and rewrites `lib/data/hevy-exercises/catalog.json` so every shipped artifact has the latest officials + the developer's customs. Soft-fails when `HEVY_API_KEY` is missing — the script warns and continues with the catalog already committed in the repo, so Docker / fork CI builds still work. Set the key in `.env.local` (which the script auto-loads via `--env-file`) to actually refresh. Embeddings rebuild only when the catalog's exerciseId set changes (`--check-or-rebuild` skips otherwise).
 
 ## When extending
 

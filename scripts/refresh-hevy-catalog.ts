@@ -44,17 +44,11 @@ interface PageResponse {
   exercise_templates: ExerciseTemplate[];
 }
 
-function requireApiKey(): string {
-  const key = process.env.HEVY_API_KEY;
-  if (!key) {
-    console.error(
-      "[refresh-hevy] HEVY_API_KEY is required for this script. " +
-        "Set it in .env.local or export it before running `npm run build` / `npm run refresh:hevy`. " +
-        "Get a key at https://hevy.com/settings?developer.",
-    );
-    process.exit(1);
-  }
-  return key;
+function readApiKey(): string | null {
+  // Soft-fail: catalog.json is committed in the repo, so a build without
+  // HEVY_API_KEY (e.g. Docker, fork CI) can still ship using the last
+  // refreshed snapshot. Warn so the operator knows the data is stale.
+  return process.env.HEVY_API_KEY ?? null;
 }
 
 async function fetchPage(apiKey: string, page: number): Promise<PageResponse> {
@@ -85,7 +79,14 @@ function isValidTemplate(raw: unknown): raw is ExerciseTemplate {
 }
 
 async function main() {
-  const apiKey = requireApiKey();
+  const apiKey = readApiKey();
+  if (!apiKey) {
+    console.warn(
+      "[refresh-hevy] HEVY_API_KEY not set — skipping refresh. The build will use the catalog.json already committed in lib/data/hevy-exercises/. " +
+        "Set HEVY_API_KEY in .env.local (or export it) to fetch the latest templates and the developer's customs.",
+    );
+    return;
+  }
   console.log(`[refresh-hevy] fetching exercise templates (pageSize=${PAGE_SIZE})…`);
 
   const all: ExerciseTemplate[] = [];
