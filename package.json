@@ -10,7 +10,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "prebuild": "npm run refresh:hevy && NODE_OPTIONS=--conditions=react-server tsx scripts/build-catalog-embeddings.ts --source=both --check-or-rebuild",
-    "refresh:hevy": "NODE_OPTIONS=--conditions=react-server tsx --env-file=.env.local scripts/refresh-hevy-catalog.ts",
+    "refresh:hevy": "NODE_OPTIONS=--conditions=react-server tsx --env-file-if-exists=.env.local scripts/refresh-hevy-catalog.ts",
     "refresh": "npm run refresh:hevy && NODE_OPTIONS=--conditions=react-server tsx scripts/build-catalog-embeddings.ts --source=both --check-or-rebuild",
     "build:embeddings": "NODE_OPTIONS=--conditions=react-server tsx scripts/build-catalog-embeddings.ts",
     "build:embeddings:both": "NODE_OPTIONS=--conditions=react-server tsx scripts/build-catalog-embeddings.ts --source=both",
