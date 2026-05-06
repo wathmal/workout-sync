@@ -24,14 +24,17 @@ const EMBEDDINGS_DIR = path.join(process.cwd(), "lib", "data", "exercise-embeddi
 interface Args {
   source: "auto" | "both" | "lm-studio" | "transformers";
   check: boolean;
+  checkOrRebuild: boolean;
 }
 
 function parseArgs(): Args {
   const args = process.argv.slice(2);
   let source: Args["source"] = "auto";
   let check = false;
+  let checkOrRebuild = false;
   for (const a of args) {
     if (a === "--check") check = true;
+    else if (a === "--check-or-rebuild") checkOrRebuild = true;
     else if (a.startsWith("--source=")) {
       const v = a.split("=")[1];
       if (v === "auto" || v === "both" || v === "lm-studio" || v === "transformers") {
@@ -42,7 +45,7 @@ function parseArgs(): Args {
       }
     }
   }
-  return { source, check };
+  return { source, check, checkOrRebuild };
 }
 
 function buildInputText(ex: { title: string }): string {
@@ -104,6 +107,16 @@ function checkUpToDate(key: "qwen3-8b" | "nomic"): boolean {
     const m = JSON.parse(fs.readFileSync(meta, "utf-8")) as CatalogMetadata;
     if (m.count !== HEVY_EXERCISES.length) return false;
     if (m.inputTemplate !== INPUT_TEMPLATE) return false;
+    // Compare exerciseId sets (order-independent) — catches refresh-runs
+    // where the count happens to stay the same but Hevy swapped or
+    // renamed templates.
+    if (Array.isArray(m.exerciseIds)) {
+      const fresh = new Set(HEVY_EXERCISES.map((e) => e.id));
+      if (m.exerciseIds.length !== fresh.size) return false;
+      for (const id of m.exerciseIds) {
+        if (!fresh.has(id)) return false;
+      }
+    }
     return true;
   } catch {
     return false;
@@ -111,7 +124,15 @@ function checkUpToDate(key: "qwen3-8b" | "nomic"): boolean {
 }
 
 async function main(): Promise<void> {
-  const { source, check } = parseArgs();
+  const { source, check, checkOrRebuild } = parseArgs();
+
+  // The build-side `wantLM` is broader than the check-side because in
+  // `auto` mode the main path tries LM first and falls back; the check
+  // path only considers LM "required" when the user explicitly asked
+  // for it.
+  const wantLM = source === "auto" || source === "both" || source === "lm-studio";
+  const wantTr = source === "auto" || source === "both" || source === "transformers";
+  const requiresLM = source === "lm-studio" || source === "both";
 
   if (check) {
     const okQwen = checkUpToDate("qwen3-8b");
@@ -124,10 +145,19 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  let didBuild = false;
+  if (checkOrRebuild) {
+    // Skip the (slow) embedding regeneration when the catalog hasn't
+    // changed — the prebuild step calls this after refresh-hevy.
+    const okLM = requiresLM ? checkUpToDate("qwen3-8b") : true;
+    const okTr = wantTr ? checkUpToDate("nomic") : true;
+    if (okLM && okTr) {
+      console.log("[build] embeddings up-to-date — skipping rebuild");
+      process.exit(0);
+    }
+    console.log("[build] catalog changed — rebuilding embeddings…");
+  }
 
-  const wantLM = source === "auto" || source === "both" || source === "lm-studio";
-  const wantTr = source === "auto" || source === "both" || source === "transformers";
+  let didBuild = false;
 
   if (wantLM) {
     const lm = new LMStudioProvider();
