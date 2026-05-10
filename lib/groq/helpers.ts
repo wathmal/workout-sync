@@ -2,6 +2,38 @@ import "server-only";
 
 import { WorkoutExercise, WorkoutSet } from "../types";
 import { matchExerciseWithEmbeddingsScored } from "../hevy/match-server";
+import { buildWorkoutSet, CoercedSetInput } from "../workout-set-builder";
+
+function parseDurationSeconds(raw: unknown): number {
+  if (typeof raw === "number" && Number.isFinite(raw)) return Math.round(raw);
+  if (typeof raw === "string") {
+    if (raw.includes(":")) {
+      const [mins, secs] = raw.split(":").map(Number);
+      return (mins || 0) * 60 + (secs || 0);
+    }
+    const n = parseInt(raw, 10);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
+}
+
+function parseFloatField(raw: unknown): number {
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  if (typeof raw === "string") {
+    const n = parseFloat(raw);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
+}
+
+function parseIntField(raw: unknown): number {
+  if (typeof raw === "number" && Number.isFinite(raw)) return Math.round(raw);
+  if (typeof raw === "string") {
+    const n = parseInt(raw, 10);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
+}
 
 /**
  * Parse the Groq API response and convert to WorkoutExercise array.
@@ -27,73 +59,14 @@ export async function parseGroqResponse(responseText: string): Promise<WorkoutEx
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sets: WorkoutSet[] = (ex.sets || []).map((set: any, setIndex: number) => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const baseSet: any = {
+          const coerced: CoercedSetInput = {
             set_number: set.set_number || setIndex + 1,
-            completed: false,
+            weight_kg: parseFloatField(set.kg ?? set.weight ?? set.weight_kg),
+            reps: parseIntField(set.reps ?? set.repetitions),
+            duration_seconds: parseDurationSeconds(set.duration_seconds ?? set.duration),
+            distance_meters: parseFloatField(set.distance ?? set.distance_meters),
           };
-
-          switch (exercise.type) {
-            case "weight_reps":
-              const weight = parseFloat(set.kg || set.weight || set.weight_kg || "0");
-              const reps = parseInt(set.reps || set.repetitions || "0", 10);
-              baseSet.weight_kg = weight;
-              baseSet.reps = reps;
-              baseSet.kg = weight;
-              baseSet.previous_weight_kg = weight;
-              baseSet.previous_reps = reps;
-              break;
-            case "reps_only":
-              const repsOnly = parseInt(set.reps || set.repetitions || "0", 10);
-              baseSet.reps = repsOnly;
-              baseSet.previous_reps = repsOnly;
-              break;
-            case "duration":
-              let durationSeconds = 0;
-              if (set.duration_seconds) {
-                durationSeconds = parseInt(set.duration_seconds || "0", 10);
-              } else if (set.duration) {
-                const durationStr = String(set.duration);
-                if (durationStr.includes(":")) {
-                  const [mins, secs] = durationStr.split(":").map(Number);
-                  durationSeconds = (mins || 0) * 60 + (secs || 0);
-                } else {
-                  durationSeconds = parseInt(durationStr || "0", 10);
-                }
-              }
-              baseSet.duration_seconds = durationSeconds;
-              baseSet.previous_duration_seconds = durationSeconds;
-              break;
-            case "distance_duration":
-              const distance = parseFloat(set.distance || set.distance_meters || "0");
-              let distanceDurationSeconds = 0;
-              if (set.duration_seconds) {
-                distanceDurationSeconds = parseInt(set.duration_seconds || "0", 10);
-              } else if (set.duration) {
-                const durationStr = String(set.duration);
-                if (durationStr.includes(":")) {
-                  const [mins, secs] = durationStr.split(":").map(Number);
-                  distanceDurationSeconds = (mins || 0) * 60 + (secs || 0);
-                } else {
-                  distanceDurationSeconds = parseInt(durationStr || "0", 10);
-                }
-              }
-              baseSet.distance_meters = distance;
-              baseSet.duration_seconds = distanceDurationSeconds;
-              baseSet.previous_distance_meters = distance;
-              baseSet.previous_duration_seconds = distanceDurationSeconds;
-              break;
-            default:
-              const fallbackWeight = parseFloat(set.kg || set.weight || "0");
-              const fallbackReps = parseInt(set.reps || set.repetitions || "0", 10);
-              baseSet.weight_kg = fallbackWeight;
-              baseSet.reps = fallbackReps;
-              baseSet.kg = fallbackWeight;
-              baseSet.previous_weight_kg = fallbackWeight;
-              baseSet.previous_reps = fallbackReps;
-          }
-
-          return baseSet;
+          return buildWorkoutSet(exercise.type, coerced);
         });
 
         console.log(`   Sets: ${sets.length}`);

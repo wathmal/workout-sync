@@ -45,3 +45,11 @@ next-env.d.ts
 .cursor
 .continue
 .claude
+
+# food embedding catalog: too big to commit (Qwen3-8B = ~129MB).
+# Rebuild via `tsx scripts/build-food-embeddings.ts --source=lm-studio`.
+# Nomic catalog (~24MB) may be committed.
+lib/data/food-embeddings/qwen3-8b.bin
+
+# agent harness telemetry (AGENT_DEBUG_LOG=1 writes JSONL traces here)
+.agent-runs/

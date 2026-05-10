@@ -62,7 +62,15 @@ export function convertHevyToExercise(hevy: HevyExerciseTemplate): Exercise {
 export const HEVY_EXERCISES = allHevyExercises;
 
 const exerciseIdToPosition = new Map<string, number>();
-HEVY_EXERCISES.forEach((ex, i) => exerciseIdToPosition.set(ex.id, i));
+const exerciseIdToTemplate = new Map<string, HevyExerciseTemplate>();
+HEVY_EXERCISES.forEach((ex, i) => {
+  exerciseIdToPosition.set(ex.id, i);
+  exerciseIdToTemplate.set(ex.id, ex);
+});
+
+export function getHevyTemplateById(id: string): HevyExerciseTemplate | null {
+  return exerciseIdToTemplate.get(id) ?? null;
+}
 
 export function getExerciseCount(): number {
   return HEVY_EXERCISES.length;
@@ -297,7 +305,7 @@ export async function matchExerciseImplScored(
 }
 
 export function getExerciseById(id: string): Exercise | null {
-  const hevy = HEVY_EXERCISES.find((ex) => ex.id === id);
+  const hevy = exerciseIdToTemplate.get(id);
   return hevy ? convertHevyToExercise(hevy) : null;
 }
 

@@ -14,6 +14,8 @@ import {
   isHeic,
   convertHeicToJpeg,
 } from "@/lib/image-utils";
+import { runAgent, getAgentHarnessProvider } from "@/lib/agents";
+import { AgentLoopError } from "@/lib/agents/types";
 
 type VisionProvider = "groq" | "lm-studio";
 
@@ -183,6 +185,45 @@ export async function POST(request: NextRequest) {
             details: error instanceof Error ? error.message : "Unknown error",
           },
           { status: 400 }
+        );
+      }
+    }
+
+    // Agent harness path: bypasses single-shot extraction entirely.
+    const agentProvider = getAgentHarnessProvider();
+    if (agentProvider !== "off") {
+      console.log(`🤖 Agent harness active: ${agentProvider}`);
+      try {
+        const agentResult = await runAgent(groqImageBase64, groqMimeType);
+        const scores = agentResult.workout
+          .map((ex) => ex.matchScore ?? 0)
+          .filter((s) => s > 0);
+        const avgScore = scores.length > 0
+          ? scores.reduce((a, b) => a + b, 0) / scores.length
+          : 0;
+        return NextResponse.json({
+          success: true,
+          exercises: agentResult.workout,
+          raw_response: agentResult.telemetrySummary,
+          extractedDate: extractedDate?.toISOString() || null,
+          workoutStartDate: workoutStartTime?.date.toISOString() || null,
+          workoutStartTime: workoutStartTime?.timeString || null,
+          convertedImageBase64,
+          modelName: agentResult.modelLabel,
+          confidence: Math.round((avgScore / 150) * 100),
+        });
+      } catch (err) {
+        const isAgentErr = err instanceof AgentLoopError;
+        const status = isAgentErr && err.reason === "timeout" ? 504 : isAgentErr ? 422 : 500;
+        const details = err instanceof Error ? err.message : "Unknown error";
+        console.error("❌ Agent harness failed:", err);
+        return NextResponse.json(
+          {
+            error: "Agent extraction failed",
+            details,
+            agentProvider,
+          },
+          { status },
         );
       }
     }

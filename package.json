@@ -15,11 +15,17 @@
     "build:embeddings": "NODE_OPTIONS=--conditions=react-server tsx scripts/build-catalog-embeddings.ts",
     "build:embeddings:both": "NODE_OPTIONS=--conditions=react-server tsx scripts/build-catalog-embeddings.ts --source=both",
     "build:embeddings:check": "NODE_OPTIONS=--conditions=react-server tsx scripts/build-catalog-embeddings.ts --check",
+    "build:food-embeddings": "NODE_OPTIONS=--conditions=react-server tsx scripts/build-food-embeddings.ts",
+    "build:food-embeddings:both": "NODE_OPTIONS=--conditions=react-server tsx scripts/build-food-embeddings.ts --source=both",
+    "build:food-embeddings:check": "NODE_OPTIONS=--conditions=react-server tsx scripts/build-food-embeddings.ts --check",
     "e2e:matching": "NODE_OPTIONS=--conditions=react-server tsx --env-file=.env.local tests/e2e/test-matching-e2e.ts",
     "e2e:full": "NODE_OPTIONS=--conditions=react-server tsx --env-file=.env.local tests/e2e/full-e2e.ts",
     "e2e:heic": "NODE_OPTIONS=--conditions=react-server tsx --env-file=.env.local tests/e2e/heic-e2e.ts",
     "debug:match": "NODE_OPTIONS=--conditions=react-server tsx scripts/debug-match.ts",
-    "compare:modes": "NODE_OPTIONS=--conditions=react-server tsx scripts/compare-modes.ts"
+    "debug:food-match": "NODE_OPTIONS=--conditions=react-server tsx scripts/debug-food-match.ts",
+    "test:web-lookup": "NODE_OPTIONS=--conditions=react-server tsx --env-file-if-exists=.env.local scripts/test-web-lookup.ts",
+    "compare:modes": "NODE_OPTIONS=--conditions=react-server tsx scripts/compare-modes.ts",
+    "agent:extract": "NODE_OPTIONS=--conditions=react-server tsx --env-file-if-exists=.env.local scripts/agent-extract.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
