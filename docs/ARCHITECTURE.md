@@ -20,6 +20,8 @@ upload → /api/process-workout (Groq) → fuzzy + embedding match (Hevy catalog
 
 EXIF date extracted from image; falls back to manual pick.
 
+When `AGENT_HARNESS_PROVIDER` is not `off`, `/api/process-workout` swaps the single-shot Groq call + post-hoc match for an iterative tool-use loop (see *Agent harness*). Response shape is byte-compatible — downstream review/sync flow is unchanged.
+
 ## Directory layout
 
 ```
@@ -39,12 +41,18 @@ lib/
   hevy/                api.ts, exercises.ts, fuzzy-match.ts (+ test)
   groq/                helpers.ts, prompts.ts
   embeddings/          pluggable provider system (LM Studio / Transformers.js)
+  agents/              tool-use harness (feature-flagged extraction path)
+    providers/         claude-cli / groq / lm-studio adapters + openai-shape
+    __tests__/
   data/
-    hevy-exercises/    5 JSON snapshots merged at startup
+    hevy-exercises/    Hevy template catalog (refreshed by prebuild)
     exercise-embeddings/ pre-computed catalogs (built via script)
   mock-data.ts         fixtures + workout helpers (mixed concerns — split later)
+  workout-set-builder.ts  shared switch over Exercise.type (used by groq + agents paths)
   types.ts, utils.ts, image-utils.ts
 scripts/               build/debug tooling (build:embeddings etc.)
+  agent-tools/         CLI shims invoked by claude-cli adapter
+  agent-extract.ts     manual try-it for the agent harness
 tests/e2e/             slow, hits real APIs
 ```
 
@@ -68,9 +76,54 @@ tests/e2e/             slow, hits real APIs
 - Response: JSON `{ exercises: [{ name, sets: [{ kg, reps }] }] }`
 - Fallback: returns mock data if key missing / network error / rate limit. UI shows yellow warning banner. Detection: `exercises[0].title === "Push Press"` (mock indicator — fragile, replace with explicit flag).
 
+## Agent harness
+
+Feature-flagged alternative to single-shot Groq vision. When `AGENT_HARNESS_PROVIDER` is set to anything other than `off`, `/api/process-workout` routes through a tool-use loop instead of the single-shot path. Default `off` — existing behavior unchanged.
+
+**Why.** Single-shot vision misroutes ambiguous rows (compound exercises, unusual abbreviations, mixed equipment). The agent iterates: search the catalog, narrow candidates, verify equipment/type, then commit a final `WorkoutExercise[]` via the terminal `proposeWorkout` tool.
+
+**Providers (v1).**
+- `claude-cli` — spawns `claude -p` subprocess. Highest accuracy. ~3-6 min/run, ~$0.30-0.50 (Opus). Self-hosted-loop kind: claude drives its own internal loop; the adapter parses `--output-format stream-json` events and derives the agent tool name from `Bash(npx tsx scripts/agent-tools/<name>.ts ...)` commands. Tool shims write the final workout to a tmp sentinel JSON. Production deploys without the `claude` binary won't work — local-dev / self-hosted only.
+- `groq` — Llama 4 Scout via OpenAI-compat `chat.completions` with `tools`. ~30-60s/run, <$0.001. `tool_choice: required` to suppress prose drift. 429 handler honors `Retry-After` header and Groq's "try again in Xs" body hint, with exponential backoff fallback (default 3 retries, capped at 60s wait).
+- `lm-studio` — OpenAI-compat at `LM_STUDIO_URL` (default `http://localhost:1234/v1`). Default model `nvidia/nemotron-3-nano-omni`. Some local models emit XML-style tool calls (`<tool_call><function=NAME><parameter=KEY>VALUE</parameter></function></tool_call>`) inside `reasoning_content` instead of `tool_calls`; the adapter parses those and synthesizes OpenAI-shape calls.
+
+**Tools.** Defined once in `lib/agents/tools.ts`. `toOpenAITools()` / `toAnthropicTools()` / `toCliBashAllowlist()` derive per-provider shape from a single source of truth.
+- `searchCatalog(query, limit?, kind?)` — wraps `searchExercisesScored()`
+- `getExerciseDetails(id)` — wraps `getHevyTemplateById()` (id-keyed Map, O(1))
+- `expandAbbreviations(text)` — wraps `expandAbbreviations` from `lib/exercise-abbreviations.ts`
+- `proposeWorkout(exercises[])` — terminal. Validates id + set-shape against `Exercise.type`, returns `WorkoutExercise[]` shaped identically to `parseGroqResponse` output via shared `lib/workout-set-builder.ts`.
+
+**Loop control** (`lib/agents/match-loop.ts`):
+- `AGENT_MAX_ITERATIONS` (default 30) hard cap; throws `AgentLoopError("max_iterations")` on exceed.
+- 3 consecutive `proposeWorkout` validation failures → `AgentLoopError("propose_validation_failed")`.
+- Unknown tool name / malformed args returned to model as `{ ok: false, error }` so it can self-correct.
+- 429s on iterative providers transparently retried inside `openai-shape.ts` — they don't count toward the iteration cap.
+
+**Telemetry** (`lib/agents/telemetry.ts`). Logs per-turn + per-tool-call to console with `[agent:<runId>]` prefix:
+```
+[agent:moz0...] turn 0 tool_use toolCalls=1
+[agent:moz0...] → searchCatalog({"query":"barbell bench press","limit":5})
+[agent:moz0...] ← searchCatalog ok: 5 results
+```
+`AGENT_DEBUG_LOG=1` additionally appends JSONL events to `.agent-runs/<runId>.jsonl` (gitignored). The `finalize()` summary string becomes the API response's `raw_response` so the existing UI raw-response panel keeps working.
+
+**CLI shims** (`scripts/agent-tools/`). Each tool has a thin wrapper script callable as `npx tsx scripts/agent-tools/<name>.ts '<json>'`. The shim reads `argv[2]`, dispatches via `dispatchTool`, prints the result JSON to stdout. `_silence.ts` redirects `console.log` (catalog boot prints) to stderr so stdout stays clean for the parent's JSON parse. `propose-workout.ts` additionally writes the assembled workout to `AGENT_RESULT_PATH` for the claude-cli adapter to read post-exit.
+
+**Response shape.** Agent path returns the same envelope as the single-shot path (`exercises`, `modelName`, `confidence`, `extractedDate`, `raw_response`, `convertedImageBase64`). `app/_providers/workout-provider.tsx` consumers don't change. `modelName` reflects the active provider, e.g. `"Llama 4 Scout · Groq (agent)"`.
+
+**Manual try-it.**
+```bash
+AGENT_HARNESS_PROVIDER=groq      npm run agent:extract -- tests/fixtures/workout-revl-1.jpeg
+AGENT_HARNESS_PROVIDER=lm-studio npm run agent:extract -- tests/fixtures/workout-revl-1.jpeg
+AGENT_HARNESS_PROVIDER=claude-cli npm run agent:extract -- tests/fixtures/workout-revl-1.jpeg
+
+# Forensic JSONL trace
+AGENT_DEBUG_LOG=1 AGENT_HARNESS_PROVIDER=groq npm run agent:extract -- tests/fixtures/workout-revl-1.jpeg
+```
+
 ## Exercise matching
 
-Catalog: 453 exercises (429 official + 24 custom), merged from 5 JSON snapshots.
+Catalog: 459 exercises (433 official + 26 custom), refreshed from the Hevy API on every `prebuild`.
 
 **Fuzzy score** (max 150, threshold ≥60):
 - Levenshtein-based similarity (0-100)
@@ -127,6 +180,15 @@ podman run -d -p 3000:3000 \
 | `EMBEDDING_SOURCE` | no | `off` | `auto` / `lm-studio` / `transformers` / `off` |
 | `EMBEDDING_BOOST_MAX` | no | `30` | Max additive embedding boost in `both` mode |
 | `EMBEDDING_COS_THRESHOLD` | no | `0.55` | Cosine score below this contributes 0 boost |
+| `AGENT_HARNESS_PROVIDER` | no | `off` | `off` / `groq` / `lm-studio` / `claude-cli`. When non-`off`, replaces single-shot extraction with tool-use loop |
+| `AGENT_MAX_ITERATIONS` | no | `30` | Loop turn cap (also `--max-turns` for `claude-cli`) |
+| `AGENT_TIMEOUT_MS` | no | `240000` | Subprocess kill timeout (`claude-cli` only) |
+| `AGENT_DEBUG_LOG` | no | unset | `=1` writes JSONL traces to `.agent-runs/` |
+| `GROQ_AGENT_MODEL` | no | `meta-llama/llama-4-scout-17b-16e-instruct` | Override Groq model |
+| `LM_STUDIO_AGENT_MODEL` | no | `nvidia/nemotron-3-nano-omni` | Override LM Studio model |
+| `LM_STUDIO_MAX_TOKENS` | no | `8192` | Local model token budget |
+| `LM_STUDIO_TEMPERATURE` | no | `0.1` | Local model temperature |
+| `CLAUDE_CLI_BIN` | no | `claude` | Override CLI binary path (claude-cli adapter) |
 
 Container ships with embeddings disabled. To enable:
 
