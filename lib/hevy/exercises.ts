@@ -48,11 +48,20 @@ export interface ScoredExercise {
 const allHevyExercises: HevyExerciseTemplate[] =
   catalog.exercise_templates as HevyExerciseTemplate[];
 
+// Hevy exposes a few set-shape variants beyond the four our UI handles. Normalize
+// here so the rest of the app can keep its narrow Exercise["type"] union.
+// `bodyweight_weighted` (e.g. Weighted Pull-Up, Sit Up (Weighted)) accepts
+// weight_kg + reps, identical to weight_reps for sync purposes.
+function normalizeHevyType(t: string): Exercise["type"] {
+  if (t === "bodyweight_weighted") return "weight_reps";
+  return t as Exercise["type"];
+}
+
 export function convertHevyToExercise(hevy: HevyExerciseTemplate): Exercise {
   return {
     id: hevy.id,
     title: hevy.title,
-    type: hevy.type as Exercise["type"],
+    type: normalizeHevyType(hevy.type),
     primary_muscle_group: hevy.primary_muscle_group,
     secondary_muscle_groups: hevy.secondary_muscle_groups,
     is_custom: hevy.is_custom,
