@@ -350,8 +350,9 @@ export default function ReviewPage() {
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto" }}>
       {/* Header */}
-      <div style={{ padding: "24px 40px 16px" }}>
+      <div className="edit-page-header" style={{ padding: "24px 40px 16px" }}>
         <div
+          className="edit-heading-row"
           style={{
             display: "flex",
             alignItems: "flex-end",
@@ -363,7 +364,7 @@ export default function ReviewPage() {
           <div>
             <Overline>STEP 02 · EDIT</Overline>
             <h1
-              className="text-headline-lg"
+              className="text-headline-lg edit-heading"
               style={{
                 color: "var(--color-text-primary)",
                 margin: "8px 0 0",
@@ -444,7 +445,7 @@ export default function ReviewPage() {
               />
             </h1>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div className="edit-actions" style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <WGhost onClick={handleDiscard} disabled={isSyncing}>
               Discard
             </WGhost>
@@ -474,7 +475,7 @@ export default function ReviewPage() {
       </div>
 
       {/* Tonal break */}
-      <div style={{ background: "var(--color-low)", padding: "20px 40px 32px" }}>
+      <div className="edit-page-body" style={{ background: "var(--color-low)", padding: "20px 40px 32px" }}>
         <div
           className="edit-grid"
           style={{
@@ -502,7 +503,7 @@ export default function ReviewPage() {
               <div>
                 <Overline>DURATION</Overline>
                 <div
-                  className="text-headline-md"
+                  className="text-headline-md stat-cell-value"
                   style={{
                     color: "var(--color-text-primary)",
                     marginTop: 2,
@@ -516,6 +517,7 @@ export default function ReviewPage() {
                     min={1}
                     value={durationMinutes}
                     onChange={(e) => setDurationMinutes(Math.max(1, Number(e.target.value) || 0))}
+                    className="stat-cell-input"
                     style={{
                       width: 56,
                       background: "transparent",
@@ -550,7 +552,7 @@ export default function ReviewPage() {
                 <div key={label}>
                   <Overline>{label}</Overline>
                   <div
-                    className="text-headline-md"
+                    className="text-headline-md stat-cell-value"
                     style={{
                       color: "var(--color-text-primary)",
                       marginTop: 2,

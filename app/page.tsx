@@ -133,6 +133,7 @@ export default function UploadPage() {
 
   return (
     <div
+      className="upload-page-shell"
       style={{
         padding: "20px 40px 24px",
         maxWidth: 1280,
@@ -177,7 +178,7 @@ export default function UploadPage() {
         <div>
           <Overline>STEP 01 · CAPTURE</Overline>
           <h1
-            className="text-display-sm"
+            className="text-display-sm upload-headline"
             style={{
               color: "var(--color-text-primary)",
               margin: "8px 0 8px",

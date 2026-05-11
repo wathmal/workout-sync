@@ -53,7 +53,7 @@ export default function SyncPage() {
   };
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 40px" }}>
+    <div className="sync-page-shell" style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 40px" }}>
       {/* Hero */}
       <div
         className="web-grid-6040"
@@ -69,7 +69,7 @@ export default function SyncPage() {
           <Overline color="var(--color-tertiary)">STEP 03 · SYNCED</Overline>
 
           <h1
-            className="text-display-md"
+            className="text-display-md sync-display"
             style={{
               fontSize: 80,
               lineHeight: 0.92,
@@ -208,6 +208,7 @@ export default function SyncPage() {
             return (
               <div
                 key={i}
+                className="sync-logged-row"
                 style={{
                   background: "var(--color-card)",
                   borderRadius: "var(--radius-md)",
@@ -218,7 +219,7 @@ export default function SyncPage() {
                   padding: "10px 14px",
                 }}
               >
-                <div>
+                <div className="sync-logged-ident">
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <EquipBadge official={!ex.is_custom}>{guessEquipment(ex.title)}</EquipBadge>
                     <span
@@ -241,18 +242,19 @@ export default function SyncPage() {
                   </div>
                 </div>
                 <div
-                  className="text-body-sm"
+                  className="text-body-sm sync-logged-summary"
                   style={{ color: "var(--color-text-tertiary)", fontWeight: 500, fontSize: 12 }}
                 >
                   {summary}
                 </div>
                 <div
-                  className="font-mono-sm"
+                  className="font-mono-sm sync-logged-volume"
                   style={{ color: "var(--color-text-primary)", fontWeight: 500 }}
                 >
                   {volume}
                 </div>
                 <div
+                  className="sync-logged-check"
                   style={{
                     width: 18,
                     height: 18,

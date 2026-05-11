@@ -189,3 +189,84 @@ html { scroll-behavior: smooth; }
     grid-template-columns: 1fr 1fr !important;
   }
 }
+
+/* ────────────────────────────────────────────────────────────────
+   Phone-width tightening (≤600px). Below this, the v3 layout was
+   built around editorial slack that doesn't fit; clamp paddings,
+   stack header tokens, and shrink the heading + stat strip.
+   ──────────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  /* Edit page outer paddings */
+  .edit-page-header {
+    padding: 16px 20px 12px !important;
+  }
+  .edit-page-body {
+    padding: 16px 20px 24px !important;
+  }
+  /* Heading + date/time pills + buttons stack vertically */
+  .edit-heading-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .edit-heading {
+    font-size: 22px !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .edit-actions {
+    width: 100%;
+    justify-content: flex-end !important;
+  }
+  /* Stat strip: numbers shrink so no overflow */
+  .web-stat-strip {
+    padding: 10px 14px !important;
+    gap: 10px !important;
+  }
+  .web-stat-strip .stat-cell-value {
+    font-size: 18px !important;
+  }
+  .web-stat-strip .stat-cell-input {
+    width: 44px !important;
+    font-size: 18px !important;
+  }
+  /* Exercise-card header allows wrapping */
+  .exercise-card-header {
+    flex-wrap: wrap !important;
+    row-gap: 8px !important;
+  }
+
+  /* Upload page */
+  .upload-page-shell {
+    padding: 16px 20px !important;
+  }
+  .upload-headline {
+    font-size: 28px !important;
+  }
+
+  /* Sync page */
+  .sync-page-shell {
+    padding: 16px 20px !important;
+  }
+  .sync-display {
+    font-size: 56px !important;
+    letter-spacing: -1.6px !important;
+  }
+  /* Logged-exercise rows: drop fixed-width columns to two stacked
+     halves so the exercise title + meta gets full row width and the
+     volume/sets summary sits below. */
+  .sync-logged-row {
+    grid-template-columns: 1fr auto !important;
+    grid-template-areas:
+      "ident check"
+      "meta  check" !important;
+    row-gap: 4px !important;
+  }
+  .sync-logged-row > .sync-logged-ident   { grid-area: ident; }
+  .sync-logged-row > .sync-logged-summary { grid-area: meta; }
+  .sync-logged-row > .sync-logged-volume  {
+    grid-area: meta;
+    text-align: right;
+  }
+  .sync-logged-row > .sync-logged-check   { grid-area: check; }
+}

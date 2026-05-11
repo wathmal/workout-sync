@@ -101,7 +101,7 @@ export function ExerciseCard({
         </div>
       )}
 
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+      <div className="exercise-card-header" style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
         {/* Drag handle */}
         <div style={{ cursor: "grab", opacity: 0.4, marginTop: 4 }} aria-hidden>
           <svg width="14" height="20" viewBox="0 0 12 20" fill="none">
