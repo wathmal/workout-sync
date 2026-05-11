@@ -84,8 +84,14 @@ export function ExerciseRow({
   const renderDistance = exerciseType === "distance_duration" && onDistanceChange;
   const renderDuration = (exerciseType === "duration" || exerciseType === "distance_duration") && onDurationChange;
 
+  // Round to 2 decimals — float multiplication of decimal weights (e.g. 6.6 * 6)
+  // otherwise renders trailing 999...994.
   const volume =
-    exerciseType === "weight_reps" ? weight * reps : exerciseType === "reps_only" ? reps : 0;
+    exerciseType === "weight_reps"
+      ? Math.round(weight * reps * 100) / 100
+      : exerciseType === "reps_only"
+        ? reps
+        : 0;
 
   // Density grid: SET / WEIGHT / REPS / VOLUME / done / delete
   return (

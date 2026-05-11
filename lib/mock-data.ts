@@ -336,7 +336,7 @@ export function calculateWorkoutMetrics(exercises: WorkoutExercise[]): {
 
   return {
     duration_minutes,
-    total_volume_kg,
+    total_volume_kg: Math.round(total_volume_kg * 100) / 100,
     total_sets,
   };
 }
