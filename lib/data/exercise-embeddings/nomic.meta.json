@@ -3,7 +3,7 @@
   "modelId": "nomic-ai/nomic-embed-text-v1.5",
   "catalogKey": "nomic",
   "dim": 768,
-  "count": 459,
+  "count": 461,
   "exerciseIds": [
     "018ADC12",
     "01A35BF9",
@@ -231,6 +231,7 @@
     "818BA121",
     "8293E554",
     "8347DFD1",
+    "835a912d-d0ef-49c5-bb89-101e7fa8e41a",
     "8372BBCC",
     "84325755",
     "84A77566",
@@ -298,6 +299,7 @@
     "A2D838BD",
     "A351AED7",
     "A41C7261",
+    "a4f4050e-251f-4850-aeb6-43f39a7e7750",
     "A57D38D5",
     "A5AC6449",
     "A69FF221",
@@ -465,6 +467,6 @@
     "FFC106CB",
     "FFDA283B"
   ],
-  "builtAt": "2026-05-06T00:05:12.102Z",
+  "builtAt": "2026-05-26T01:07:04.916Z",
   "inputTemplate": "title-v1"
 }
