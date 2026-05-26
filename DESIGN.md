@@ -1,32 +1,32 @@
-# Workout Sync Design System: The Training Log
+# Fitness Dashboard — Design System
 
-**Version 1.1 · Photo → Hevy Workout Pipeline**
+**Version 0.3 · Desktop · Single-user**
 
-> **Changelog v1.1 (Density pass).** Outer paddings, card paddings, type
-> sizes and component dimensions tightened across the web column to favor
-> data density without sacrificing the editorial voice. The principles in
-> §1 are unchanged; only the geometric specs in §2.3 (Spacing), §2.4
-> (Radius), §3 (Components), and §4 (Layout) reflect the tighter values.
-> Mobile column unchanged.
+Trimmed Voqi design system for personal fitness dashboard. Tokens (color, type, spacing) inherit Voqi Foundations v1.1 so dashboard read as same product family.
+
+Doc capture **foundations and decisions**, not implementation. Token values here = foundation; component specs (pixel paddings, exact heights, opacity) live in code. Need `surface-card` value? Read here. Need exact padding of race-timeline label box? Read `dashboard.html`.
 
 ---
 
-## 1. Creative North Star: "The Training Log"
+## 1. Principles
 
-Workout Sync is a **training log** — a quiet, premium space where a session captured on paper or whiteboard becomes a clean, structured record in Hevy. Sets and reps are not flashcards to be flipped; they are entries worth reviewing, correcting, and committing with care.
+Dashboard answer three questions at glance:
 
-This system rejects two common patterns in fitness apps:
+- **What needs attention?** What's left this week.
+- **What's this week?** Planned, done, stale muscles, weekly progress.
+- **What's the year?** Race calendar, body comp trends, body over time.
 
-- **Bro gamification** — leaderboards, screaming PR badges, neon flame icons, pumping iron mascots. Workout Sync treats the lifter as a serious adult.
-- **Sterile spreadsheet utility** — bare grids, tiny fonts, dense rows of numbers. Workout Sync treats a session log with editorial respect.
+Three principles follow:
 
-We aim for the feeling of a high-end magazine that happens to read your handwriting. Each exercise gets typographic weight. Each match suggestion gets attentive review. Each successful sync is acknowledged without theatrics.
+1. **Three horizons, one panel.** Every block answer question at one time scale. Layout put them close so scan "today" → "this week" → "this year" without context-switch. Overview page canonical: timeline (year) → weekly agenda (week) → body shape + trend chart (today + trend).
 
-### Three guiding principles
+2. **Surface, don't alarm.** Dashboard tell what true. No yell ("OVERDUE!"), no celebrate ("YOU CRUSHED IT!"), no shame ("missed three workouts"). Stale muscles = amber, not red. Days till race = number, not flame. Calories over target = warning, not error. Information = deliverable. You decide.
 
-1. **The exercise is the hero.** On any screen featuring an exercise, the exercise name is the largest, most confident element. Match score, equipment tag, set/rep grid — everything else orbits it.
-2. **Boundaries through tone, not lines.** Sections separate by surface-color shifts. We do not draw 1px borders to group rows of sets.
-3. **Asymmetry over uniformity.** When multiple exercises share a screen, the one currently being reviewed earns more space. Identical grids feel like spreadsheets; varied rhythm feels like an editorial layout.
+3. **Hierarchy through tone and space, not lines.** Sections separate by surface-color shifts (tables = only exception). Block that matter most this week take more space. Identical 3-up grids flatten hierarchy; varied rhythm read editorial.
+
+Plus one posture rule from Voqi admin:
+
+> **Vertical real estate = scarcest resource.** Every block earn height. Chrome with no data (decorative filter bars, page sub-headers, status rows restating other surfaces) folded into top nav or cut.
 
 ---
 
@@ -34,886 +34,374 @@ We aim for the feeling of a high-end magazine that happens to read your handwrit
 
 ### 2.1 Color
 
-#### Brand colors (theme-invariant)
+#### Brand
 
-| Token                    | Hex                                                 | Usage                                                 |
-|--------------------------|-----------------------------------------------------|-------------------------------------------------------|
-| `brand-primary`          | `#9100D0`                                           | Brand purple — icons, active states, accents          |
-| `brand-primary-light`    | `#AE33ED`                                           | Gradient terminus, hover states                       |
-| `brand-primary-gradient` | `linear-gradient(135deg, #9100D0 0%, #AE33ED 100%)` | Hero CTAs (Upload, Sync), primary actions             |
-| `brand-secondary`        | `#006C4C`                                           | Match confidence bars, sync success (light theme)     |
-| `brand-secondary-light`  | `#4DD4A3`                                           | Match confidence (dark theme), positive states        |
-| `brand-tertiary`         | `#FF7849`                                           | Sync-complete celebration moment                      |
-| `brand-tertiary-light`   | `#FFA882`                                           | Tertiary on dark surfaces                             |
+| Token | Hex | Usage |
+|---|---|---|
+| `brand-primary` | `#9100D0` | Deep violet. Icons + headings on light. Gradient start. |
+| `brand-accent` | `#AE33ED` | Lighter violet. Active states on dark. Gradient end. |
+| `brand-gradient` | `linear-gradient(135deg, #9100D0 0%, #AE33ED 100%)` | Single, rare primary action. |
+| `brand-mark` | `#CF57FF` | Logo SVG only — never product UI. |
 
-The **tertiary coral** is reserved exclusively for the sync-complete moment — the brief flourish when all exercises have pushed to Hevy successfully. No streaks, no PR badges, no decorative use. If you find yourself reaching for tertiary in a static UI element, you are using it wrong.
+**Gradient sacred.** Same angle, same stops, everywhere. One gradient element per page max. Mark most important action in context: Sync, Save Workout, Log Meal, Refresh.
 
-#### Semantic colors
+#### Semantic
 
-| Token              | Light     | Dark      | Usage                                          |
-|--------------------|-----------|-----------|------------------------------------------------|
-| `semantic-success` | `#006C4C` | `#4DD4A3` | Successful exercise sync, match confirmed      |
-| `semantic-warning` | `#B8860B` | `#F5C150` | Low-confidence match, mock-data fallback       |
-| `semantic-error`   | `#BA1A1A` | `#FF6B6B` | Sync failure, Groq vision error, no API key    |
-| `semantic-info`    | `#0066CC` | `#5BA3F5` | Tooltips, hints, EXIF date notes               |
+| Token | Light | Dark | Usage |
+|---|---|---|---|
+| `semantic-success` | `#006C4C` | `#4DD4A3` | Goals hit, positive deltas |
+| `semantic-warning` | `#8C6500` | `#FFC94A` | Stale muscle, calorie surplus |
+| `semantic-error` | `#BA1A1A` | `#FF6B6B` | Sync failure, blown deadline |
+| `semantic-info` | `#0066CC` | `#5BA3F5` | Tooltips, neutral notes |
 
-The mock-data fallback banner (when `GROQ_API_KEY` is missing) uses `semantic-warning` background at 12% opacity with `semantic-warning` text and icon.
+#### Surface hierarchy
 
-#### Surface hierarchy (four layers)
+Stacked tones, not bordered boxes. Each layer rest visually on one below.
 
-Use surfaces as **stacked tones**, not bordered boxes. Each layer should be perceived as physically resting on the layer below.
+| Layer | Light | Dark | Purpose |
+|---|---|---|---|
+| `surface-base` | `#FCF9F8` | `#0D0D0D` | Page canvas |
+| `surface-low` | `#F4EFE8` | `#161616` | Section break / table header |
+| `surface-card` | `#FFFFFF` | `#1F1F1F` | Standard cards, table rows |
+| `surface-elevated` | `#FFFFFF` + `shadow-sm` | `#232323` | Hero cards, focal blocks |
+| `surface-chip` | `#EDE8E0` | `#2E2E2E` | Icon buttons, inactive chips |
+| `surface-disabled` | `#E3DDD2` | `#3A3A3A` | Disabled affordances |
 
-| Layer              | Light                    | Dark                  | Purpose                                   |
-|--------------------|--------------------------|-----------------------|-------------------------------------------|
-| `surface-base`     | `#FCF9F8`                | `#0D0D0D`             | The page canvas                           |
-| `surface-low`      | `#F6F3F2`                | `#161616`             | Large grouping sections (set/rep grids)   |
-| `surface-card`     | `#FFFFFF`                | `#1F1F1F`             | Standard cards (exercise rows)            |
-| `surface-elevated` | `#FFFFFF`                | `#232323`             | Hero cards (current review, sync status)  |
-| `surface-glass`    | `rgba(255,255,255,0.85)` | `rgba(40,40,40,0.85)` | Floating elements with backdrop-blur 16px |
+#### Text
 
-#### Text colors
+| Token | Light | Dark | Usage |
+|---|---|---|---|
+| `text-primary` | `#1C1B1B` | `#F5F3F0` | Headlines, hero numbers, primary UI |
+| `text-secondary` | `#5F5E5A` | `#C8C5C0` | Body paragraphs, supporting copy |
+| `text-tertiary` | `#888780` | `#A3A09A` | Overlines, metadata |
+| `text-muted` | `#B4B2A9` | `#6B6864` | Placeholders, timestamps |
+| `text-on-brand` | `#FFFFFF` | `#FFFFFF` | Text on gradient fills only |
 
-| Token            | Light     | Dark      | Usage                                       |
-|------------------|-----------|-----------|---------------------------------------------|
-| `text-primary`   | `#1C1B1B` | `#F5F3F0` | Headlines, exercise names, set numbers      |
-| `text-secondary` | `#5F5E5A` | `#C8C5C0` | Definitions, equipment tags, set details    |
-| `text-tertiary`  | `#888780` | `#A3A09A` | Section labels, metadata, EXIF date         |
-| `text-muted`     | `#B4B2A9` | `#6B6864` | Placeholders, disabled, "no data" notes     |
-| `text-on-brand`  | `#FFFFFF` | `#FFFFFF` | Text on gradient buttons or primary fills   |
+**Never pure black (`#000000`) or pure white (`#FFFFFF`) for text.** Warm off-tones non-negotiable.
 
-**Never use pure black (`#000000`) or pure white (`#FFFFFF`) for text.** Warm off-tones (`#1C1B1B` / `#F5F3F0`) maintain editorial softness that distinguishes Workout Sync from utilitarian spreadsheet apps.
+#### Data visualization
 
-#### The "No-Line" rule
+Charts use fixed ordered palette. Brand purple always series 1.
 
-Prohibit `1px solid` borders for sectioning, grouping, or separating cards. If a card needs definition, place it on a one-shade-darker surface. If two list items (or two set rows) need separation, use 16px of vertical gap.
+| Token | Light | Dark | Typical use |
+|---|---|---|---|
+| `data-1` | `#9100D0` | `#AE33ED` | Body fat %, primary series |
+| `data-2` | `#006C4C` | `#4DD4A3` | Body weight, lean mass |
+| `data-3` | `#0066CC` | `#5BA3F5` | Tertiary / prior-cycle compare |
+| `data-4` | `#8C6500` | `#FFC94A` | Amber accent |
+| `data-5` | `#7C5295` | `#A484C7` | Moving average |
+| `data-6` | `#5F5E5A` | `#A3A09A` | Goal / neutral baseline |
 
-The only acceptable borders are:
+### 2.2 The no-line rule
 
-- **Focus rings** on inputs and interactive elements (`2px solid brand-primary` at 60% opacity)
-- **Featured-card accents** for marking the currently reviewed exercise (`2px solid brand-primary`)
-- **Ghost borders** as accessibility fallback (`outline-variant` at 15% opacity, never 100%)
+Default to surface-color shifts for sectioning, not 1px lines. Borders allowed only when functional:
 
-### 2.2 Typography
+- Focus rings on interactive elements
+- Featured / selected cards (2px brand-primary) — one card type that earn visible border because border carry semantic meaning ("selected", "today")
+- Table row separators — explicit exception (see §3)
+- Ghost borders as a11y fallback at 15% opacity
 
-#### Type families
+### 2.3 Typography
 
-- **Space Grotesk** — Display and Headline scales. The expressive, technical voice of the brand.
-- **Inter** — Title, Body, and Label scales. Maximum legibility for definitions, equipment tags, and dense grids.
-- **`ui-monospace, "SF Mono", "JetBrains Mono", monospace`** — Set/rep/weight notation and match confidence scores only.
+#### Families
+
+- **Space Grotesk** — Display + Headline. Brand voice.
+- **Inter** — Title, Body, Label. Workhorse.
+- **Space Mono** — Numerics, tabular figures, units. Same design family as Space Grotesk, so typographic voice unified across proportional + monospace.
 
 #### Type scale
 
-The scale uses **two values** per token: `mobile / web`. Mobile values tuned for ~380px viewports; web values tuned for ≥1024px.
+Declared in `rem` (1rem = 16px). No viewport branching.
 
-| Token         | Family        | Weight | Size (mobile / web) | Letter-spacing    | Use                                |
-|---------------|---------------|--------|---------------------|-------------------|------------------------------------|
-| `display-lg`  | Space Grotesk | 500    | 48px / 80px         | -1.5px            | Sync-complete celebration moment    |
-| `display-md`  | Space Grotesk | 500    | 36px / 56px         | -1.2px            | Page hero (when present)            |
-| `display-sm`  | Space Grotesk | 500    | 28px / 40px         | -0.8px            | Editorial overline + headline pair  |
-| `headline-lg` | Space Grotesk | 500    | 22px / 28px         | -0.5px            | Edit-page heading line              |
-| `headline-md` | Space Grotesk | 500    | 18px / 24px         | -0.3px            | Section titles ("Sets", "Match")    |
-| `headline-sm` | Space Grotesk | 500    | 16px / 20px         | -0.2px            | Compact card titles                 |
-| `title-lg`    | Inter         | 500    | 16px / 18px         | 0                 | Buttons, prominent labels          |
-| `title-md`    | Inter         | 500    | 14px / 16px         | 0                 | List item titles, set row labels   |
-| `title-sm`    | Inter         | 500    | 13px / 14px         | 0                 | Compact labels                     |
-| `body-lg`     | Inter         | 400    | 16px / 18px         | 0                 | Reading paragraphs                 |
-| `body-md`     | Inter         | 400    | 14px / 16px         | 0                 | Equipment tags, descriptions       |
-| `body-sm`     | Inter         | 400    | 13px / 14px         | 0                 | Metadata, captions, EXIF date      |
-| `label-lg`    | Inter         | 600    | 12px / 13px         | 1px (uppercase)   | Category headers                   |
-| `label-md`    | Inter         | 600    | 10px / 11px         | 1.2px (uppercase) | Section overlines                  |
-| `label-sm`    | Inter         | 600    | 9px / 10px          | 1.4px (uppercase) | Micro-labels, badges               |
-| `mono-md`     | Mono          | 400    | 14px / 16px         | 0                 | Set/rep/weight grid cells          |
-| `mono-sm`     | Mono          | 400    | 12px / 13px         | 0                 | Match score numbers, RPE values    |
+| Token | Family | Weight | Size | Use |
+|---|---|---|---|---|
+| `display-lg` | Space Grotesk | 500 | 3rem · 48px | Page-level hero metric |
+| `display-md` | Space Grotesk | 500 | 2.25rem · 36px | KPI tile value |
+| `headline-lg` | Space Grotesk | 500 | 1.5rem · 24px | Section headers |
+| `headline-md` | Space Grotesk | 500 | 1.25rem · 20px | Card titles |
+| `title` | Inter | 500 | 1rem · 16px | Buttons, labels |
+| `body` | Inter | 400 | 0.9375rem · 15px | Default body |
+| `body-sm` | Inter | 400 | 0.8125rem · 13px | Metadata, captions |
+| `label` | Inter | 600 | 0.6875rem · 11px | Uppercase overlines |
+| `numeric` | Space Mono | 500 | inherit | Tabular figures |
+| `mono-sm` | Space Mono | 400 | 0.8125rem · 13px | Timestamps, set notation |
 
-#### The "one display moment" rule
+Line heights: display 1.05 · headline 1.15 · title 1.3 · body 1.5.
 
-Each screen gets **one** `display-*` element. Multiple display-scale items compete for attention and flatten hierarchy. On Home, that's the greeting. On Upload, that's the workout date. On Review, that's the current exercise name. On Sync, that's the progress percentage. Choose the hero, then let everything else recede to headline scale or smaller.
+#### Three typography rules
 
-#### Editorial call-out pattern
+**One display moment per page.** Each page get one `display-*` element. Multiple display-scale items compete for attention.
 
-Pair a `label-md` (uppercase, letter-spaced) directly above a `display-*` or `headline-lg` to create the signature editorial overline effect. Used for:
+**Editorial overline.** Pair `label` uppercase directly above `display-*` or `headline-lg`. Signature move — e.g. "MONDAY · WEEK 14 · MAY 13" above "Push day."
 
-- "TUESDAY EVENING" → "Good evening, Sasi"
-- "MAY 5 · WORKOUT" → "Upper body, push"
-- "MATCH · 87/100" → "Bench Press (Barbell)"
+**Numerics always tabular.** Body fat %, weights, reps, calories, dates — all Space Mono with tabular figures. Columns of numbers align even as values change.
 
-#### Mono notation
+### 2.4 Spacing
 
-Set/rep/weight values, match confidence numbers, and RPE always use the monospace family. Examples:
+4px-based scale: `space-2xs` (4) · `space-xs` (8) · `space-sm` (12) · `space-md` (16) · `space-lg` (20) · `space-xl` (24) · `space-2xl` (32) · `space-3xl` (48).
 
-- `4×8 @ 60kg`
-- `87/100` (match score)
-- `RPE 8`
+Page outer padding at `space-xl`–`space-2xl`. Marketing-scale (space-4xl through space-6xl) intentionally absent.
 
-When a low-confidence match is highlighted, the score number inherits `semantic-warning` — never struck through, never crossed out. Manual overrides shift to `text-primary` to signal user-confirmed state.
+### 2.5 Radius
 
-### 2.3 Spacing
+`radius-sm` (6) · `radius-md` (10) · `radius-card` (14) · `radius-lg` (18) · `radius-xl` (20) · `radius-full` (999).
 
-A 4px-based scale. Use named tokens, not raw pixel values.
+Default `radius-card` for standard cards — slightly squarer than mobile, keep dashboard reading utilitarian not soft. `radius-lg` only on hero/focal cards.
 
-| Token       | Value | Common use                                |
-|-------------|-------|-------------------------------------------|
-| `space-2xs` | 4px   | Icon-to-text gaps                         |
-| `space-xs`  | 8px   | Chip padding, set-cell padding            |
-| `space-sm`  | 12px  | Card-internal padding (web compact cards) |
-| `space-md`  | 16px  | Standard gap between elements             |
-| `space-lg`  | 20px  | Card-to-card vertical rhythm              |
-| `space-xl`  | 24px  | Section spacing on mobile, header padding |
-| `space-2xl` | 32px  | Section spacing on web                    |
-| `space-3xl` | 40px  | Hero section padding (web)                |
-| `space-4xl` | 64px  | Reserved for marketing canvases (rare)    |
+### 2.6 Elevation
 
-**Mobile** caps outer container padding at `space-lg` (20px). Going larger eats screen real estate on small phones.
-
-**Web (v1.1 density pass).** Outer container padding caps at `space-3xl` (40px). Sections gap at `space-md`–`space-lg`. Cards lean on `space-sm` (12px) for compact rows and `space-md` (16px) for hero cards. Save `space-3xl`+ for the Synced celebration page only.
-
-### 2.4 Radius
-
-| Token         | Value | Use                                       |
-|---------------|-------|-------------------------------------------|
-| `radius-sm`   | 8px   | Set-cell corners, picker rows, list items |
-| `radius-md`   | 12px  | Inputs, compact cards, dropdowns          |
-| `radius-lg`   | 18px  | Standard exercise cards, photo card       |
-| `radius-xl`   | 24px  | Reserved — celebration hero only          |
-| `radius-full` | 999px | Buttons, avatar, glass nav, pill chips    |
-
-Standard cards (web v1.1) use `radius-lg`. Reserve `radius-xl` for the Sync-complete celebration. Compact picker rows and list items use `radius-sm` to read as dense, scannable groups.
-
-### 2.5 Elevation: tonal layering
-
-Workout Sync rejects standard drop-shadow elevation in favor of **tonal stacking**. To make a card feel elevated, place it on a surface one shade darker (light theme) or one shade lighter (dark theme).
-
-```
-Light:  surface-base → surface-low → surface-card → surface-elevated
-        #FCF9F8     →  #F6F3F2    →  #FFFFFF     →  #FFFFFF
-Dark:   surface-base → surface-low → surface-card → surface-elevated
-        #0D0D0D     →  #161616    →  #1F1F1F     →  #232323
-```
-
-#### When ambient shadow is required
-
-For genuinely floating elements (dragged exercise re-order handles, popovers, the photo-preview lightbox), use a soft glow:
-
-- **Light theme:** `box-shadow: 0 16px 40px -10px rgba(28, 27, 27, 0.10)`
-- **Dark theme:** `box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.40)`
-
-Never a sharp drop shadow. Never a dark smudge.
-
-#### Glassmorphism
-
-Reserved for floating-on-content surfaces — bottom navigation bar, sync-progress sticky overlay, photo upload drag-state banner. Specifications:
-
-```css
-background: var(--surface-glass);
-backdrop-filter: blur(16px);
--webkit-backdrop-filter: blur(16px);
-border-radius: var(--radius-full); /* for nav */
-```
-
-### 2.6 Density (v1.1)
-
-Web pages target a **dense, scannable** layout. The editorial voice from
-v1.0 stays — overlines, asymmetric grids, one display moment per page —
-but every padding, gap, and font-size in the web column has been pulled
-in to fit more content above the fold without scrolling.
-
-| Surface                | v1.0 (web)        | v1.1 (web)        |
-|------------------------|-------------------|-------------------|
-| Page outer padding     | 56–64px           | 24–40px           |
-| Section vertical gap   | 28–32px           | 16–20px           |
-| Card padding           | 24–28px           | 14–18px           |
-| Card radius (default)  | radius-xl (24px)  | radius-lg (18px)  |
-| Card radius (compact)  | radius-lg (18px)  | radius-md (12px)  |
-| Stat strip padding     | 22/26             | 14/18             |
-| Set-row padding        | 6/0               | 3/0               |
-| Set cell input         | 18px / 12·14 pad  | 14px / 7·10 pad   |
-| Done-check button      | 36×36             | 28×28             |
-| Add-set button         | 38h, fontSize 14  | 30h, fontSize 13  |
-| Add-exercise button    | 56h, fontSize 16  | 40h, fontSize 14  |
-| Sticky photo height    | 420               | 320               |
-| Detection summary pad  | 22                | 14                |
-| Picker dropdown w/h    | 520 × 600         | 460 × 520         |
-| Picker row padding     | 12/16             | 7/12              |
-| Sync "Synced." display | 132px             | 80px              |
-| Sync container padding | 64                | 24/40             |
-
-The mobile column is unchanged — narrower viewports already require
-tight vertical rhythm.
+**Tonal stacking default.** Place elevated elements on surface one shade darker (light) or lighter (dark) than parent. Drop shadows reserved for genuinely floating UI — dropdowns, popovers, modals. Dark mode use tonal stacking exclusively; no shadows on standard cards.
 
 ### 2.7 Motion
 
-| Token               | Easing                         | Duration | Use                                 |
-|---------------------|--------------------------------|----------|-------------------------------------|
-| `motion-fast`       | `cubic-bezier(0.4, 0, 0.2, 1)` | 150ms    | Hover states, tap feedback          |
-| `motion-standard`   | `cubic-bezier(0.4, 0, 0.2, 1)` | 200ms    | Most state changes                  |
-| `motion-emphasized` | `cubic-bezier(0.2, 0, 0, 1)`   | 300ms    | Page transitions, expand collapse   |
-| `motion-decelerate` | `cubic-bezier(0, 0, 0.2, 1)`   | 250ms    | Elements entering view, score reveal |
-| `motion-sync-pulse` | ease-in-out                    | 1500ms   | Active per-exercise sync (infinite) |
+`motion-fast` (120ms) · `motion-standard` (200ms) · `motion-emphasized` (320ms) · `motion-decelerate` (250ms). All use `cubic-bezier` easings tuned fast in, soft out.
 
-**Reduced motion** — when `prefers-reduced-motion: reduce` is set, replace expand/collapse with crossfades, disable sync-pulse animation, and shorten all durations to `motion-fast`.
+**Anti-CLS rule.** When block swap content (tab variant, async load), siblings below must not shift. Reserve slot via `min-height` sized to tallest variant.
+
+Honor `prefers-reduced-motion: reduce`: replace transitions with crossfades, shorten durations to `motion-fast`.
 
 ---
 
 ## 3. Components
 
-### 3.1 Buttons
-
-Workout Sync has three button tiers. Use them deliberately.
+Components described by what they are + what they do — not exact paddings. Dashboard mock = visual reference; this section = vocabulary.
 
-#### Primary (gradient pill)
+### Buttons
 
-Reserved for the **most important action on the screen**. Examples: "Upload Workout", "Process Photo", "Sync to Hevy", "+ Add Exercise".
+Three tiers. **Primary** use gradient, reserved for single most important action on screen. **Secondary** = common neutral filled button. **Tertiary** = text-only for quiet inline actions. Plus compact **icon button** for table inline actions + toolbar controls.
 
-```
-Background:   brand-primary-gradient
-Text:         text-on-brand, title-lg, weight 500
-Padding:      14px 24px (mobile) / 16px 28px (web)
-Radius:       radius-full
-Hover (web):  saturation +10%, never a dark overlay
-Active:       scale(0.98), 100ms
-Disabled:     opacity 40%, no gradient shift
-```
+One primary per page. If two, one wrong.
 
-If you have two primary buttons on a single screen, one of them is wrong. Demote the lesser action to secondary. The Upload page primary is "Process Photo"; the Review page primary is "Sync to Hevy". Never both at once.
+### Inputs
 
-#### Secondary (ghost)
+Minimal chrome — soft border, no fill, brand-primary focus ring at 60% opacity. Numeric cells (reps, weight, calories) right-align + use `numeric` font. Search use `⌘K` keyboard hint pill on right to reinforce keyboard-first ethos.
 
-Standard recurring actions. Examples: "Re-upload photo", "Edit exercise", "Cancel", "Skip this match".
+### Cards
 
-```
-Background:   transparent
-Border:       1.5px solid brand-primary at 25% opacity
-Text:         brand-primary (light) / brand-primary-light (dark), title-lg
-Padding:      same as primary
-Radius:       radius-full
-Hover:        border opacity → 50%
-```
+Three variants: **standard** (default container), **hero** (focal block, elevated surface, slightly larger radius), **featured** (only card type with visible border — 2px brand-primary, only when semantically meaningful: selected, today, next).
 
-#### Tertiary (text-only)
+Cards don't draw lines around children. Internal grouping via surface-color steps or spacing.
 
-Inline actions, "See all matches", "Reset", quiet links.
+### Tables
 
-```
-Background:   transparent, no border
-Text:         brand-primary, title-md, weight 500
-Padding:      8px 12px
-Hover:        text-decoration: underline
-```
+One place no-line rule don't apply. Row separators at 10% opacity necessary past ~30 rows — surface stepping alone can't carry structure. Numeric cells use tabular figures + right-align. Compact variant exist for long history views.
 
-#### Icon button
+### Pills, chips, badges
 
-Square icon-only buttons for navigation, edit-toggle, dismiss, re-order handles.
+Status pills = read-only indicators with small label + tinted background (typically semantic color at 15% opacity). Always pair color with text so meaning survive color-blindness.
 
-```
-Background:   surface-card
-Size:         36px × 36px (mobile) / 32px × 32px (web)
-Radius:       radius-full
-Icon:         16px stroke-2, text-primary
-```
+Filter chips toggleable. Active state invert (light becomes dark or vice versa) instead of brand color — keep gradient sacred for actual actions.
 
-### 3.2 Inputs
+Tags = small categorical labels (Push, Pull, Hyrox) with tinted text color + neutral background.
 
-#### Text input & search
+### Charts
 
-Used for exercise name override, set/rep/weight cells, and the exercise search combobox.
+Use data palette (`data-1` through `data-6`). Gridlines at 8% opacity, horizontal only. End-of-line markers (dot + soft halo) on latest data point. No vertical grid, no chart-junk decoration.
 
-```
-Background:    surface-card (no border)
-Padding:       12px 16px
-Radius:        radius-full (search) / radius-md (form fields, set cells)
-Text:          body-md, text-primary (mono-md for numeric set cells)
-Placeholder:   text-muted
-Focus:         box-shadow: 0 0 0 2px brand-primary at 60% opacity
-Error:         box-shadow: 0 0 0 2px semantic-error
-```
+Range selectors live as chip groups (7d / 30d / 90d / All) in chart's top-right corner.
 
-The exercise-search combobox always has a leading 16px search icon at `text-tertiary` color. Set/rep/weight cells right-align numeric input and use `mono-md`.
+### Modal & drawer
 
-#### Date / time picker (workout override, v1.1)
-
-Date and time both render as **pill chips** sitting inline in the page heading. Tapping the date chip opens a Popover containing the calendar; the time chip is a native `<input type="time">` styled as a pill.
-
-```
-Pill chip (inline in heading line):
-  Background:   surface-low
-  Padding:      2px 12px
-  Radius:       radius-full
-  Text:         inherits surrounding heading font-family, font-size,
-                line-height (e.g. 28px headline-lg on the Edit page);
-                color text-tertiary, weight 400 — visually a quiet
-                token within the heading rather than a separate label.
-
-Calendar popover:
-  Background:   surface-card
-  Border:       none
-  Radius:       radius-md
-  Padding:      8
-  Shadow:       0 16px 40px -10px rgba(28,27,27,0.10)
-                + 1px outline at rgba(28,27,27,0.06)
-  Internals:    react-day-picker (shadcn Calendar) — keep default day-grid
-                styling, only the popover container is restyled.
-```
-
-Both controls keep the dashed-underline pattern out of the heading so the editable affordance reads as a deliberate token rather than a form field.
-
-### 3.3 Chips & Badges
-
-#### Match-mode filter chip
-
-Used when showing fuzzy / vector / both match results.
-
-```
-Default:  background: surface-low, text: text-secondary
-Active:   background: text-primary (inverted), text: surface-base
-Padding:  6px 14px
-Radius:   radius-full
-Text:     title-sm
-```
-
-Chips on dark theme invert: active state uses `surface-base` background with `text-primary` text.
-
-#### Equipment badge
-
-A compact indicator next to an exercise name. Always uses `label-sm` uppercase with letter-spacing.
-
-```
-Background:  surface-low (subtle) or transparent
-Text:        text-tertiary, label-sm
-Padding:     3px 8px
-Radius:      radius-sm
-```
-
-Examples: `BARBELL`, `DUMBBELL`, `MACHINE`, `BODYWEIGHT`. The "official" Hevy-catalog tag uses `brand-primary` text color to tie back to the brand without dominating.
-
-#### Sync status badge
-
-Shows per-exercise sync state during the Hevy push.
-
-```
-Pending:    background: surface-low,    text: text-tertiary,   icon: clock
-Syncing:    background: surface-low,    text: brand-primary,   icon: spinner (motion-sync-pulse)
-Success:    background: success at 12%, text: semantic-success, icon: check
-Error:      background: error at 12%,   text: semantic-error,  icon: alert
-Padding:    4px 10px, radius-full, label-sm
-```
-
-### 3.4 Cards
-
-#### Standard card
-
-```
-Background:  surface-card
-Padding:     14px (mobile) / 16px (web)
-Radius:      radius-lg
-No border, no shadow.
-```
-
-#### Hero card (the focal card on a screen)
-
-Used for the currently reviewed exercise on the Review page and the active sync status on the Sync page.
-
-```
-Background:  surface-elevated
-Padding:     16px (mobile) / 20px (web)
-Radius:      radius-lg
-Optional:    radial gradient corner accent at 15% brand-primary opacity
-```
-
-The Sync-complete celebration card is the **only** card permitted to use `radius-xl` (24px) and `padding-2xl` (32px).
-
-#### Featured/active card
-
-The only card type that gets a visible border — and only because it carries semantic meaning ("this exercise is currently being reviewed/synced").
-
-```
-Background:  surface-card
-Border:      2px solid brand-primary
-Radius:      radius-lg
-Optional:    badge top-right ("Reviewing", "Syncing")
-```
-
-### 3.5 Workout primitives (Workout Sync–specific)
-
-#### Exercise card — hero variant
-
-Full editorial treatment. Used on the Review page for the currently expanded exercise.
-
-```
-Container:        surface-elevated, radius-xl, padding-xl
-Overline:         label-md uppercase ("MATCH · 87/100" or "MANUAL OVERRIDE")
-                  color: brand-primary (auto match) or text-tertiary (manual)
-Exercise name:    display-md or display-lg, Space Grotesk, weight 500
-Equipment tag:    body-sm, text-tertiary, alongside name
-Match-confidence: bar at top-right (see 3.7)
-Set grid:         see set/rep editor row below
-Optional:         alternate matches as collapsible list under "Other matches"
-```
-
-#### Exercise row — compact
-
-Used in lists where many exercises appear and only the title + set summary matter at a glance. The default Review-page row state (until tapped to expand into hero).
-
-```
-Container:     surface-card, radius-lg, padding-md
-Exercise name: headline-sm, Space Grotesk
-Set summary:   mono-sm, text-secondary, right-aligned ("4×8 @ 60kg")
-Match score:   label-sm uppercase, color by confidence band:
-                 ≥85: text-tertiary (quiet, high confidence)
-                 60–84: semantic-warning
-                 <60: semantic-error
-Tap target:    full row (44px min height)
-```
-
-Compact rows separate by **16px gap, never by horizontal rules**.
-
-#### Workout summary card
-
-The top-of-page card on Review showing date, total exercises, total sets, total volume.
-
-```
-Container:    surface-elevated, radius-xl, padding-xl
-Overline:     label-md ("MAY 5 · WORKOUT") — date pulled from EXIF
-Title:        display-sm or headline-lg ("Upper body, push")
-Stats row:    three mono-md cells separated by space-md:
-                 "6 exercises"   "18 sets"   "8,420 kg"
-              labels in label-sm, text-tertiary above each number
-```
-
-#### Set/rep editor row
-
-A single set inside an exercise card. The atomic editable unit.
-
-```
-Container:    transparent (sits on surface-elevated)
-Padding:      6px 0
-Layout:       4-column flex on mobile, 5-column on web (adds RPE)
-              [#]  [reps]  [weight]  [unit toggle]  [RPE?]
-Set number:   label-sm uppercase, text-tertiary ("SET 1")
-Reps:         mono-md cell, surface-low background, radius-sm
-Weight:       mono-md cell, surface-low background, radius-sm
-Unit:         pill chip (kg/lb), surface-low, label-md
-RPE:          mono-sm cell (web only), surface-low, optional
-Separator:    space-xs vertical gap between sets — no rules
-```
-
-When a cell is being edited, focus ring is the standard 2px brand-primary at 60%. Validation errors swap focus ring to `semantic-error`.
-
-#### Photo upload zone
-
-The hero on the Upload page. Two states.
-
-```
-Empty:
-  Container:   surface-low (dashed not allowed — use solid tone)
-  Radius:      radius-xl
-  Min height:  240px (mobile) / 320px (web)
-  Padding:     space-3xl
-  Center:      camera icon (32px, text-tertiary), then
-               headline-md "Drop a workout photo"
-               body-sm "JPEG, PNG, HEIC · up to 20 MB"
-  Drag-over:   surface tint shifts to brand-primary at 8%
-               border becomes 2px brand-primary (drag state — exception
-               to the no-line rule, only while actively dragging)
-
-Filled (preview):
-  Container:   surface-elevated, radius-xl
-  Image:       fill container, object-fit cover
-  Overlay:     glass surface chip top-right with file name + size
-  Action:      tertiary "Replace photo" button below
-```
-
-#### Hevy connection card
-
-Used on Home and Sync to show the connected Hevy account state.
-
-```
-Container:    surface-card, radius-lg, padding-md
-Layout:       avatar/icon left + text middle + status chip right
-Avatar:       32px circle, brand-primary at 12% background, mono-md initial
-Name:         title-md, text-primary
-Subtitle:     body-sm, text-tertiary ("Last sync: 2 days ago")
-Chip:         sync status badge (see 3.3)
-```
-
-Disconnected state replaces the chip with a primary gradient button: "Connect Hevy".
-
-### 3.6 Photo & sync primitives
-
-#### Upload CTA — hero gradient
-
-Primary action on the Home page and the empty Upload state. Uses the gradient.
-
-```
-Idle:
-  Size:        full-width on mobile / fixed 280px on web
-  Background:  brand-primary-gradient
-  Icon:        camera glyph, 20px, white
-  Label:       "Upload Workout", title-lg
-  Padding:     16px 28px
-  Radius:      radius-full
-
-Processing (after photo selected, during Groq call):
-  Background:  brand-primary-gradient
-  Icon:        replaced with circular loader (2.5px stroke, white)
-  Label:       "Reading your workout…"
-
-Complete:
-  Auto-navigates to Review. Brief 200ms fade-out.
-```
-
-#### Sync CTA — hero gradient
-
-Primary action on the Review page bottom. Same visual spec as Upload CTA.
-
-```
-Idle:
-  Label:       "Sync to Hevy"
-  Icon:        upload-cloud glyph, 20px, white
-
-Syncing (sequential per exercise):
-  Replaced by full-width sync-progress card (see below).
-  CTA itself disappears.
-
-Complete:
-  Sync-complete celebration moment fires (see 3.7).
-```
-
-#### Sync-progress indicator
-
-Replaces the Sync CTA while the per-exercise push is running. Sequential, ~1.5s per exercise.
-
-```
-Container:    surface-elevated, radius-xl, padding-lg
-Heading:      label-md "SYNCING TO HEVY"
-Number:       display-md, mono ("3 / 6")
-Bar:          brand-secondary track at 15% opacity, fills proportional
-              height 6px, radius-full, motion-decelerate on each tick
-Current line: title-md, text-secondary
-              "Bench Press (Barbell)" — currently pushing
-Done list:    body-sm, text-tertiary, with check icons
-              fades in as each completes
-Pulse:        currently-syncing exercise row in the list above pulses
-              its background at brand-primary 6% (motion-sync-pulse)
-```
-
-If a single exercise fails, its row shifts to `semantic-error` background at 8%, an inline retry button appears, and the overall progress continues. The completion celebration only fires when **all** exercises succeed.
-
-#### Match-confidence indicator (text-only, v1.1)
-
-Shows fuzzy/vector match score (0–150 internally) as a **percentage text token** rather than a bar. The bar pattern was retired in the v1.1 density pass — bars consumed vertical space without adding scannable value next to the percentage they labeled.
-
-```
-Display:   percentage rounded from (score / 150 × 100)
-Format:    "{n}<span class='%'>%</span>"
-Type:      headline-sm or title-md depending on context
-Color:     ≥60% → brand-secondary (success green)
-           <60%  → semantic-warning (amber)
-Sub-label: "MATCH" overline below in label-sm, text-tertiary (optional)
-```
-
-Detection-summary side panel uses the same convention: surface confidence as a single colored percentage row (`Confidence  94%`) — no bar.
-
-Manual or user-confirmed exercises replace the percentage with a `MANUAL` warning-toned pill.
-
-### 3.7 Sync-complete celebration
-
-The **only** moment that uses `brand-tertiary` (coral). Fires once per session when every exercise has pushed to Hevy successfully.
-
-```
-Container:   replaces sync-progress card in place
-Background:  surface-elevated with radial gradient corner accent
-             at 15% brand-tertiary opacity (top-right)
-Icon:        check-circle, 32px, brand-tertiary
-Heading:     display-sm "Synced to Hevy"
-Subtitle:    body-md, text-secondary, "6 exercises · 18 sets"
-Action:      tertiary "Open in Hevy" link + secondary "Done"
-Animation:   motion-decelerate, 250ms — single quiet appearance.
-             No confetti. No spring. No sound.
-```
-
-When `prefers-reduced-motion` is set, replace with instant appearance and skip the radial accent fade-in.
-
-If even one exercise failed, the celebration does **not** fire. Show a `semantic-warning` card listing failed exercises with retry buttons instead. Coral is for real wins only.
-
-### 3.8 Navigation
-
-#### Mobile: glass bottom nav
-
-```
-Container:    glass surface (rgba + backdrop-blur 16px)
-Position:     fixed bottom, 14px from edges
-Padding:      10px 16px
-Radius:       radius-full
-Items:        3 navigation items (Home, Upload, History — or Home/Upload/Settings),
-              evenly spaced
-
-Active item:
-  Icon:  filled, brand-primary, 16px
-  Label: label-sm, brand-primary, weight 500
-
-Inactive item:
-  Icon:  outlined, text-tertiary, 16px
-  Label: label-sm, text-tertiary
-```
-
-The nav floats over content with a 24px safe area below it. Content scrolls underneath; the blur reveals movement without obscuring legibility.
-
-During an active sync, the nav is hidden — sync flow is non-interruptible at the navigation level.
-
-#### Web: left sidebar (v1.1 — tightened)
-
-```
-Width:        220px
-Background:   surface-low
-Padding:      16px 10px
-
-Logo:         top, 26px square gradient tile + title-md wordmark
-Nav items:    32px tall, radius-sm, padding 0 10px, gap 10
-              icon (16px) + title-sm
-Active item:  background: brand-primary at 10% opacity
-              icon + text: brand-primary
-Hevy chip:    surface-card, radius-md, padding 10/12, dot 7px,
-              title-sm name + body-sm fontSize 10 handle
-```
-
-The sidebar sticks to the viewport. Main content starts at 220px left margin. Below 960px the sidebar collapses to a 64px icon-only column. Below 600px it hides entirely.
+Modals centered, sized small / default / large, used for brief detail or confirm flows. Drawers slide from right, used for extended detail on row (workout, food entry, race detail).
 
 ---
 
-## 4. Layout & Composition
+## 4. Fitness primitives
 
-### 4.1 Mobile layout patterns
+Components unique to this dashboard. Each described by what make it different from generic component — mock + code carry layout details.
 
-#### Page structure
+### Race / event timeline
 
-```
-[Status bar — system]
-[Header — 56px tall, surface-base]
-  Left:    icon button (back/menu) or empty
-  Center:  page title, title-lg
-  Right:   avatar (28px) or icon button
+**Horizontal date-axis** timeline of upcoming competitions. Events plotted at actual date positions on continuous month axis — not scrollable card strip.
 
-[Tonal break — surface shifts to surface-low here]
-[Editorial overline — label-md uppercase]
-[Display moment — display-sm or display-md]
-[Content sections]
+Axis-based chosen over card scroll because temporal *distance* = single most useful question ("how packed is next quarter?"). Scroll-snap card strip flatten all events to equal width and lose signal.
 
-[Bottom safe area — 80px reserved for floating nav]
-```
+Closest event ("NEXT") emphasized: 2px brand-primary border on label box, soft radial glow, larger glowing dot on axis. Urgency-color rule: countdown under 14 days, "Nd" countdown number turn amber; under 7 days, error red. (*Label box* never change — only inline number.)
 
-#### Vertical rhythm
+### Weekly agenda
 
-Between major sections, use `space-xl` (24px). Within sections, use `space-md` (16px) between cards. Inside cards, use `space-sm` to `space-md` for internal padding. Set rows inside an exercise card use `space-xs` (8px).
+7-column grid showing Monday through Sunday for current week. Today's column get brand-accent tinted background + accent dot beside day-of-week label.
 
-#### Asymmetry on mobile
+Each column hold session chips with colored category label (Push, Pull, Legs, Hyrox, Run). Done / missed / scheduled states = pills inside each chip — never strikethroughs, never opacity tricks.
 
-Mobile is one-column, but vertical asymmetry is still possible:
+### Muscle-group heatmap
 
-- **Hero exercise + compact rows** — the currently reviewed exercise gets a tall, full-width hero card. Other exercises collapse to compact rows half the height. This is the dominant Review-page pattern.
-- **Photo preview + metadata** — on Upload, the preview spans full width as a hero, then EXIF date + file info collapse to a compact row beneath.
+Front + back anatomical SVG silhouettes with each muscle group as separate path. Volume load over trailing 7 days maps to five-bucket color scale:
 
-### 4.2 Web layout patterns
+1. **Above average** — success green
+2. **At average** — `data-1` at mid-opacity
+3. **Slightly below** — `data-1` at low-opacity
+4. **Well below** — warning amber
+5. **Untouched 7d+** — disabled grey
 
-#### Page structure
+Heatmap don't moralize. No "you're failing" red or "you're winning" celebration green. Warning amber reserved for actually-stale muscles (7+ days), not "below your weekly average". Information surface, not coach.
 
-```
-[Sidebar — 240px fixed]
-[Main content — flex 1, max-width 1200px, centered]
-  [Page header — 80px tall]
-    Title + actions
-  [Section: hero — full-width editorial moment]
-  [Section: content grid — 2 or 3 columns]
-  [Section: secondary content]
-```
+Lives on Training, not Overview (moved out in v0.2).
 
-#### Multi-column grids
+### Body render card
 
-Web allows true asymmetric grids using fractional widths:
+Two variants of same container.
 
-- **60/40 split** — hero exercise card 60%, exercise list 40% (Review page)
-- **50/50** — photo preview 50%, EXIF + processing status 50% (Upload page)
-- **Avoid 33/33/33** — three identical columns flatten hierarchy
+**Full variant** lives on Body page at aspect-ratio 4:5 — body fill frame as primary subject. **Preview variant** lives on Overview at fixed height (no aspect-ratio constraint) so can share row with trend chart without forcing row 650+ px tall.
 
-Use a 12-column grid as the underlying system. Components snap to spans of 4, 5, 6, 7, or 8 columns. Spans of 3 are only used for compact metric cells (workout summary stats) or set-grid cells.
+Both variants share same chrome: 3D/2D/Compare segment control top-left, three icon buttons top-right (toggle measurements, screenshot, fullscreen), measured-on date pill bottom-left, and either "Open full view" (preview) or "Compare with…" (full) bottom-right.
 
-#### Responsive breakpoints
+Measurement pins = small dots on body with leader lines to label boxes off to side. Pins for "key" measurements (chest, waist) get hollow halo ring to distinguish; lesser pins (bicep, hip, thigh) drop ring to reduce visual noise.
 
-| Breakpoint | Width           | Layout                                                  |
-|------------|-----------------|---------------------------------------------------------|
-| Mobile     | < 640px         | Single column, bottom nav, hero exercise expands inline |
-| Tablet     | 640px – 1024px  | Two column where appropriate, bottom nav                |
-| Desktop    | 1024px – 1440px | Sidebar + 60/40 review split                            |
-| Wide       | > 1440px        | Same as desktop, no further widening of content         |
+### Body composition trend
 
-Content max-width caps at 1200px even on wide screens. Generous side padding fills the rest. Reading paragraphs cap at 720px width to maintain comfortable line lengths.
+Line chart with two variants: **single-series** (BF % only) + **dual-axis** (BF % + weight kg). Dual-axis = default on Overview.
 
-### 4.3 Screen-level patterns
+In dual-axis variant, both Y axes (BF left, kg right) map to same four horizontal gridlines — values chosen so each series has reasonable headroom. Shared gridlines let both series read against same visual baseline without one dominating.
 
-#### Home (`app/page.tsx`)
+**Why dual-axis, not separate charts or stacked.** Separate charts double vertical space + obscure correlation. Stacked charts imply two series sum to something, which BF % and kg don't. Same-baseline dual-axis let you trace whether lines move together — when both descend in parallel = clean cut; when weight drops faster than BF, losing muscle.
 
-- Editorial overline ("TUESDAY EVENING") + display-sm greeting
-- Hevy connection card
-- Primary gradient CTA: "Upload Workout"
-- Tertiary link: "View past syncs" (if/when history added)
+Both series use solid 2px strokes. v0.1 spec called for dashed weight; retracted. Two solid lines on different colors read more cleanly + legend disambiguates color.
 
-#### Upload (`app/upload/`)
+### Measurement entry row
 
-- Editorial overline ("STEP 1 · CAPTURE") + display-sm "Add your workout photo"
-- Photo upload zone (hero)
-- Once photo selected: EXIF date pill + manual override
-- Primary gradient CTA: "Process Photo"
-- Mock-data warning banner if `GROQ_API_KEY` missing (semantic-warning)
+Row with label · numeric input · auto-computed delta · save action. Save button normally secondary; when input has unsaved changes, swap to brand gradient. Only allowed "primary moves with intent" pattern on dashboard — primary action become prominent exactly when meaningful change to commit.
 
-#### Review (`app/review/`)
+### Strength workout entry
 
-- Workout summary card (hero) — date, exercise count, set count, volume
-- Exercise list — currently active one in hero variant, others as compact rows
-- Match-confidence bar visible per exercise; low-confidence rows surface a "Search exercises" combobox inline
-- Set/rep editor row inside hero exercise card
-- Primary gradient CTA fixed bottom on mobile, inline on web: "Sync to Hevy"
+Compact set-grid editor tying into Hevy sync. Exercise picker on top, set grid with reps/weight/RPE columns, per-exercise sync status pill in top-right. Synced exercises show success pill; failed exercises get inline retry button.
 
-#### Sync (`app/sync/`)
+### Calorie entry
 
-- Sync-progress indicator (replaces CTA)
-- Per-exercise rows below with status badges
-- On completion: sync-complete celebration replaces progress card
-- On partial failure: warning card with retry actions
+Two modes: photo + text. Photo mode auto-extract food + calorie estimate from uploaded image; text mode parse free-form description. Either path land in same downstream editable fields, with "auto-detected ↔ edited" pill as small honesty signal — at glance you can tell which entries you trusted model on + which you corrected.
 
-### 4.4 The asymmetry rule
+### Calorie summary strip
 
-If three exercises (or three items) on a screen are related but unequal in importance:
-
-- **Don't** give them equal width / height / treatment.
-- **Do** let the most relevant one (currently reviewed, currently syncing) take 60% of the canvas, and let the others share the remaining 40%.
-
-Identical grids feel like spreadsheets. Editorial layouts breathe.
+KPI-style strip showing day-total calories + macro micro-bars (protein / carbs / fat). When daily calories exceed target by more than ~200, delta turn warning amber — not error red. Exceeding calories on single day = information, not failure.
 
 ---
 
-## 5. Iconography
+## 5. Layout & navigation
 
-Workout Sync uses **outlined icons at 2px stroke weight** as the default. Filled variants are reserved for active navigation states only.
+### Target display
 
-- **Library:** Lucide (or equivalent open-source set), modified to match stroke weight
-- **Sizing:** 16px (inline), 20px (buttons), 24px (headers), 32px+ (decorative)
-- **Color:** inherits from surrounding text by default — never explicitly colored unless semantically meaningful
+Nominal: 1920 × 1080. Minimum: 1440 × 900. Content column max-width 1400px, centered, with `space-2xl` outer padding. Below 1100px multi-column rows collapse to single-column stacks. Below 760px dashboard refuse to render + show "use the mobile app" message — desktop-only by design.
 
-Common icons in this app: camera, upload-cloud, check-circle, alert-triangle, search, edit-2, trash, chevron-down, dumbbell (custom), barbell (custom). Custom equipment glyphs follow the same outline-first style.
+### Navigation: horizontal top nav
 
-**No emoji in production UI.** The single exception is user-typed exercise notes, where emoji is the user's choice.
+Persistent 64px horizontal bar — **not** sidebar. Bar carry wordmark, six section tabs (Overview · Training · Body · Nutrition · Timeline · Settings), search (Cmd+K), date range control, Refresh primary action, theme toggle, avatar.
+
+Horizontal chosen over sidebar because:
+
+1. Dashboard content wide (timeline, weekly agenda, dual chart row) + benefit from full content width.
+2. Only six top-level sections — fit comfortably as tabs without crowding.
+3. Voqi admin surface use same pattern; cross-surface consistency reduce friction.
+
+Active tab use 2px brand-accent underline replacing nav's bottom border in tab's slot — no fill, no pill.
+
+If 7th section ever added, drop search to icon-only before reflowing tabs.
+
+### Page chrome
+
+No page sub-header — content begin immediately under top nav. Each page has heading row (editorial overline + display-lg headline on left, contextual meta on right) then vertical stack of sections.
+
+### Multi-column grids
+
+Asymmetric grids over symmetric. Use 12-column underlying grid; components snap to spans of 4 / 5 / 6 / 7 / 8.
+
+Common splits:
+
+- **40 / 60** — body render preview + dual-axis trend chart
+- **60 / 40** — body render full + measurements list
+- **66 / 34** — strength entry + muscle heatmap
+
+Avoid 33 / 33 / 33 — three identical columns flatten hierarchy.
+
+7-column weekly agenda = canonical equal-grid case — one column per weekday, equal width = structure.
+
+### Page archetypes
+
+**Overview** — what's now, what's coming.
+1. Page heading
+2. Race timeline (full width) — long horizon
+3. Weekly agenda (full width) — short horizon
+4. Body preview + composition trend (40 / 60) — current state
+
+No KPI strip. 4-tile metric strip removed in v0.2 for focused content blocks; relevant numbers surface contextually in heading meta + chart headers.
+
+**Training** — schedule, strength log, muscle map.
+
+**Body** — render, measurements, composition.
+
+**Nutrition** — calorie summary strip, calorie entry, day's log, trend.
+
+**Timeline** — expanded race timeline + per-event detail cards.
+
+**Settings** — plain forms for units, theme override, Hevy connection.
+
+### The asymmetry rule
+
+When three items on page related but unequal in importance, don't give equal width or height. Let one that matter most this week take 60% of canvas.
+
+Identical grids feel like spreadsheets. Asymmetric grids feel editorial.
 
 ---
 
-## 6. Accessibility
+## 6. Iconography
 
-### Contrast
+Lucide icons exclusively, 2px stroke. No alternative libraries.
 
-- **Body text:** ≥ 4.5:1 against its background (WCAG AA)
-- **Large text** (≥ 18px or 14px bold): ≥ 3:1 (WCAG AA Large)
-- **UI components and icons:** ≥ 3:1 against adjacent surfaces
+Icons inherit color from surrounding text. No emoji in production UI except user-typed notes.
 
-Token pairings in this system are pre-validated for AA compliance in both themes. Verify any custom combination before shipping.
-
-### Touch targets
-
-- Mobile: 44 × 44 px minimum (Apple HIG)
-- Web: 32 × 32 px minimum (mouse precision allows smaller)
-
-Set/rep cells must meet the mobile minimum even though they look compact — expand the tap area with negative margin if the visible cell is smaller.
-
-### Focus states
-
-Every interactive element must have a visible focus state. Default:
-
-```
-box-shadow: 0 0 0 2px var(--surface-base),
-            0 0 0 4px var(--brand-primary);
-```
-
-The double ring ensures visibility on any background.
-
-### Status communication
-
-Sync state must work for users who can't see color:
-
-- **Sync status** always pairs an icon with text (clock + "Pending", check + "Synced", alert + "Failed").
-- **Match confidence** always pairs the bar with a numeric score and a confidence label below threshold.
-- **Mock-data fallback banner** uses both color and a leading icon plus explicit text.
-
-### Reduced motion
-
-Honor `prefers-reduced-motion: reduce`:
-
-- Expand/collapse → crossfade
-- Sync-pulse → static surface tint
-- Score reveal animation → instant appearance
-- Sync-complete celebration → still uses tertiary color but no fade-in / spring
-
-### Color independence
-
-Never encode meaning in color alone. Match confidence needs the numeric score. Sync status needs an icon and text. Errors need a written reason.
+Custom fitness glyphs (barbell, dumbbell, kettlebell, plate, run, row, ski, sled — Hyrox set) follow same outline-first style at 2px stroke + live alongside Lucide set.
 
 ---
 
-## 7. Do's and Don'ts
+## 7. Accessibility
+
+- Body text contrast ≥ 4.5:1. Large text ≥ 3:1. UI components ≥ 3:1. Token pairings pre-validated.
+- Every interactive element has visible focus state — double ring (surface + brand-primary) for visibility on any background.
+- Keyboard nav everywhere: Cmd+K global search, Esc to close, arrow keys for grids, Enter to open, `/` to focus search.
+- Color independence: status pair icon with text; muscle heatmap pair color with hover label + separate text list; body-fat direction pair color with explicit arrow.
+- Reduced motion honored: transitions become crossfades, durations shorten to `motion-fast`.
+- Type in `rem` so browser font-size scale whole UI.
+
+---
+
+## 8. Do's and Don'ts
 
 ### Do
 
-- **Embrace white space.** If a screen feels crowded, increase padding before adding dividers.
-- **Use tonal stepping.** Surface shifts handle 90% of grouping needs.
-- **Mix type scales.** A `label-md` directly above a `display-lg` is a signature editorial move.
-- **Pick one display moment per screen.** Earn it; don't dilute it.
-- **Reserve the gradient.** It belongs on the most important action (Upload, Sync), not on every button.
-- **Reserve coral/tertiary for the sync-complete moment.** Nothing else, ever.
-- **Asymmetry over uniformity.** Hero cards, mixed widths, varied vertical rhythm.
+- Embrace tonal layering. Surface shifts handle most grouping needs.
+- Pick one display moment per page. Earn it.
+- Reserve gradient. Belong on most important action.
+- Tabular numerics for every aligned number.
+- Let active week / next race / today's session take more space than rest.
+- Default to dark. Most lifters check dashboard in low light.
+- Treat muscle heatmap + timeline as **information surfaces**, not motivational tools.
 
 ### Don't
 
-- **Don't use 1px borders to group set rows.** Use a surface shift or 16px gap.
-- **Don't use pure black or pure white for text.** Warm off-tones only.
-- **Don't put two primary gradient buttons on the same screen.** Upload page CTA and Review page CTA never coexist.
-- **Don't size every heading large.** Hierarchy collapses when everything competes.
-- **Don't decorate with shadows.** If you want elevation, use tone.
-- **Don't separate exercises with horizontal rules.** Use 16px of vertical gap.
-- **Don't rigidly grid related exercises.** Let the active one take more space.
-- **Don't add bro gamification.** No PR badges, no flame icons, no leaderboards, no mascots.
-- **Don't use coral outside the sync-complete celebration.** Static UI never uses tertiary.
-- **Don't fire the celebration on partial sync.** Coral is for real wins.
+- Don't use 1px borders to group cards. Tables only.
+- Don't use pure black or pure white for text.
+- Don't put two primary gradient buttons on same screen.
+- Don't fire "celebration" UI for routine logging. No confetti when log meal, no flame when finish workout. Quiet.
+- Don't decorate with shadows on dark mode. Tonal stack instead.
+- Don't add bro gamification. No PR streaks with flames, no leaderboards, no mascots, no "you crushed it!" banners.
+- Don't gridify related but unequal items into 33 / 33 / 33 columns.
+- Don't auto-color "down is bad" — body fat going down good, body weight going down depend on goal. Map color to intent, not raw delta direction.
 
 ---
 
-## 8. Implementation notes
+## 9. Implementation
 
-### Design tokens
+Tokens implemented as CSS custom properties with theme switching at document root. Default theme follow `prefers-color-scheme`; persist manual override in localStorage.
 
-Tokens should be implemented as CSS custom properties in `app/globals.css` under Tailwind v4's `@theme` directive, with theme switching at the document root:
-
-```css
-:root[data-theme="light"] {
-    --surface-base: #FCF9F8;
-    --surface-low: #F6F3F2;
-    --text-primary: #1C1B1B;
-    /* ... */
-}
-
-:root[data-theme="dark"] {
-    --surface-base: #0D0D0D;
-    --surface-low: #161616;
-    --text-primary: #F5F3F0;
-    /* ... */
-}
-```
-
-shadcn components (`components/ui/`) consume tokens through the New York theme config (`components.json`). When adding a new shadcn component, replace its default neutral palette with our token names rather than its built-in CSS variables.
-
-### Theme defaults
-
-- **Web:** follow system theme by default via `prefers-color-scheme`. Persist user override in local storage.
-
-### Versioning
-
-This document is versioned alongside the codebase. Every change to a token, scale, or component spec requires a version bump and changelog entry. Components are considered stable once they appear in two consecutive minor versions without modification.
+Suggested stack (not prescriptive): React + Tailwind v4 with tokens under `@theme`; shadcn/ui primitives swapped to use these tokens; Recharts or visx for charts; react-day-picker for calendar; Lucide React for icons; three.js or model-viewer for 3D body render. Renderer sit inside Body card frame; everything around it (segment control, overlays, pins) = regular DOM.
 
 ---
 
-*The Training Log · Workout Sync Design System · v1.0*
+## Changelog
+
+- **v0.3 (philosophy pass)** — Stripped component-level pixel specs. Tokens stay (foundations), principles stay, key decisions stay (horizontal nav, dual-axis chart, body preview vs full, axis-based timeline, no KPI strip on Overview, etc.). Component sections rewritten as 1–2 paragraph descriptions of what each component is + what's distinctive. `dashboard.html` mock = visual reference; this doc = vocabulary.
+- **v0.2 (mock reconcile)** — Reconciled spec to shipped mock: axis-based race timeline (not scroll cards), body render full + preview variants, dual-axis trend chart, horizontal top nav (not sidebar), KPI strip removed from Overview, muscle heatmap moved to Training.
+- **v0.1** — Initial draft. Derived from Voqi Foundations v1.1 with mobile, marketing, pronunciation-specific patterns cut; fitness primitives added.
+
+---
+
+*Fitness Dashboard Design · v0.3 · Derived from Voqi Foundations v1.1*

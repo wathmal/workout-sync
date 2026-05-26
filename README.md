@@ -4,11 +4,11 @@ A mobile-first web application that allows users to upload workout photos and sy
 
 ## Screenshots
 
-![Hevy Sync Screen 1](docs/hevy_sync_screen_1.png)
+![Hevy Sync Screen 1](docs/hevy-sync-screen-1.png)
 
-![Hevy Sync Screen 3](docs/hevy_sync_screen_3.png)
+![Hevy Sync Screen 3](docs/hevy-sync-screen-3.png)
 
-![Hevy Sync Screen 2](docs/hevy_sync_screen_2.png)
+![Hevy Sync Screen 2](docs/hevy-sync-screen-2.png)
 
 ## Features
 
@@ -129,7 +129,7 @@ podman push docker.io/YOUR_DOCKERHUB_USERNAME/workout-sync:v1.0.0
 
 ### Deploying to TrueNAS Scale
 
-For deployment + full architecture, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+For deployment + full architecture, see [docs/ARCHITECTURE.md](docs/architecture.md).
 
 **Quick steps:**
 1. Push your image to Docker Hub (see above)
