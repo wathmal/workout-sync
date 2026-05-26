@@ -1,81 +1,166 @@
 @import "tailwindcss";
 
 /* ════════════════════════════════════════════════════════════════
-   Workout Sync — "The Training Log" tokens
-   Source: DESIGN.md §2 + training-log.jsx
+   Workout Sync — design tokens
+   Canonical names follow DESIGN.md §2 (brand-*, surface-*, text-*, data-*).
+   Legacy --color-* aliases preserved so shadcn primitives + existing
+   pages keep working unchanged.
+   Dark default per DESIGN.md ("most lifters check in low light").
    ════════════════════════════════════════════════════════════════ */
 
 @theme {
   /* Brand */
-  --color-primary: #9100D0;
-  --color-primary-light: #AE33ED;
-  --color-secondary: #006C4C;
-  --color-secondary-light: #4DD4A3;
-  --color-tertiary: #FF7849;
+  --color-brand-primary: #9100D0;
+  --color-brand-accent: #AE33ED;
+  --color-brand-mark: #CF57FF;
 
-  /* Semantic */
-  --color-success: #006C4C;
-  --color-warning: #B8860B;
-  --color-error: #BA1A1A;
-  --color-info: #0066CC;
-  --color-destructive: #BA1A1A;
+  /* Semantic — dark-mode values; light-mode override below */
+  --color-semantic-success: #4DD4A3;
+  --color-semantic-warning: #FFC94A;
+  --color-semantic-error: #FF6B6B;
+  --color-semantic-info: #5BA3F5;
 
-  /* Surface */
-  --color-base: #FCF9F8;
-  --color-low: #F6F3F2;
-  --color-card: #FFFFFF;
-  --color-elevated: #FFFFFF;
-  --color-glass: rgba(255, 255, 255, 0.85);
+  /* Surface — dark defaults */
+  --color-surface-base: #0D0D0D;
+  --color-surface-low: #161616;
+  --color-surface-card: #1F1F1F;
+  --color-surface-elevated: #232323;
+  --color-surface-chip: #2E2E2E;
+  --color-surface-disabled: #3A3A3A;
 
-  /* Text */
-  --color-text-primary: #1C1B1B;
-  --color-text-secondary: #5F5E5A;
-  --color-text-tertiary: #888780;
-  --color-text-muted: #B4B2A9;
-  --color-on-brand: #FFFFFF;
+  /* Text — dark defaults */
+  --color-text-primary: #F5F3F0;
+  --color-text-secondary: #C8C5C0;
+  --color-text-tertiary: #A3A09A;
+  --color-text-muted: #6B6864;
+  --color-text-on-brand: #FFFFFF;
 
-  /* Outline (subtle, sparingly) */
-  --color-outline: rgba(28, 27, 27, 0.08);
+  /* Data viz palette */
+  --color-data-1: #AE33ED;
+  --color-data-2: #4DD4A3;
+  --color-data-3: #5BA3F5;
+  --color-data-4: #FFC94A;
+  --color-data-5: #A484C7;
+  --color-data-6: #A3A09A;
 
-  /* shadcn aliases (so existing primitives keep working) */
-  --color-background: var(--color-base);
-  --color-foreground: var(--color-text-primary);
-  --color-card-foreground: var(--color-text-primary);
-  --color-popover: var(--color-card);
-  --color-popover-foreground: var(--color-text-primary);
-  --color-primary-foreground: var(--color-on-brand);
-  --color-secondary-foreground: var(--color-on-brand);
-  --color-muted: var(--color-low);
-  --color-muted-foreground: var(--color-text-tertiary);
-  --color-accent: var(--color-low);
-  --color-accent-foreground: var(--color-text-primary);
-  --color-destructive-foreground: var(--color-on-brand);
-  --color-border: var(--color-outline);
-  --color-input: var(--color-outline);
-  --color-ring: var(--color-primary);
-
-  /* Gradient */
+  /* Gradient (sacred — one per page) */
   --gradient-primary: linear-gradient(135deg, #9100D0 0%, #AE33ED 100%);
 
+  /* Outline */
+  --color-outline: rgba(255, 255, 255, 0.08);
+
+  /* ── Legacy --color-* aliases (back-compat for existing pages + shadcn) ── */
+  --color-primary: var(--color-brand-primary);
+  --color-primary-light: var(--color-brand-accent);
+  --color-secondary: var(--color-semantic-success);
+  --color-secondary-light: var(--color-semantic-success);
+  --color-tertiary: #FF7849;
+
+  --color-success: var(--color-semantic-success);
+  --color-warning: var(--color-semantic-warning);
+  --color-error: var(--color-semantic-error);
+  --color-info: var(--color-semantic-info);
+  --color-destructive: var(--color-semantic-error);
+
+  --color-base: var(--color-surface-base);
+  --color-low: var(--color-surface-low);
+  --color-card: var(--color-surface-card);
+  --color-elevated: var(--color-surface-elevated);
+  --color-glass: rgba(13, 13, 13, 0.85);
+
+  --color-on-brand: var(--color-text-on-brand);
+
+  /* shadcn aliases */
+  --color-background: var(--color-surface-base);
+  --color-foreground: var(--color-text-primary);
+  --color-card-foreground: var(--color-text-primary);
+  --color-popover: var(--color-surface-card);
+  --color-popover-foreground: var(--color-text-primary);
+  --color-primary-foreground: var(--color-text-on-brand);
+  --color-secondary-foreground: var(--color-text-on-brand);
+  --color-muted: var(--color-surface-low);
+  --color-muted-foreground: var(--color-text-tertiary);
+  --color-accent: var(--color-surface-low);
+  --color-accent-foreground: var(--color-text-primary);
+  --color-destructive-foreground: var(--color-text-on-brand);
+  --color-border: var(--color-outline);
+  --color-input: var(--color-outline);
+  --color-ring: var(--color-brand-primary);
+
+  /* Spacing — 4px scale */
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 20px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+  --space-3xl: 48px;
+
   /* Radius */
-  --radius-sm: 8px;
-  --radius-md: 12px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-card: 14px;
   --radius-lg: 18px;
-  --radius-xl: 24px;
+  --radius-xl: 20px;
   --radius-full: 999px;
   --radius: var(--radius-md);
 
-  /* Font families — literal names match @font-face declarations
-     emitted by next/font (Space_Grotesk / Inter / JetBrains_Mono). */
+  /* Motion */
+  --motion-fast: 120ms;
+  --motion-standard: 200ms;
+  --motion-emphasized: 320ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* Font families — literal names match @font-face emitted by next/font */
   --font-display: "Space Grotesk", "Space Grotesk Fallback", system-ui, sans-serif;
   --font-body: "Inter", "Inter Fallback", -apple-system, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "JetBrains Mono Fallback", ui-monospace, "SF Mono", monospace;
   --font-sans: var(--font-body);
 }
 
+/* ────────────────────────────────────────────────────────────────
+   Light theme override — applied when [data-theme="light"] on <html>
+   ──────────────────────────────────────────────────────────────── */
+:root[data-theme="light"] {
+  --color-semantic-success: #006C4C;
+  --color-semantic-warning: #8C6500;
+  --color-semantic-error: #BA1A1A;
+  --color-semantic-info: #0066CC;
+
+  --color-surface-base: #FCF9F8;
+  --color-surface-low: #F4EFE8;
+  --color-surface-card: #FFFFFF;
+  --color-surface-elevated: #FFFFFF;
+  --color-surface-chip: #EDE8E0;
+  --color-surface-disabled: #E3DDD2;
+
+  --color-text-primary: #1C1B1B;
+  --color-text-secondary: #5F5E5A;
+  --color-text-tertiary: #888780;
+  --color-text-muted: #B4B2A9;
+
+  --color-data-1: #9100D0;
+  --color-data-2: #006C4C;
+  --color-data-3: #0066CC;
+  --color-data-4: #8C6500;
+  --color-data-5: #7C5295;
+  --color-data-6: #5F5E5A;
+
+  --color-outline: rgba(28, 27, 27, 0.08);
+  --color-glass: rgba(255, 255, 255, 0.85);
+
+  /* Refresh legacy aliases — they reference vars above so most update
+     automatically, but the ones not chained need re-binding. */
+  --color-base: var(--color-surface-base);
+  --color-low: var(--color-surface-low);
+  --color-card: var(--color-surface-card);
+  --color-elevated: var(--color-surface-elevated);
+}
+
 @layer base {
   body {
-    background: var(--color-base);
+    background: var(--color-surface-base);
     color: var(--color-text-primary);
     font-family: var(--font-body);
     font-feature-settings: "rlig" 1, "calt" 1;
@@ -83,7 +168,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────
-   Web type scale (DESIGN.md §2.2 web column)
+   Web type scale (DESIGN.md §2.3)
    ──────────────────────────────────────────────────────────────── */
 @layer utilities {
   .text-display-lg  { font-family: var(--font-display); font-weight: 500; font-size: 84px; line-height: 0.94; letter-spacing: -2.4px; }
@@ -111,8 +196,11 @@
    ──────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.20); }
+
+:root[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); }
+:root[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
 
 html { scroll-behavior: smooth; }
 
@@ -131,40 +219,56 @@ html { scroll-behavior: smooth; }
 .animate-tl-spin { animation: tl-spin 1.2s linear infinite; }
 
 /* ────────────────────────────────────────────────────────────────
-   Responsive layout helpers
+   Thin range slider — for compact measurement rows.
+   ──────────────────────────────────────────────────────────────── */
+.thin-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  cursor: pointer;
+  outline: none;
+}
+:root[data-theme="light"] .thin-slider {
+  background: rgba(0, 0, 0, 0.12);
+}
+.thin-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: currentColor;
+  border: 0;
+  cursor: pointer;
+}
+@media (max-width: 1280px) {
+  .topnav-updated { display: none !important; }
+}
+
+.footer-link:hover { color: var(--color-text-primary) !important; }
+
+.thin-slider::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: currentColor;
+  border: 0;
+  cursor: pointer;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   App shell — flat (top nav handles its own positioning)
    ──────────────────────────────────────────────────────────────── */
 .app-shell {
-  display: flex;
   min-height: 100vh;
-  background: var(--color-base);
+  background: var(--color-surface-base);
 }
 
 .app-shell > main {
-  flex: 1;
   min-width: 0;
-}
-
-/* Sidebar collapses to icon column below 960px */
-@media (max-width: 960px) {
-  .app-sidebar {
-    width: 64px !important;
-    padding: 24px 8px !important;
-  }
-  .app-sidebar [data-sidebar-label],
-  .app-sidebar [data-sidebar-overline],
-  .app-sidebar [data-sidebar-logo-text],
-  .app-sidebar [data-sidebar-chip-body] {
-    display: none !important;
-  }
-  .app-sidebar [data-sidebar-chip] {
-    justify-content: center !important;
-    padding: 12px !important;
-  }
-}
-
-/* Hide sidebar entirely on phone widths — out of scope for v3 */
-@media (max-width: 600px) {
-  .app-sidebar { display: none !important; }
 }
 
 /* Edit page: stack right rail under workspace below 960px */
@@ -191,19 +295,12 @@ html { scroll-behavior: smooth; }
 }
 
 /* ────────────────────────────────────────────────────────────────
-   Phone-width tightening (≤600px). Below this, the v3 layout was
-   built around editorial slack that doesn't fit; clamp paddings,
-   stack header tokens, and shrink the heading + stat strip.
+   Phone-width tightening (≤600px). Capture flows stay usable on
+   phone; Overview is desktop-only (viewport guard handles).
    ──────────────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
-  /* Edit page outer paddings */
-  .edit-page-header {
-    padding: 16px 20px 12px !important;
-  }
-  .edit-page-body {
-    padding: 16px 20px 24px !important;
-  }
-  /* Heading + date/time pills + buttons stack vertically */
+  .edit-page-header { padding: 16px 20px 12px !important; }
+  .edit-page-body   { padding: 16px 20px 24px !important; }
   .edit-heading-row {
     flex-direction: column !important;
     align-items: stretch !important;
@@ -218,43 +315,23 @@ html { scroll-behavior: smooth; }
     width: 100%;
     justify-content: flex-end !important;
   }
-  /* Stat strip: numbers shrink so no overflow */
   .web-stat-strip {
     padding: 10px 14px !important;
     gap: 10px !important;
   }
-  .web-stat-strip .stat-cell-value {
-    font-size: 18px !important;
-  }
-  .web-stat-strip .stat-cell-input {
-    width: 44px !important;
-    font-size: 18px !important;
-  }
-  /* Exercise-card header allows wrapping */
+  .web-stat-strip .stat-cell-value { font-size: 18px !important; }
+  .web-stat-strip .stat-cell-input { width: 44px !important; font-size: 18px !important; }
   .exercise-card-header {
     flex-wrap: wrap !important;
     row-gap: 8px !important;
   }
 
-  /* Upload page */
-  .upload-page-shell {
-    padding: 16px 20px !important;
-  }
-  .upload-headline {
-    font-size: 28px !important;
-  }
+  .upload-page-shell { padding: 16px 20px !important; }
+  .upload-headline   { font-size: 28px !important; }
 
-  /* Sync page */
-  .sync-page-shell {
-    padding: 16px 20px !important;
-  }
-  .sync-display {
-    font-size: 56px !important;
-    letter-spacing: -1.6px !important;
-  }
-  /* Logged-exercise rows: drop fixed-width columns to two stacked
-     halves so the exercise title + meta gets full row width and the
-     volume/sets summary sits below. */
+  .sync-page-shell { padding: 16px 20px !important; }
+  .sync-display    { font-size: 56px !important; letter-spacing: -1.6px !important; }
+
   .sync-logged-row {
     grid-template-columns: 1fr auto !important;
     grid-template-areas:
@@ -264,9 +341,6 @@ html { scroll-behavior: smooth; }
   }
   .sync-logged-row > .sync-logged-ident   { grid-area: ident; }
   .sync-logged-row > .sync-logged-summary { grid-area: meta; }
-  .sync-logged-row > .sync-logged-volume  {
-    grid-area: meta;
-    text-align: right;
-  }
+  .sync-logged-row > .sync-logged-volume  { grid-area: meta; text-align: right; }
   .sync-logged-row > .sync-logged-check   { grid-area: check; }
 }

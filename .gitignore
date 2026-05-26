@@ -53,3 +53,13 @@ lib/data/food-embeddings/qwen3-8b.bin
 
 # agent harness telemetry (AGENT_DEBUG_LOG=1 writes JSONL traces here)
 .agent-runs/
+
+# Body3D pipeline
+body3d/pipeline/.venv/
+body3d/pipeline/data/
+body3d/pipeline/__pycache__/
+
+# Body Visualizer data files mirrored from MPI (personal local use only,
+# license forbids redistribution). Repopulate via scripts/mirror-bodyvis.sh.
+/public/bodyvis/
+/public/body-mock.html.tmp/

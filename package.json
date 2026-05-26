@@ -25,7 +25,10 @@
     "debug:food-match": "NODE_OPTIONS=--conditions=react-server tsx scripts/debug-food-match.ts",
     "test:web-lookup": "NODE_OPTIONS=--conditions=react-server tsx --env-file-if-exists=.env.local scripts/test-web-lookup.ts",
     "compare:modes": "NODE_OPTIONS=--conditions=react-server tsx scripts/compare-modes.ts",
-    "agent:extract": "NODE_OPTIONS=--conditions=react-server tsx --env-file-if-exists=.env.local scripts/agent-extract.ts"
+    "agent:extract": "NODE_OPTIONS=--conditions=react-server tsx --env-file-if-exists=.env.local scripts/agent-extract.ts",
+    "body3d:api:setup": "cd tools/body-fit-api && python3.12 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt",
+    "body3d:api": "cd tools/body-fit-api && .venv/bin/python -m uvicorn app:app --port 8000 --host 127.0.0.1",
+    "body3d:api:docker": "cd tools/body-fit-api && (command -v docker >/dev/null && docker compose up --build || podman compose up --build)"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
@@ -48,6 +51,7 @@
     "react-day-picker": "^9.13.0",
     "react-dom": "19.2.3",
     "react-zoom-pan-pinch": "^3.7.0",
+    "recharts": "^3.8.1",
     "server-only": "^0.0.1",
     "tailwind-merge": "^3.4.0"
   },
