@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { WorkoutProvider } from "@/app/_providers/workout-provider";
-import { Sidebar } from "@/app/_components/sidebar";
+import { MeasurementsProvider } from "@/app/_providers/measurements-provider";
+import { TopNav } from "@/app/_components/top-nav";
+import { Footer } from "@/app/_components/footer";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -26,9 +28,21 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Workout Sync",
+  title: "Fit Sync",
   description: "From the gym board to Hevy in one shot.",
 };
+
+// Runs before React hydrates → no flash of wrong theme.
+const themeBootstrap = `
+(function(){
+  try {
+    var t = localStorage.getItem('workout-sync:theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+  } catch(e) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+})();
+`;
 
 export default function RootLayout({
   children,
@@ -36,16 +50,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+      </head>
       <body
         className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <WorkoutProvider>
-          <div className="app-shell">
-            {/* Sidebar hidden for now — uncomment to restore */}
-            {/* <Sidebar /> */}
-            <main>{children}</main>
-          </div>
+          <MeasurementsProvider>
+            <div className="app-shell" style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+              <TopNav />
+              <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
+              <Footer />
+            </div>
+          </MeasurementsProvider>
         </WorkoutProvider>
       </body>
     </html>

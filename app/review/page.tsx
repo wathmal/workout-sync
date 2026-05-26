@@ -348,9 +348,9 @@ export default function ReviewPage() {
   const dayPart = partOfDay(_dayDt);
 
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+    <div style={{ maxWidth: 1400, margin: "0 auto" }}>
       {/* Header */}
-      <div className="edit-page-header" style={{ padding: "24px 40px 16px" }}>
+      <div className="edit-page-header" style={{ padding: "var(--space-xl) var(--space-2xl) var(--space-md)" }}>
         <div
           className="edit-heading-row"
           style={{
@@ -475,7 +475,7 @@ export default function ReviewPage() {
       </div>
 
       {/* Tonal break */}
-      <div className="edit-page-body" style={{ background: "var(--color-low)", padding: "20px 40px 32px" }}>
+      <div className="edit-page-body" style={{ background: "var(--color-low)", padding: "var(--space-lg) var(--space-2xl) var(--space-2xl)" }}>
         <div
           className="edit-grid"
           style={{
@@ -503,7 +503,7 @@ export default function ReviewPage() {
               <div>
                 <Overline>DURATION</Overline>
                 <div
-                  className="text-headline-md stat-cell-value"
+                  className="stat-cell-value"
                   style={{
                     color: "var(--color-text-primary)",
                     marginTop: 2,
@@ -523,11 +523,12 @@ export default function ReviewPage() {
                       background: "transparent",
                       border: "none",
                       outline: "none",
-                      fontFamily: "var(--font-display)",
+                      fontFamily: "var(--font-mono)",
                       fontWeight: 500,
-                      fontSize: 24,
+                      fontSize: 22,
                       color: "var(--color-text-primary)",
                       padding: 0,
+                      fontVariantNumeric: "tabular-nums",
                     }}
                   />
                   <span
@@ -552,11 +553,12 @@ export default function ReviewPage() {
                 <div key={label}>
                   <Overline>{label}</Overline>
                   <div
-                    className="text-headline-md stat-cell-value"
+                    className="font-mono-lg stat-cell-value"
                     style={{
                       color: "var(--color-text-primary)",
                       marginTop: 2,
                       fontWeight: 500,
+                      fontVariantNumeric: "tabular-nums",
                     }}
                   >
                     {value}

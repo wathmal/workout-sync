@@ -53,7 +53,7 @@ export default function SyncPage() {
   };
 
   return (
-    <div className="sync-page-shell" style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 40px" }}>
+    <div className="sync-page-shell" style={{ maxWidth: 1400, margin: "0 auto", padding: "var(--space-xl) var(--space-2xl)" }}>
       {/* Hero */}
       <div
         className="web-grid-6040"
@@ -66,7 +66,7 @@ export default function SyncPage() {
         }}
       >
         <div>
-          <Overline color="var(--color-tertiary)">STEP 03 · SYNCED</Overline>
+          <Overline>STEP 03 · SYNCED</Overline>
 
           <h1
             className="text-display-md sync-display"
@@ -138,8 +138,12 @@ export default function SyncPage() {
               >
                 <Overline style={{ fontSize: 9 }}>{k}</Overline>
                 <div
-                  className="text-headline-md"
-                  style={{ color: "var(--color-text-primary)", marginTop: 2 }}
+                  className="font-mono-lg"
+                  style={{
+                    color: "var(--color-text-primary)",
+                    marginTop: 2,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
                 >
                   {v}
                 </div>

@@ -55,9 +55,9 @@ export function WGhost({ children, icon, size = "md", style, disabled, ...rest }
       disabled={disabled}
       style={{
         cursor: disabled ? "not-allowed" : "pointer",
-        background: "transparent",
-        color: "var(--color-primary)",
-        border: "1.5px solid color-mix(in srgb, var(--color-primary) 20%, transparent)",
+        background: "var(--color-surface-chip)",
+        color: "var(--color-text-primary)",
+        border: "none",
         borderRadius: "var(--radius-full)",
         display: "inline-flex",
         alignItems: "center",
