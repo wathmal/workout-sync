@@ -52,12 +52,11 @@ export interface CalorieDay {
   isPlanned?: boolean;
 }
 
-export type MuscleBucket = 1 | 2 | 3 | 4 | 5;
-
-export interface MuscleCoverageEntry {
-  group: string;
-  bucket: MuscleBucket;
-}
+export type {
+  MuscleBucket,
+  MuscleCoverageEntry,
+  AttentionRow,
+} from "./muscle-coverage";
 
 export interface TrendPoint {
   date: string; // ISO YYYY-MM-DD
@@ -97,9 +96,8 @@ export interface OverviewMock {
     avgDelta: number;
   };
   muscles: {
-    front: MuscleCoverageEntry[];
-    back: MuscleCoverageEntry[];
-    attention: { label: string; meta: string; bucket: MuscleBucket }[];
+    entries: import("./muscle-coverage").MuscleCoverageEntry[];
+    attention: import("./muscle-coverage").AttentionRow[];
   };
   races: RaceEvent[];
   log: LogEntry[];
@@ -223,30 +221,36 @@ export const overviewMock: OverviewMock = {
   },
 
   muscles: {
+    entries: [
+      { group: "chest", sets: 12, bucket: "met" },
+      { group: "shoulders", sets: 8, bucket: "below" },
+      { group: "biceps", sets: 6, bucket: "below" },
+      { group: "abdominals", sets: 4, bucket: "below" },
+      { group: "quadriceps", sets: 14, bucket: "met" },
+      { group: "forearms", sets: 0, bucket: "untouched" },
+      { group: "abductors", sets: 0, bucket: "untouched" },
+      { group: "adductors", sets: 0, bucket: "untouched" },
+      { group: "traps", sets: 10, bucket: "met" },
+      { group: "lats", sets: 11, bucket: "met" },
+      { group: "lower_back", sets: 3, bucket: "below" },
+      { group: "upper_back", sets: 6, bucket: "below" },
+      { group: "triceps", sets: 5, bucket: "below" },
+      { group: "glutes", sets: 12, bucket: "met" },
+      { group: "hamstrings", sets: 9, bucket: "below" },
+      { group: "calves", sets: 0, bucket: "untouched" },
+    ],
     attention: [
-      { label: "Calves", meta: "9d stale · last May 14", bucket: 4 },
-      { label: "Forearms · Triceps", meta: "no direct work · 14d+", bucket: 5 },
-      { label: "Hamstrings", meta: "1 session · sub-volume", bucket: 3 },
-    ],
-    front: [
-      { group: "chest", bucket: 1 },
-      { group: "front-delts", bucket: 2 },
-      { group: "biceps", bucket: 2 },
-      { group: "abs", bucket: 3 },
-      { group: "obliques", bucket: 4 },
-      { group: "quads", bucket: 1 },
-      { group: "forearms", bucket: 3 },
-      { group: "adductors", bucket: 5 },
-    ],
-    back: [
-      { group: "rear-delts", bucket: 4 },
-      { group: "traps", bucket: 2 },
-      { group: "lats", bucket: 2 },
-      { group: "lower-back", bucket: 3 },
-      { group: "triceps", bucket: 2 },
-      { group: "glutes", bucket: 1 },
-      { group: "hamstrings", bucket: 1 },
-      { group: "calves", bucket: 4 },
+      { group: "abductors", label: "Abductors", meta: "0 sets this week", bucket: "untouched", sets: 0 },
+      { group: "adductors", label: "Adductors", meta: "0 sets this week", bucket: "untouched", sets: 0 },
+      { group: "calves", label: "Calves", meta: "0 sets this week", bucket: "untouched", sets: 0 },
+      { group: "forearms", label: "Forearms", meta: "0 sets this week", bucket: "untouched", sets: 0 },
+      { group: "lower_back", label: "Lower Back", meta: "3 sets · need 10", bucket: "below", sets: 3 },
+      { group: "abdominals", label: "Abdominals", meta: "4 sets · need 10", bucket: "below", sets: 4 },
+      { group: "triceps", label: "Triceps", meta: "5 sets · need 10", bucket: "below", sets: 5 },
+      { group: "biceps", label: "Biceps", meta: "6 sets · need 10", bucket: "below", sets: 6 },
+      { group: "upper_back", label: "Upper Back", meta: "6 sets · need 10", bucket: "below", sets: 6 },
+      { group: "shoulders", label: "Shoulders", meta: "8 sets · need 10", bucket: "below", sets: 8 },
+      { group: "hamstrings", label: "Hamstrings", meta: "9 sets · need 10", bucket: "below", sets: 9 },
     ],
   },
 

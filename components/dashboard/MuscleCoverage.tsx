@@ -1,67 +1,81 @@
-import type { MuscleBucket, MuscleCoverageEntry } from "@/lib/dashboard/mock-data";
+import type {
+  AttentionRow,
+  MuscleBucket,
+  MuscleCoverageEntry,
+  TrackedMuscle,
+} from "@/lib/dashboard/muscle-coverage";
 import { loadMuscleSvgs } from "@/lib/dashboard/muscle-svg-loader";
 import { SectionHead } from "./SectionHead";
 
 const BUCKET_COLOR: Record<MuscleBucket, string> = {
-  1: "var(--color-semantic-success)",
-  2: "color-mix(in srgb, var(--color-data-1) 70%, transparent)",
-  3: "color-mix(in srgb, var(--color-data-1) 35%, transparent)",
-  4: "var(--color-semantic-warning)",
-  5: "var(--color-surface-disabled)",
+  met: "var(--color-semantic-success)",
+  below: "var(--color-semantic-warning)",
+  untouched: "var(--color-surface-disabled)",
 };
 
 const BUCKET_LABEL: Record<MuscleBucket, string> = {
-  1: "Above",
-  2: "Average",
-  3: "Below",
-  4: "Stale 7d+",
-  5: "Untouched",
+  met: "Met",
+  below: "Below",
+  untouched: "Untouched",
 };
 
-const SELECTOR: Record<string, string> = {
-  chest: ".muscle.chest",
-  "front-delts": ".muscle.arms.shoulders",
-  biceps: ".muscle.arms.biceps",
-  abs: ".muscle.abdominals",
-  obliques: ".muscle.abductors",
-  quads: ".muscle.quadriceps",
-  forearms: ".muscle.arms.forearms",
-  adductors: ".muscle.abductors",
-  "rear-delts": ".muscle.delts.shoulders",
-  traps: ".muscle.traps",
-  lats: ".muscle.lats",
-  "lower-back": ".muscle.back.lower",
-  triceps: ".muscle.triceps",
-  glutes: ".muscle.glutes",
-  hamstrings: ".muscle.hamstrings",
-  calves: ".muscle.calves",
+interface SideSelectors {
+  front?: string;
+  back?: string;
+}
+
+// Hevy muscle key → CSS selectors per side. Multiple selectors comma-joined.
+// Hevy keys without an SVG region (adductors, lower_back) still appear in the
+// attention list; they're absent here on purpose.
+const SELECTOR: Partial<Record<TrackedMuscle, SideSelectors>> = {
+  chest: { front: ".muscle.chest" },
+  abdominals: { front: ".muscle.abdominals" },
+  abductors: { front: ".muscle.abductors" },
+  biceps: { front: ".muscle.arms.biceps" },
+  forearms: { front: ".muscle.arms.forearms" },
+  shoulders: {
+    front: ".muscle.arms.shoulders",
+    back: ".muscle.delts.shoulders",
+  },
+  calves: {
+    front: ".muscle.calves.gastro, .muscle.calves.soleus",
+    back: ".muscle.calves",
+  },
+  quadriceps: { front: ".muscle.quadriceps" },
+  traps: { front: ".muscle.traps", back: ".muscle.traps" },
+  glutes: { back: ".muscle.glutes" },
+  hamstrings: { back: ".muscle.hamstrings" },
+  lats: { back: ".muscle.lats" },
+  triceps: { back: ".muscle.triceps" },
+  upper_back: { back: ".muscle.traps" },
 };
 
-function buildColorStyle(entries: MuscleCoverageEntry[], scope: string): string {
-  const lines = entries.map((e) => {
-    const sel = SELECTOR[e.group];
-    if (!sel) return "";
-    return `${scope} ${sel} { fill: ${BUCKET_COLOR[e.bucket]}; }`;
-  });
-  return [
-    `${scope} svg { width: 100%; height: auto; max-height: 240px; }`,
-    `${scope} .body-part { fill: color-mix(in srgb, var(--color-text-primary) 10%, transparent); transition: fill 200ms ease; }`,
-    `${scope} .muscle { fill: var(--color-surface-disabled); transition: fill 200ms ease; }`,
-    ...lines,
-  ].join("\n");
+function buildColorStyle(entries: MuscleCoverageEntry[]): string {
+  const baseRules = [
+    `.mc-front svg, .mc-back svg { width: 100%; height: auto; max-height: 240px; }`,
+    `.mc-front .body-part, .mc-back .body-part { fill: color-mix(in srgb, var(--color-text-primary) 10%, transparent); transition: fill 200ms ease; }`,
+    `.mc-front .muscle, .mc-back .muscle { fill: var(--color-surface-disabled); transition: fill 200ms ease; }`,
+  ];
+  const coloured: string[] = [];
+  for (const entry of entries) {
+    const sides = SELECTOR[entry.group];
+    if (!sides) continue;
+    const color = BUCKET_COLOR[entry.bucket];
+    if (sides.front) coloured.push(`.mc-front ${sides.front} { fill: ${color}; }`);
+    if (sides.back) coloured.push(`.mc-back ${sides.back} { fill: ${color}; }`);
+  }
+  return [...baseRules, ...coloured].join("\n");
 }
 
 interface Props {
-  front: MuscleCoverageEntry[];
-  back: MuscleCoverageEntry[];
-  attention: { label: string; meta: string; bucket: MuscleBucket }[];
+  entries: MuscleCoverageEntry[];
+  attention: AttentionRow[];
+  error?: "no-key" | "fetch-fail";
 }
 
-export function MuscleCoverage({ front, back, attention }: Props) {
+export function MuscleCoverage({ entries, attention, error }: Props) {
   const svgs = loadMuscleSvgs();
-  const frontStyle = buildColorStyle(front, ".mc-front");
-  const backStyle = buildColorStyle(back, ".mc-back");
-  const css = `${frontStyle}\n${backStyle}`;
+  const css = buildColorStyle(entries);
 
   return (
     <div
@@ -78,7 +92,7 @@ export function MuscleCoverage({ front, back, attention }: Props) {
     >
       <SectionHead
         size="md"
-        overline="Trailing 7 days"
+        overline="This week"
         title="Muscle coverage."
       />
 
@@ -95,7 +109,7 @@ export function MuscleCoverage({ front, back, attention }: Props) {
         <Figure label="Back" html={svgs.back} className="mc-back" />
       </div>
 
-      {/* 5-bucket scale */}
+      {/* 3-bucket legend */}
       <div
         style={{
           display: "flex",
@@ -105,7 +119,7 @@ export function MuscleCoverage({ front, back, attention }: Props) {
           color: "var(--color-text-tertiary)",
         }}
       >
-        {([1, 2, 3, 4, 5] as MuscleBucket[]).map((b) => (
+        {(["met", "below", "untouched"] as MuscleBucket[]).map((b) => (
           <span key={b} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
             <span
               style={{
@@ -136,42 +150,97 @@ export function MuscleCoverage({ front, back, attention }: Props) {
         >
           Needs attention
         </div>
-        {attention.map((a, i) => (
+
+        {error ? (
+          <EmptyMessage error={error} />
+        ) : attention.length === 0 ? (
           <div
-            key={i}
             style={{
-              display: "grid",
-              gridTemplateColumns: "auto 1fr auto",
-              alignItems: "center",
-              gap: "var(--space-sm)",
-              padding: "8px var(--space-sm)",
+              padding: "10px var(--space-sm)",
               background: "var(--color-surface-low)",
               borderRadius: "var(--radius-md)",
+              color: "var(--color-text-tertiary)",
+              fontSize: 13,
             }}
           >
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 999,
-                background: BUCKET_COLOR[a.bucket],
-                flexShrink: 0,
-              }}
-            />
-            <span
-              style={{ color: "var(--color-text-primary)", fontSize: 13 }}
-            >
-              {a.label}
-            </span>
-            <span
-              className="font-mono-sm"
-              style={{ color: "var(--color-text-tertiary)", fontSize: 11 }}
-            >
-              {a.meta}
-            </span>
+            All tracked muscles met this week.
           </div>
-        ))}
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 6,
+            }}
+          >
+            {attention.map((a) => {
+              const accent =
+                a.sets === 0
+                  ? "var(--color-semantic-error)"
+                  : "var(--color-semantic-warning)";
+              return (
+                <div
+                  key={a.group}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr auto",
+                    alignItems: "center",
+                    gap: "var(--space-sm)",
+                    padding: "8px var(--space-sm)",
+                    background: "var(--color-surface-low)",
+                    borderRadius: "var(--radius-md)",
+                    minWidth: 0,
+                  }}
+                >
+                  <span
+                    style={{
+                      color: "var(--color-text-primary)",
+                      fontSize: 13,
+                      lineHeight: 1.2,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {a.label}
+                  </span>
+                  <span
+                    className="font-mono-sm"
+                    style={{
+                      color: accent,
+                      fontSize: 12,
+                      lineHeight: 1.2,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {a.meta}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+function EmptyMessage({ error }: { error: "no-key" | "fetch-fail" }) {
+  const text =
+    error === "no-key"
+      ? "Connect Hevy to track muscle coverage."
+      : "Can't reach Hevy right now.";
+  return (
+    <div
+      style={{
+        padding: "10px var(--space-sm)",
+        background: "var(--color-surface-low)",
+        borderRadius: "var(--radius-md)",
+        color: "var(--color-text-tertiary)",
+        fontSize: 13,
+      }}
+    >
+      {text}
     </div>
   );
 }

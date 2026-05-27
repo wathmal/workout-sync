@@ -8,10 +8,21 @@ import { ManualLog } from "@/components/dashboard/ManualLog";
 import { RaceTimeline } from "@/components/dashboard/RaceTimeline";
 import { BodyTrendChart } from "@/components/dashboard/BodyTrendChart";
 import { BodyCard } from "@/components/body-card/BodyCard";
+import {
+  getWorkoutsSince,
+  startOfCalendarWeekMs,
+} from "@/lib/hevy/workouts-since";
+import { computeMuscleCoverage } from "@/lib/dashboard/muscle-coverage";
+import { WEEKLY_SET_TARGET } from "@/lib/dashboard/config";
 
 export const dynamic = "force-dynamic";
 
-export default function OverviewPage() {
+export default async function OverviewPage() {
+  const workoutsResult = await getWorkoutsSince(startOfCalendarWeekMs());
+  const coverage = workoutsResult.ok
+    ? computeMuscleCoverage(workoutsResult.workouts, WEEKLY_SET_TARGET)
+    : { entries: [], attention: [] };
+  const coverageError = workoutsResult.ok ? undefined : workoutsResult.error;
   return (
     <ViewportGuard>
       <div
@@ -42,9 +53,9 @@ export default function OverviewPage() {
           </div>
           <div style={{ minWidth: 0, display: "flex" }}>
             <MuscleCoverage
-              front={overviewMock.muscles.front}
-              back={overviewMock.muscles.back}
-              attention={overviewMock.muscles.attention}
+              entries={coverage.entries}
+              attention={coverage.attention}
+              error={coverageError}
             />
           </div>
           <div style={{ minWidth: 0, display: "flex" }}>

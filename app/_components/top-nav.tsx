@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { CircleUser, Moon, RefreshCw, Sun } from "lucide-react";
+import { refreshDashboard } from "@/app/_actions/refresh";
 
 const REFRESH_MIN = 15;
 
@@ -221,7 +222,13 @@ export function TopNav() {
 
         <button
           type="button"
-          onClick={() => startRefresh(() => router.refresh())}
+          onClick={() =>
+            startRefresh(async () => {
+              await refreshDashboard();
+              router.refresh();
+              setMins(0);
+            })
+          }
           disabled={refreshing}
           style={{
             display: "inline-flex",
