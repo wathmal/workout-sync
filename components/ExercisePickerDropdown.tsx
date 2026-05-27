@@ -2,12 +2,12 @@
 
 import React, { useMemo, useState } from "react";
 import { Search, Plus, Check, ChevronRight, Edit2 } from "lucide-react";
+import { searchExercisesScored } from "@/lib/hevy/matching";
 import {
-  searchExercisesScored,
   convertHevyToExercise,
   type HevyExerciseTemplate,
-  type ScoredExercise,
-} from "@/lib/hevy/exercises";
+} from "@/lib/hevy/catalog";
+import type { ScoredExercise } from "@/lib/hevy/scoring";
 import type { Exercise } from "@/lib/types";
 
 type FilterId = "both" | "fuzzy" | "vector" | "official" | "custom";

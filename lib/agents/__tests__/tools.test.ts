@@ -1,5 +1,5 @@
 import { dispatchTool, AGENT_TOOLS, toOpenAITools, toCliBashAllowlist } from "../tools";
-import { HEVY_EXERCISES } from "../../hevy/exercises";
+import { HEVY_EXERCISES } from "../../hevy/catalog";
 
 describe("agent tool registry", () => {
   it("exposes the four expected tools", () => {

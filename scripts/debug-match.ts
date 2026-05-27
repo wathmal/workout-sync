@@ -7,7 +7,8 @@
  *   EMBEDDING_SOURCE=lm-studio tsx scripts/debug-match.ts "DB Curl"
  *   EMBEDDING_SOURCE=transformers tsx scripts/debug-match.ts "DB Curl"
  */
-import { HEVY_EXERCISES, calculateFuzzyBase, calculateBonuses } from "../lib/hevy/exercises";
+import { HEVY_EXERCISES } from "../lib/hevy/catalog";
+import { calculateFuzzyBase, calculateBonuses } from "../lib/hevy/scoring";
 import { getProvider } from "../lib/embeddings/provider-factory";
 import { loadCatalog } from "../lib/embeddings/catalog-loader";
 import { scoreCatalog } from "../lib/embeddings/cosine";

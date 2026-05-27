@@ -6,7 +6,7 @@
  * inadvertently drops the developer's customs.
  */
 
-import { HEVY_EXERCISES, getExerciseCount, getExerciseStats } from "./exercises";
+import { HEVY_EXERCISES, getExerciseCount, getExerciseStats } from "./catalog";
 import catalog from "../data/hevy-exercises/catalog.json";
 
 describe("Hevy catalog", () => {

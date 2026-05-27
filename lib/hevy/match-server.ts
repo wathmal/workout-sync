@@ -1,18 +1,14 @@
 import "server-only";
 
 import type { Exercise } from "../types";
-import {
-  matchExerciseImpl,
-  matchExerciseImplScored,
-  type CosineLookup,
-  type MatchingMode,
-} from "./exercises";
+import { matchExerciseImpl, matchExerciseImplScored } from "./matching";
+import type { CosineLookup, MatchingMode } from "./scoring";
 import { getMatchingMode, computeCosines } from "../embeddings/match";
 import { expandAbbreviations } from "../exercise-abbreviations";
 
 /**
  * Server-only match. Resolves mode + cosines from the embedding pipeline,
- * then delegates to the isomorphic match implementation in ./exercises.
+ * then delegates to the isomorphic match implementation in ./matching.
  *
  * Vector queries are expanded (BB → barbell, DB → dumbbell, ...) before
  * embedding so the embedder sees the same canonical form fuzzy uses.

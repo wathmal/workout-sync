@@ -1,10 +1,10 @@
+import { searchExercisesScored } from "../hevy/matching";
 import {
-  searchExercisesScored,
   convertHevyToExercise,
   getHevyTemplateById,
   HevyExerciseTemplate,
-  SCORE_CAP,
-} from "../hevy/exercises";
+} from "../hevy/catalog";
+import { SCORE_CAP } from "../hevy/scoring";
 import { expandAbbreviations } from "../exercise-abbreviations";
 import { Exercise, WorkoutExercise, WorkoutSet } from "../types";
 import { buildWorkoutSet, CoercedSetInput } from "../workout-set-builder";

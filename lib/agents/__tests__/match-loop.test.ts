@@ -6,7 +6,7 @@ import {
   IterativeAgentProvider,
   ToolCall,
 } from "../types";
-import { HEVY_EXERCISES } from "../../hevy/exercises";
+import { HEVY_EXERCISES } from "../../hevy/catalog";
 
 function findWeightRepsExercise() {
   const ex = HEVY_EXERCISES.find((e) => e.type === "weight_reps");

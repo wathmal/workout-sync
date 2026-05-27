@@ -12,7 +12,7 @@
 
 import fs from "fs";
 import path from "path";
-import { HEVY_EXERCISES } from "../lib/hevy/exercises";
+import { HEVY_EXERCISES } from "../lib/hevy/catalog";
 import { LMStudioProvider } from "../lib/embeddings/lm-studio-provider";
 import { TransformersProvider } from "../lib/embeddings/transformers-provider";
 import { getCatalogPath } from "../lib/embeddings/catalog-loader";

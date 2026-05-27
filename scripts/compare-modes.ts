@@ -4,10 +4,8 @@
  * Run: npm run compare:modes
  */
 
-import {
-  matchExerciseImpl,
-  type CosineLookup,
-} from "../lib/hevy/exercises";
+import { matchExerciseImpl } from "../lib/hevy/matching";
+import type { CosineLookup } from "../lib/hevy/scoring";
 import { computeCosines } from "../lib/embeddings/match";
 import { expandAbbreviations } from "../lib/exercise-abbreviations";
 
