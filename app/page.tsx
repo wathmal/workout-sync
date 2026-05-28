@@ -49,7 +49,7 @@ export default async function OverviewPage() {
           }}
         >
           <div style={{ minWidth: 0, display: "flex" }}>
-            <CalorieSummary data={overviewMock.calories} />
+            <CalorieSummary />
           </div>
           <div style={{ minWidth: 0, display: "flex" }}>
             <MuscleCoverage

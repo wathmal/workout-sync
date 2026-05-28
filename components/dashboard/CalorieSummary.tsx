@@ -1,6 +1,5 @@
 "use client";
 
-import type { OverviewMock } from "@/lib/dashboard/mock-data";
 import { SectionHead } from "./SectionHead";
 import {
   BarChart,
@@ -13,66 +12,132 @@ import {
   Cell,
 } from "recharts";
 import { AlertTriangle } from "lucide-react";
+import { useFoodLog } from "@/app/_providers/food-log-provider";
 
-type Calories = OverviewMock["calories"];
+const DOW_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
-// Mock targets stored as kcal contributions, not grams. Stack boundaries map
-// to cumulative kcal totals: P, P+C, P+C+F (= total target).
-export function CalorieSummary({ data }: { data: Calories }) {
-  const targetP = data.targetProtein;
-  const targetPC = targetP + data.targetCarbs;
-  const targetTotal = targetPC + data.targetFat;
+export function CalorieSummary() {
+  const { week, today, target, loading } = useFoodLog();
 
-  const targetTotalKcal = data.targetProtein + data.targetCarbs + data.targetFat;
-  const chartData = data.week.map((d) => ({
-    day: d.day,
-    protein: d.protein,
-    carbs: d.carbs,
-    fat: d.fat,
-    total: d.total,
+  // Targets as kcal contributions (P×4, C×4, F×9). Falls back to a neutral
+  // 2500 kcal target when no row exists yet so the chart still renders.
+  const fallback = { kcal: 2500, proteinG: 150, carbsG: 280, fatG: 80 };
+  const t = target ?? fallback;
+  const targetP = t.proteinG * 4;
+  const targetC = t.carbsG * 4;
+  const targetF = t.fatG * 9;
+  const targetPC = targetP + targetC;
+  const targetTotal = targetPC + targetF;
+  const targetTotalKcal = targetTotal;
+
+  // Build 7-day stack. Server-side `week` already orders Mon..Sun.
+  const safeWeek = week.length ? week : Array.from({ length: 7 }).map((_, i) => ({
+    date: "",
+    dow: i,
+    proteinKcal: 0,
+    carbsKcal: 0,
+    fatKcal: 0,
+    totalKcal: 0,
+    proteinG: 0,
+    carbsG: 0,
+    fatG: 0,
+    isToday: false,
+    isPlanned: true,
+  }));
+  const chartData = safeWeek.map((d) => ({
+    day: DOW_LABELS[d.dow] ?? "",
+    protein: d.proteinKcal,
+    carbs: d.carbsKcal,
+    fat: d.fatKcal,
+    total: d.totalKcal,
     plannedGhost: d.isPlanned ? targetTotalKcal : 0,
-    isToday: !!d.isToday,
-    isPlanned: !!d.isPlanned,
+    isToday: d.isToday,
+    isPlanned: d.isPlanned,
   }));
 
-  // Today's macros in grams (derived from kcal stack) for the bottom strip.
-  const today = data.week.find((d) => d.isToday);
-  const macros = today
-    ? {
-        protein: Math.round(today.protein / 4),
-        carbs: Math.round(today.carbs / 4),
-        fat: Math.round(today.fat / 9),
-      }
-    : { protein: 0, carbs: 0, fat: 0 };
+  // Today's macros in grams from logged items (more accurate than kcal-back-derivation).
+  const macros = today.reduce(
+    (acc, m) => ({
+      protein: acc.protein + m.proteinG,
+      carbs: acc.carbs + m.carbsG,
+      fat: acc.fat + m.fatG,
+    }),
+    { protein: 0, carbs: 0, fat: 0 },
+  );
   const macroTargets = {
-    protein: Math.round(data.targetProtein / 4),
-    carbs: Math.round(data.targetCarbs / 4),
-    fat: Math.round(data.targetFat / 9),
+    protein: t.proteinG,
+    carbs: t.carbsG,
+    fat: t.fatG,
   };
+
+  // Group today's items by batch so each meal appears as one row in the strip.
+  // Prefer LLM-assigned meal_name; fall back to first-item + "N more".
+  const todayGroups = (() => {
+    type Acc = { mealName: string | null; firstName: string; count: number; kcal: number; time: string };
+    const map = new Map<string, Acc>();
+    for (const m of today) {
+      const prev = map.get(m.batchId);
+      const time = new Date(m.loggedAt).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      if (!prev) {
+        map.set(m.batchId, {
+          mealName: m.mealName,
+          firstName: m.name,
+          count: 1,
+          kcal: m.kcal,
+          time,
+        });
+      } else {
+        prev.count += 1;
+        prev.kcal += m.kcal;
+      }
+    }
+    return Array.from(map.values())
+      .map((g) => ({
+        name: g.mealName ?? (g.count > 1 ? `${g.firstName} + ${g.count - 1} more` : g.firstName),
+        kcal: g.kcal,
+        time: g.time,
+      }))
+      .sort((a, b) => a.time.localeCompare(b.time));
+  })();
+
+  // Avg delta over completed days (not today, not planned).
+  const completed = safeWeek.filter((d) => !d.isToday && !d.isPlanned && d.totalKcal > 0);
+  const avgDelta = completed.length
+    ? Math.round(
+        completed.reduce((s, d) => s + (d.totalKcal - targetTotal), 0) / completed.length,
+      )
+    : 0;
+  const todayTotalKcal = today.reduce((s, m) => s + m.kcal, 0);
 
   return (
     <Card>
       <SectionHead
         size="md"
-        overline={<>Nutrition <Sep /> May 18 – 24</>}
+        overline={<>Nutrition <Sep /> This week</>}
         title="Calories vs target."
         right={
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-              padding: "4px 8px",
-              borderRadius: 999,
-              background: "rgba(255,201,74,0.14)",
-              color: "var(--color-semantic-warning)",
-              fontSize: 11,
-              fontWeight: 600,
-            }}
-          >
-            <AlertTriangle size={11} />
-            +{data.avgDelta} avg
-          </span>
+          avgDelta !== 0 ? (
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "4px 8px",
+                borderRadius: 999,
+                background: "rgba(255,201,74,0.14)",
+                color: "var(--color-semantic-warning)",
+                fontSize: 11,
+                fontWeight: 600,
+              }}
+            >
+              <AlertTriangle size={11} />
+              {avgDelta > 0 ? "+" : ""}
+              {avgDelta} avg
+            </span>
+          ) : null
         }
       />
 
@@ -257,17 +322,39 @@ export function CalorieSummary({ data }: { data: Calories }) {
             className="text-label-md"
             style={{ color: "var(--color-text-tertiary)" }}
           >
-            Today <Sep /> {data.todayMeals.length} meals
+            Today <Sep /> {todayGroups.length} {todayGroups.length === 1 ? "meal" : "meals"}
           </span>
           <span
             className="font-mono-sm"
             style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}
           >
-            {data.todayMeals.reduce((s, m) => s + m.kcal, 0).toLocaleString()} /{" "}
-            {data.targetTotal.toLocaleString()} kcal
+            {Math.round(todayTotalKcal).toLocaleString()} /{" "}
+            {targetTotal.toLocaleString()} kcal
           </span>
         </div>
-        {data.todayMeals.map((m, i) => (
+        {loading && todayGroups.length === 0 && (
+          <div
+            style={{
+              padding: "var(--space-sm)",
+              color: "var(--color-text-tertiary)",
+              fontSize: 12,
+            }}
+          >
+            Loading…
+          </div>
+        )}
+        {!loading && todayGroups.length === 0 && (
+          <div
+            style={{
+              padding: "var(--space-sm)",
+              color: "var(--color-text-tertiary)",
+              fontSize: 12,
+            }}
+          >
+            Nothing logged yet today.
+          </div>
+        )}
+        {todayGroups.map((m, i) => (
           <div
             key={i}
             style={{
@@ -295,7 +382,7 @@ export function CalorieSummary({ data }: { data: Calories }) {
               className="font-mono-sm"
               style={{ fontSize: 13, color: "var(--color-text-secondary)" }}
             >
-              {m.kcal}
+              {Math.round(m.kcal)}
               <small style={{ color: "var(--color-text-tertiary)" }}> kcal</small>
             </span>
           </div>
@@ -313,19 +400,19 @@ export function CalorieSummary({ data }: { data: Calories }) {
       >
         <MacroBar
           label="Protein"
-          consumed={macros.protein}
+          consumed={Math.round(macros.protein)}
           target={macroTargets.protein}
           color="var(--color-data-2)"
         />
         <MacroBar
           label="Carbs"
-          consumed={macros.carbs}
+          consumed={Math.round(macros.carbs)}
           target={macroTargets.carbs}
           color="var(--color-data-3)"
         />
         <MacroBar
           label="Fat"
-          consumed={macros.fat}
+          consumed={Math.round(macros.fat)}
           target={macroTargets.fat}
           color="var(--color-data-4)"
         />
