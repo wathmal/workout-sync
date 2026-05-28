@@ -56,19 +56,33 @@ export interface JoinedWorkout {
   exercises: JoinedExercise[];
 }
 
+export type HevyFetchErrorCode = "no-key" | "fetch-fail";
+
 export type GetWorkoutsResult =
   | { ok: true; workouts: JoinedWorkout[] }
-  | { ok: false; error: "no-key" | "fetch-fail" };
+  | { ok: false; error: HevyFetchErrorCode; status?: number };
 
-async function fetchPage(page: number, apiKey: string): Promise<WorkoutsListResponse> {
+class HevyFetchError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message);
+  }
+}
+
+async function fetchPage(
+  page: number,
+  apiKey: string,
+  fresh: boolean,
+): Promise<WorkoutsListResponse> {
   const url = `${HEVY_BASE}/workouts?page=${page}&pageSize=${PAGE_SIZE}`;
   const res = await fetch(url, {
     method: "GET",
     headers: { "api-key": apiKey },
-    next: { tags: [HEVY_WORKOUTS_TAG], revalidate: REVALIDATE_SECONDS },
+    ...(fresh
+      ? { cache: "no-store" as const }
+      : { next: { tags: [HEVY_WORKOUTS_TAG], revalidate: REVALIDATE_SECONDS } }),
   });
   if (!res.ok) {
-    throw new Error(`Hevy /workouts page ${page} → ${res.status}`);
+    throw new HevyFetchError(res.status, `Hevy /workouts page ${page} → ${res.status}`);
   }
   return (await res.json()) as WorkoutsListResponse;
 }
@@ -86,7 +100,10 @@ function joinWorkout(raw: HevyRawWorkout): JoinedWorkout {
   };
 }
 
-async function loadWorkoutsSince(sinceMs: number): Promise<GetWorkoutsResult> {
+async function loadWorkoutsSince(
+  sinceMs: number,
+  fresh = false,
+): Promise<GetWorkoutsResult> {
   const apiKey = process.env.HEVY_API_KEY;
   if (!apiKey) return { ok: false, error: "no-key" };
 
@@ -95,7 +112,7 @@ async function loadWorkoutsSince(sinceMs: number): Promise<GetWorkoutsResult> {
 
   try {
     for (let page = 1; page <= MAX_PAGES; page++) {
-      const data = await fetchPage(page, apiKey);
+      const data = await fetchPage(page, apiKey, fresh);
       const list = data.workouts ?? [];
       if (list.length === 0) break;
 
@@ -114,7 +131,8 @@ async function loadWorkoutsSince(sinceMs: number): Promise<GetWorkoutsResult> {
     return { ok: true, workouts: collected };
   } catch (err) {
     console.error("Hevy workouts fetch failed:", err);
-    return { ok: false, error: "fetch-fail" };
+    const status = err instanceof HevyFetchError ? err.status : undefined;
+    return { ok: false, error: "fetch-fail", status };
   }
 }
 

@@ -70,10 +70,13 @@ function buildColorStyle(entries: MuscleCoverageEntry[]): string {
 }
 
 export function MuscleCoverage({ svgs }: { svgs: { front: string; back: string } }) {
-  const { coverage, error } = useHevy();
+  const { coverage, error, errorCode, loading, lastFetched } = useHevy();
   const entries = coverage.entries;
   const attention = coverage.attention;
   const css = buildColorStyle(entries);
+  // Initial load (never fetched yet): suppress the "All tracked muscles met"
+  // empty state so it doesn't flash before the first response.
+  const pendingFirstLoad = loading && lastFetched === null && !error;
 
   return (
     <div
@@ -150,7 +153,19 @@ export function MuscleCoverage({ svgs }: { svgs: { front: string; back: string }
         </div>
 
         {error ? (
-          <EmptyMessage error={/api key|not configured/i.test(error) ? "no-key" : "fetch-fail"} />
+          <EmptyMessage error={errorCode ?? "fetch-fail"} />
+        ) : pendingFirstLoad ? (
+          <div
+            style={{
+              padding: "10px var(--space-sm)",
+              background: "var(--color-surface-low)",
+              borderRadius: "var(--radius-md)",
+              color: "var(--color-text-tertiary)",
+              fontSize: 13,
+            }}
+          >
+            Loading coverage…
+          </div>
         ) : attention.length === 0 ? (
           <div
             style={{

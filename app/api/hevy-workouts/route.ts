@@ -5,9 +5,8 @@ import { getWorkoutsSince } from "@/lib/hevy/workouts-since";
  * GET /api/hevy-workouts?since=<ISO>
  * Returns JoinedWorkout[] (Hevy raw exercises + matched catalog template).
  *
- * Uses the paginated /workouts endpoint via getWorkoutsSince so coverage
- * windows of >10 sessions render correctly. The default window is 14 days
- * ago when `since` is omitted.
+ * Client-driven endpoint — always fetches fresh from Hevy (no Next data cache)
+ * so manual refresh and post-sync refresh see new workouts immediately.
  */
 export async function GET(request: NextRequest) {
   const sinceParam = request.nextUrl.searchParams.get("since");
@@ -17,19 +16,29 @@ export async function GET(request: NextRequest) {
 
   if (!Number.isFinite(sinceMs)) {
     return NextResponse.json(
-      { error: "since must be a valid ISO timestamp" },
+      { error: "since must be a valid ISO timestamp", code: "bad-request" },
       { status: 400 },
     );
   }
 
-  const result = await getWorkoutsSince(sinceMs);
+  const result = await getWorkoutsSince(sinceMs, true);
   if (!result.ok) {
-    const status = result.error === "no-key" ? 500 : 502;
-    const message =
-      result.error === "no-key"
-        ? "Hevy API key not configured"
-        : "Failed to fetch workouts from Hevy";
-    return NextResponse.json({ error: message }, { status });
+    if (result.error === "no-key") {
+      return NextResponse.json(
+        { error: "Hevy API key not configured", code: "no-key" },
+        { status: 500 },
+      );
+    }
+    const upstream = result.status;
+    const status = upstream && upstream >= 400 && upstream < 600 ? upstream : 502;
+    return NextResponse.json(
+      {
+        error: "Failed to fetch workouts from Hevy",
+        code: "fetch-fail",
+        upstreamStatus: upstream,
+      },
+      { status },
+    );
   }
 
   return NextResponse.json({ workouts: result.workouts });

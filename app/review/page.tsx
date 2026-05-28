@@ -12,7 +12,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { ExercisePickerDropdown } from "@/components/ExercisePickerDropdown";
-import { findDuplicateOnDate } from "@/lib/hevy/api";
 import { Overline } from "@/app/_components/overline";
 import { WGhost, WPrimary, WText } from "@/app/_components/web-button";
 import { EquipBadge } from "@/app/_components/equip-badge";
@@ -58,7 +57,7 @@ export default function ReviewPage() {
     detectionConfidence,
   } = useWorkout();
 
-  const { workouts: hevyEvents, commitWorkout } = useHevy();
+  const { commitWorkout, findDuplicateForDate } = useHevy();
   const [syncResult, setSyncResult] = useState<SyncSummary | null>(null);
 
   const [exercises, setExercises] = useState<WorkoutExercise[]>(processedExercises);
@@ -109,12 +108,25 @@ export default function ReviewPage() {
     return () => URL.revokeObjectURL(url);
   }, [uploadedImage]);
 
-  // Duplicate check — pure filter against hevy-provider events.
+  // Duplicate check — fetches workouts for the selected date from Hevy.
+  // Race-safe: a stale in-flight response can't overwrite a newer one.
   useEffect(() => {
-    const dup = findDuplicateOnDate(workoutDate, hevyEvents);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDuplicate(dup);
-  }, [workoutDate, hevyEvents]);
+    let cancelled = false;
+    findDuplicateForDate(workoutDate)
+      .then((dup) => {
+        if (cancelled) return;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setDuplicate(dup);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setDuplicate(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [workoutDate, findDuplicateForDate]);
 
   // Set updates. For weight (and reps when changing the first row), if the
   // user fills a value into one set we propagate it down to all subsequent
