@@ -73,7 +73,16 @@ export function CalorieSummary() {
   // Group today's items by batch so each meal appears as one row in the strip.
   // Prefer LLM-assigned meal_name; fall back to first-item + "N more".
   const todayGroups = (() => {
-    type Acc = { mealName: string | null; firstName: string; count: number; kcal: number; time: string };
+    type Acc = {
+      mealName: string | null;
+      firstName: string;
+      count: number;
+      kcal: number;
+      proteinG: number;
+      carbsG: number;
+      fatG: number;
+      time: string;
+    };
     const map = new Map<string, Acc>();
     for (const m of today) {
       const prev = map.get(m.batchId);
@@ -87,17 +96,26 @@ export function CalorieSummary() {
           firstName: m.name,
           count: 1,
           kcal: m.kcal,
+          proteinG: m.proteinG,
+          carbsG: m.carbsG,
+          fatG: m.fatG,
           time,
         });
       } else {
         prev.count += 1;
         prev.kcal += m.kcal;
+        prev.proteinG += m.proteinG;
+        prev.carbsG += m.carbsG;
+        prev.fatG += m.fatG;
       }
     }
     return Array.from(map.values())
       .map((g) => ({
         name: g.mealName ?? (g.count > 1 ? `${g.firstName} + ${g.count - 1} more` : g.firstName),
         kcal: g.kcal,
+        proteinG: g.proteinG,
+        carbsG: g.carbsG,
+        fatG: g.fatG,
         time: g.time,
       }))
       .sort((a, b) => a.time.localeCompare(b.time));
@@ -379,11 +397,39 @@ export function CalorieSummary() {
               {m.name}
             </span>
             <span
-              className="font-mono-sm"
-              style={{ fontSize: 13, color: "var(--color-text-secondary)" }}
+              style={{
+                display: "inline-flex",
+                alignItems: "baseline",
+                gap: 8,
+              }}
             >
-              {Math.round(m.kcal)}
-              <small style={{ color: "var(--color-text-tertiary)" }}> kcal</small>
+              <span
+                className="font-mono-sm"
+                style={{
+                  fontSize: 11,
+                  color: "var(--color-text-tertiary)",
+                  whiteSpace: "nowrap",
+                  display: "inline-block",
+                  minWidth: 50,
+                  textAlign: "right",
+                }}
+              >
+                P {Math.round(m.proteinG)}
+              </span>
+              <span
+                className="font-mono-sm"
+                style={{
+                  fontSize: 13,
+                  color: "var(--color-text-secondary)",
+                  display: "inline-block",
+                  minWidth: 80,
+                  textAlign: "right",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {Math.round(m.kcal)}
+                <small style={{ color: "var(--color-text-tertiary)" }}> kcal</small>
+              </span>
             </span>
           </div>
         ))}

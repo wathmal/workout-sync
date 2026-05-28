@@ -8,9 +8,9 @@ import { useHevy } from "@/app/_providers/hevy-provider";
 import { useFoodLog } from "@/app/_providers/food-log-provider";
 
 const TABS = [
-  { href: "/", label: "Overview" },
-  { href: "/upload", label: "Log Workout" },
-  { href: "/food", label: "Log Food" },
+  { href: "/", label: "Overview", shortLabel: "Home" },
+  { href: "/upload", label: "Log Workout", shortLabel: "Workout" },
+  { href: "/food", label: "Log Food", shortLabel: "Food" },
 ] as const;
 
 const ENV_LABEL = "DEV";
@@ -18,6 +18,7 @@ const ENV_LABEL = "DEV";
 function WordmarkGlyph() {
   return (
     <span
+      className="topnav-glyph"
       style={{
         display: "flex",
         alignItems: "center",
@@ -89,6 +90,7 @@ export function TopNav() {
   return (
     <nav
       aria-label="Primary"
+      className="topnav-root"
       style={{
         position: "sticky",
         top: 0,
@@ -106,6 +108,7 @@ export function TopNav() {
       {/* Logo cluster — two-line stack + env pill, mirrors vocab-app admin */}
       <Link
         href="/"
+        className="topnav-logo"
         style={{
           display: "flex",
           alignItems: "center",
@@ -116,9 +119,10 @@ export function TopNav() {
         }}
       >
         <WordmarkGlyph />
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+        <div className="topnav-wordmark-col" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <div className="topnav-wordmark-row" style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
             <span
+              className="topnav-wordmark-main"
               style={{
                 fontFamily: "var(--font-display)",
                 fontWeight: 700,
@@ -130,6 +134,7 @@ export function TopNav() {
               Fit
             </span>
             <span
+              className="topnav-wordmark-sub"
               style={{
                 fontFamily: "var(--font-body)",
                 fontWeight: 400,
@@ -143,6 +148,7 @@ export function TopNav() {
             </span>
           </div>
           <span
+            className="topnav-env"
             style={{
               width: "fit-content",
               padding: "1px 8px",
@@ -165,6 +171,7 @@ export function TopNav() {
       {/* Tabs */}
       <div
         role="tablist"
+        className="topnav-tabs"
         style={{
           display: "flex",
           flex: 1,
@@ -180,6 +187,7 @@ export function TopNav() {
               key={t.href}
               href={t.href}
               aria-current={active ? "page" : undefined}
+              className="topnav-tab"
               style={{
                 position: "relative",
                 padding: "21px 12px",
@@ -191,9 +199,11 @@ export function TopNav() {
                   : "var(--color-text-tertiary)",
                 textDecoration: "none",
                 transition: "color var(--motion-fast) var(--ease)",
+                whiteSpace: "nowrap",
               }}
             >
-              {t.label}
+              <span className="topnav-tab-long">{t.label}</span>
+              <span className="topnav-tab-short">{t.shortLabel}</span>
               {active && (
                 <span
                   aria-hidden
@@ -214,7 +224,7 @@ export function TopNav() {
       </div>
 
       {/* Right cluster */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+      <div className="topnav-right" style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
         <span
           suppressHydrationWarning
           style={{
@@ -237,6 +247,8 @@ export function TopNav() {
             })
           }
           disabled={refreshing}
+          className="topnav-refresh"
+          aria-label="Refresh"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -256,13 +268,14 @@ export function TopNav() {
           }}
         >
           <RefreshCw size={14} className={refreshing ? "animate-tl-spin" : ""} />
-          Refresh
+          <span className="topnav-refresh-label">Refresh</span>
         </button>
 
         <button
           type="button"
           onClick={toggleTheme}
           aria-label="Toggle theme"
+          className="topnav-theme"
           style={{
             padding: 8,
             borderRadius: 999,
@@ -283,6 +296,7 @@ export function TopNav() {
         </button>
 
         <div
+          className="topnav-avatar"
           style={{
             width: 32,
             height: 32,

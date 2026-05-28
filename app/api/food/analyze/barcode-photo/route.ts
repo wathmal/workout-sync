@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fmaAnalyzePhoto } from "@/lib/food/fma";
+import { fmaAnalyzeBarcodePhoto } from "@/lib/food/fma";
 import { preparePhoto } from "@/lib/food/photo-prep";
 
 /**
@@ -12,15 +12,15 @@ export async function POST(request: NextRequest) {
     const base64: string = body?.imageBase64 ?? "";
     const filename: string | undefined = body?.filename;
     const mimeType: string | undefined = body?.mimeType;
-    const locale: string | undefined = body?.locale;
-    const context: string | undefined = body?.context;
+    const locale: string | undefined = body?.locale || undefined;
+    const context: string | undefined = body?.context || undefined;
 
     if (!base64) {
       return NextResponse.json({ error: "imageBase64 required" }, { status: 400 });
     }
 
     const prepared = await preparePhoto(base64, filename, mimeType);
-    const analyze = await fmaAnalyzePhoto(prepared.base64, { locale, context });
+    const analyze = await fmaAnalyzeBarcodePhoto(prepared.base64, { locale, context });
 
     return NextResponse.json({
       ...analyze,

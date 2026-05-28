@@ -56,17 +56,27 @@ async function fma<T>(
   return res.json() as Promise<T>;
 }
 
-export async function fmaSearch(q: string, limit = 8): Promise<FmaSearchResponse> {
-  return fma<FmaSearchResponse>("/v1/foods/search", { query: { q, limit } });
+export async function fmaSearch(
+  q: string,
+  limit = 8,
+  opts?: { locale?: string },
+): Promise<FmaSearchResponse> {
+  return fma<FmaSearchResponse>("/v1/foods/search", {
+    query: { q, limit, locale: opts?.locale },
+  });
 }
 
 export async function fmaAnalyzeText(
   text: string,
-  opts?: { include?: Array<"trace" | "rationale"> },
+  opts?: { include?: Array<"trace" | "rationale">; locale?: string },
 ): Promise<FmaAnalyzeResponse> {
   return fma<FmaAnalyzeResponse>("/v1/analyze/text", {
     method: "POST",
-    body: { text, include: opts?.include ?? ["rationale"] },
+    body: {
+      text,
+      include: opts?.include ?? ["rationale"],
+      locale: opts?.locale,
+    },
   });
 }
 
@@ -79,6 +89,30 @@ export async function fmaAnalyzePhoto(
     body: {
       image_base64: imageBase64,
       include: opts?.include ?? ["rationale"],
+      locale: opts?.locale,
+      context: opts?.context,
+    },
+  });
+}
+
+export async function fmaAnalyzeBarcode(
+  code: string,
+  opts?: { locale?: string },
+): Promise<FmaAnalyzeResponse> {
+  return fma<FmaAnalyzeResponse>("/v1/analyze/barcode", {
+    method: "POST",
+    body: { code, locale: opts?.locale },
+  });
+}
+
+export async function fmaAnalyzeBarcodePhoto(
+  imageBase64: string,
+  opts?: { locale?: string; context?: string },
+): Promise<FmaAnalyzeResponse> {
+  return fma<FmaAnalyzeResponse>("/v1/analyze/barcode-photo", {
+    method: "POST",
+    body: {
+      image_base64: imageBase64,
       locale: opts?.locale,
       context: opts?.context,
     },

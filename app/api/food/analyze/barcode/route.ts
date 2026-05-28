@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fmaAnalyzeText } from "@/lib/food/fma";
+import { fmaAnalyzeBarcode } from "@/lib/food/fma";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const text = (body?.text ?? "").toString().trim();
+    const code = (body?.code ?? "").toString().trim();
     const locale: string | undefined = body?.locale || undefined;
-    if (!text) {
-      return NextResponse.json({ error: "text is required" }, { status: 400 });
+    if (!code) {
+      return NextResponse.json({ error: "code is required" }, { status: 400 });
     }
-    const data = await fmaAnalyzeText(text, { locale });
+    const data = await fmaAnalyzeBarcode(code, { locale });
     return NextResponse.json(data);
   } catch (err) {
     const status = (err as Error & { status?: number }).status ?? 500;

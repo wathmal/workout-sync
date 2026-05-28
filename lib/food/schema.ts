@@ -17,6 +17,7 @@ export const foodLogSourceEnum = pgEnum("food_log_source", [
   "text",
   "photo",
   "manual",
+  "barcode",
 ]);
 
 export const foodLogEntry = pgTable(
