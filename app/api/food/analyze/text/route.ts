@@ -5,10 +5,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const text = (body?.text ?? "").toString().trim();
+    const locale: string | undefined = body?.locale || undefined;
     if (!text) {
       return NextResponse.json({ error: "text is required" }, { status: 400 });
     }
-    const data = await fmaAnalyzeText(text);
+    const data = await fmaAnalyzeText(text, { locale });
     return NextResponse.json(data);
   } catch (err) {
     const status = (err as Error & { status?: number }).status ?? 500;

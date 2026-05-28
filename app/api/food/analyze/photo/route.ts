@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fmaAnalyzePhoto } from "@/lib/food/fma";
-import {
-  isHeic,
-  convertHeicToJpeg,
-  extractImageDateFromBuffer,
-} from "@/lib/image-utils";
+import { preparePhoto } from "@/lib/food/photo-prep";
 
 /**
- * Body: { imageBase64: string, filename?: string, mimeType?: string }
+ * Body: { imageBase64, filename?, mimeType?, locale?, context? }
  * Returns: FMA analyze response + extracted EXIF date (if any).
  */
 export async function POST(request: NextRequest) {
@@ -16,24 +12,19 @@ export async function POST(request: NextRequest) {
     const base64: string = body?.imageBase64 ?? "";
     const filename: string | undefined = body?.filename;
     const mimeType: string | undefined = body?.mimeType;
+    const locale: string | undefined = body?.locale;
+    const context: string | undefined = body?.context;
 
     if (!base64) {
       return NextResponse.json({ error: "imageBase64 required" }, { status: 400 });
     }
 
-    let buf: Buffer = Buffer.from(base64, "base64");
-    if (isHeic(mimeType, filename, buf)) {
-      buf = await convertHeicToJpeg(buf) as Buffer;
-    }
-
-    const exifDate = await extractImageDateFromBuffer(buf).catch(() => null);
-    const forwardedBase64 = buf.toString("base64");
-
-    const analyze = await fmaAnalyzePhoto(forwardedBase64);
+    const prepared = await preparePhoto(base64, filename, mimeType);
+    const analyze = await fmaAnalyzePhoto(prepared.base64, { locale, context });
 
     return NextResponse.json({
       ...analyze,
-      exifDate: exifDate ? exifDate.toISOString() : null,
+      exifDate: prepared.exifDateIso,
     });
   } catch (err) {
     const status = (err as Error & { status?: number }).status ?? 500;
