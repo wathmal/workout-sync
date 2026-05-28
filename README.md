@@ -1,193 +1,183 @@
 # Workout Sync
 
-A mobile-first web application that allows users to upload workout photos and sync them to Hevy. Built with Next.js, TypeScript, Tailwind CSS, and shadcn/ui.
+Mobile-first dashboard that combines a Hevy workout sync flow with a food/macro logger. Upload a workout photo and the app extracts exercises, matches them to Hevy's catalog, and pushes the result to Hevy. Log meals via search, free text, photo, or barcode against a local Postgres-backed macro store. A single dashboard pulls both together.
+
+Built with Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui, Drizzle, and Postgres.
 
 ## Screenshots
 
 ![Hevy Sync Screen 1](docs/hevy-sync-screen-1.png)
-
 ![Hevy Sync Screen 3](docs/hevy-sync-screen-3.png)
-
 ![Hevy Sync Screen 2](docs/hevy-sync-screen-2.png)
 
 ## Features
 
-- 📸 **Photo Upload**: Upload workout screenshots from gym screens or selfies with EXIF date extraction
-- 🤖 **AI-Powered Workout Detection**: Uses Groq Vision API (Llama 4 Scout) to automatically extract exercises, sets, reps, and weights from workout photos
-- 🔍 **Intelligent Exercise Matching**: Fuzzy matching system maps detected exercises to Hevy's database of 453 exercises
-- ✏️ **Edit & Review**: Review and edit detected exercises, sets, reps, and weight with image zoom/pan
-- 📅 **Date & Time Management**: Automatic date extraction from image EXIF data with manual override
-- 🔗 **Hevy Sync**: Real-time sync to Hevy API with duplicate workout detection
-- 🔎 **Exercise Search**: Search and replace exercises from Hevy's exercise database
-- 📱 **Mobile-First Design**: Optimized for mobile devices with smooth animations
-- 🎨 **Modern UI**: Clean, professional interface using shadcn/ui components
+### Workout sync (Hevy)
+- Photo upload with EXIF date extraction (HEIC/HEIF supported)
+- Groq Vision (Llama 4 Scout) extracts exercises, sets, reps, weights
+- Optional agent harness (tool-use loop via Groq, LM Studio, or local Claude CLI)
+- Fuzzy + embedding match against Hevy's catalog (459 exercises)
+- Review and edit before sync; duplicate detection by date
 
-## Tech Stack
+### Food / macro log
+- Backed by [food-macro-api](https://github.com/voqilabs/food-macro-api) (FMA) for search and analysis
+- Four input modes: search, text, photo, barcode
+- Persistent log in local Postgres (Drizzle ORM)
+- Time-boxed macro targets, week stack, quick-add chips
 
-- **Framework**: Next.js 16.1.1 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS 4
-- **UI Components**: shadcn/ui (New York style)
-- **Icons**: Lucide React
-- **State Management**: React Context API
-- **AI/ML**: Groq Vision API (Llama 4 Scout 17B)
-- **APIs**: Hevy API, Groq API
-- **Image Processing**: EXIF extraction, zoom/pan with react-zoom-pan-pinch
-- **Containerization**: Docker/Podman support with multi-stage builds
-- **Deployment**: Optimized for TrueNAS Scale and Docker Hub
+### Dashboard
+- Muscle coverage map driven by recent Hevy workouts
+- Calorie/macro summary against active target
+- Body measurements card and trend chart
+- Optional 3D body visualisation via a local Python service (`tools/body-fit-api`)
 
-## Getting Started
+## Tech stack
+
+- **Framework:** Next.js 16 (App Router), React 19, TypeScript
+- **Styling:** Tailwind v4, shadcn/ui (New York), Radix, lucide-react
+- **State:** React Context providers (workout, hevy, food log, measurements)
+- **Vision:** Groq API (Llama 4 Scout) or local LM Studio; optional agent harness
+- **Matching:** Fuzzy (Levenshtein + bonuses) blended with embeddings (LM Studio / Transformers.js)
+- **Persistence:** Postgres 16 + Drizzle ORM (food log + macro targets)
+- **External APIs:** Hevy, Groq, FMA
+- **Image processing:** EXIF (exifr), HEIC convert (heic-convert), zoom/pan (react-zoom-pan-pinch)
+- **Containers:** Multi-stage Dockerfile, standalone output, ready for TrueNAS Scale
+
+## Getting started
 
 ### Prerequisites
+- Node.js 22+ (no `.nvmrc` yet)
+- Docker or Podman (for local Postgres + FMA)
+- A running [food-macro-api](https://github.com/voqilabs/food-macro-api) instance if you want the food log
 
-- Node.js 22+ (using nvm)
-- npm or yarn
+### Install
 
-### Installation
-
-1. Clone the repository:
 ```bash
 git clone <repository-url>
 cd workout-sync
-```
-
-2. Install dependencies:
-```bash
 npm install
+cp env.example .env.local      # fill in keys
+docker compose up -d db        # local Postgres on :5433
+npm run db:migrate
+npm run db:seed                # optional, seeds a starter macro target
+npm run dev                    # http://localhost:3000
 ```
 
-3. Run the development server:
+Without `GROQ_API_KEY` the workout extraction falls back to mock data and the UI shows a warning banner. Without `FMA_BASE_URL`/`FMA_API_KEY` the food routes return errors.
+
+## Environment variables
+
+See `env.example` for the full template. Highlights:
+
+| Var | Required | Purpose |
+|-----|----------|---------|
+| `GROQ_API_KEY` | recommended | Workout vision extraction |
+| `HEVY_API_KEY` | for sync | Hevy API (catalog refresh + workout push) |
+| `FMA_BASE_URL` | for food log | food-macro-api base URL |
+| `FMA_API_KEY` | for food log | FMA bearer token |
+| `DATABASE_URL` | for food log | Postgres connection string |
+| `USER_TZ` | optional | IANA timezone for day-boundary aggregation |
+| `MATCHING_MODE` | optional | `fuzzy` / `vector` / `both` |
+| `EMBEDDING_SOURCE` | optional | `auto` / `lm-studio` / `transformers` / `off` |
+| `AGENT_HARNESS_PROVIDER` | optional | `off` / `groq` / `lm-studio` / `claude-cli` |
+
+Full list with defaults: `docs/architecture.md`.
+
+## Scripts
+
 ```bash
-npm run dev
+npm run dev                       # Next.js dev server
+npm run build                     # production build (prebuild refreshes Hevy catalog + embeddings)
+npm run lint                      # ESLint
+npm test                          # Jest
+npm run test:watch                # Jest watch
+
+npm run db:up                     # start local Postgres
+npm run db:down                   # stop it
+npm run db:generate               # drizzle-kit generate (after schema edit)
+npm run db:migrate                # apply migrations
+npm run db:seed                   # seed a default macro target
+npm run db:reset                  # nuke volume + remigrate + reseed
+
+npm run refresh:hevy              # refresh Hevy catalog snapshot
+npm run build:embeddings          # build embedding catalogs (auto provider)
+npm run build:embeddings:both     # build LM Studio + Transformers.js catalogs
+npm run build:embeddings:check    # exit 0 if catalogs up-to-date
+
+npm run e2e:matching              # matching only
+npm run e2e:full                  # Groq + matching (needs GROQ_API_KEY)
+npm run e2e:heic                  # HEIC + Groq
+
+npm run debug:match -- "DB Curl"  # score breakdown for one query
+npm run agent:extract -- tests/fixtures/workout-revl-1.jpeg
+
+npm run body3d:api:setup          # create venv + install body-fit-api deps
+npm run body3d:api                # run body-fit-api on :8000
 ```
 
-4. Create a `.env.local` file with your API keys (see `env.example`):
-```bash
-cp .env.example .env.local
-# Edit .env.local with your actual API keys
-```
+## Container deployment
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser
+### Build
 
-## Environment Variables
-
-The application requires the following environment variables:
-
-- `HEVY_API_KEY` - Your Hevy API key (get from Hevy app settings)
-- `GROQ_API_KEY` - Your Groq API key (get from https://console.groq.com/)
-
-See `env.example` for a template.
-
-## Container Deployment
-
-### Building with Podman
-
-1. **Build the Podman image:**
 ```bash
 podman build -t workout-sync:latest .
-# 64bit image
+# Multi-arch (for TrueNAS):
 podman buildx build --platform linux/amd64 -t workout-sync:amd64 .
 ```
 
-2. **Test locally:**
+### Run
+
 ```bash
 podman run -d \
   --name workout-sync \
   -p 3000:3000 \
-  -e HEVY_API_KEY="your_hevy_api_key" \
-  -e GROQ_API_KEY="your_groq_api_key" \
+  -e HEVY_API_KEY=... \
+  -e GROQ_API_KEY=... \
+  -e DATABASE_URL=... \
+  -e FMA_BASE_URL=... \
+  -e FMA_API_KEY=... \
   workout-sync:latest
 ```
 
-3. **Push to Docker Hub:**
+### Push to Docker Hub
+
 ```bash
-# Login to Docker Hub
 podman login docker.io
-
-# Tag the image (include full registry URL)
-podman tag workout-sync:latest docker.io/YOUR_DOCKERHUB_USERNAME/workout-sync:latest
-
-# Push to Docker Hub
-podman push docker.io/YOUR_DOCKERHUB_USERNAME/workout-sync:latest
+podman tag workout-sync:latest docker.io/<user>/workout-sync:v0.3.0
+podman push docker.io/<user>/workout-sync:v0.3.0
 ```
 
-**Note:** With Podman, always include the full registry URL (`docker.io/`) when tagging and pushing.
+### TrueNAS Scale
 
-### Version Tagging (Recommended)
+Apps → Custom App → Install. Set image repo, env vars, port mapping (container 3000). For private repos configure Docker Hub credentials.
 
-Instead of always using `latest`, consider versioning your images:
+See `docs/architecture.md` for deployment env table and embedding/agent-harness options inside containers.
 
-```bash
-# Docker
-docker tag workout-sync:latest YOUR_DOCKERHUB_USERNAME/workout-sync:v1.0.0
-docker push YOUR_DOCKERHUB_USERNAME/workout-sync:v1.0.0
+## Architecture
 
-# Podman
-podman tag workout-sync:latest docker.io/YOUR_DOCKERHUB_USERNAME/workout-sync:v1.0.0
-podman push docker.io/YOUR_DOCKERHUB_USERNAME/workout-sync:v1.0.0
+Single source of truth: `docs/architecture.md`. Quick map:
+
+```
+Photo / barcode / text / search input
+   ↓
+/api/process-workout (Groq or agent harness)        /api/food/{search,analyze/*}
+   ↓                                                  ↓
+fuzzy + embedding match (Hevy catalog)              food-macro-api (FMA)
+   ↓                                                  ↓
+review / edit                                       review / edit
+   ↓                                                  ↓
+/api/hevy-sync → Hevy API                           /api/food/log → Postgres
+   ↓                                                  ↓
+hevy-provider (last 14d, muscle coverage)           food-log-provider (today, week, target, quick-add)
+                       \                            /
+                        dashboard (`app/dashboard`)
 ```
 
-### Deploying to TrueNAS Scale
+## Data structures
 
-For deployment + full architecture, see [docs/ARCHITECTURE.md](docs/architecture.md).
+Exercise (Hevy shape):
 
-**Quick steps:**
-1. Push your image to Docker Hub (see above)
-2. In TrueNAS Scale UI: **Apps** → **Custom App** → **Install**
-3. Set image repository: `YOUR_DOCKERHUB_USERNAME/workout-sync`
-4. Configure environment variables (`HEVY_API_KEY`, `GROQ_API_KEY`)
-5. Set port mapping (container: 3000, host: your preferred port)
-6. Configure Docker Hub credentials for private repositories
-
-## Key Features Implementation
-
-### AI-Powered Image Processing
-Uses **Groq Vision API** with the `meta-llama/llama-4-scout-17b-16e-instruct` model to:
-- Extract exercise names, sets, reps, and weights from workout photos
-- Parse structured JSON responses from the AI model
-- Automatic fallback to sample data if `GROQ_API_KEY` is not configured (allows testing without API key)
-- Image validation (file type and size limits)
-
-### Intelligent Exercise Matching
-Fuzzy matching system that maps detected exercise names to Hevy's official database:
-- **453 exercises** in database (429 official, 24 custom)
-- Multi-factor scoring: Levenshtein distance, word overlap, equipment matching
-- Handles abbreviations, variations, and compound exercises
-- Creates custom exercises only when no match is found above threshold
-
-### Hevy API Integration
-Real-time sync to Hevy's workout API:
-- Transforms workout data to Hevy's format
-- Validates workout data before submission
-- Handles API errors with user-friendly messages
-- Duplicate workout detection by date
-
-### EXIF Date Extraction
-Automatically extracts workout date and time from image metadata:
-- Reads EXIF DateTimeOriginal tag
-- Calculates workout start time
-- Falls back to manual date/time selection if EXIF not available
-
-### State Management
-Uses React Context API for global state:
-- Uploaded image
-- Processed exercises
-- Sync preferences
-- Caption/notes
-
-### Responsive Design
-- Mobile-first approach
-- Touch-optimized buttons (min 44px targets)
-- Safe area padding for iOS devices
-- Smooth animations and transitions
-- Custom scrollbar styling
-
-## Data Structures
-
-### Exercise Format
-Exercises follow the Hevy API structure:
-
-```typescript
+```ts
 {
   id: "uuid",
   title: "Exercise Name",
@@ -199,10 +189,9 @@ Exercises follow the Hevy API structure:
 }
 ```
 
-### Workout Format
-Workouts are structured as:
+Workout:
 
-```typescript
+```ts
 {
   id: "uuid",
   date: Date,
@@ -212,35 +201,19 @@ Workouts are structured as:
 }
 ```
 
-## Development
+Food log entry (Drizzle, see `lib/food/schema.ts`):
 
-### Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm test` - Run tests
-- `npm run test:watch` - Run tests in watch mode
-
-### Docker/Podman Commands
-
-- `docker build -t workout-sync:latest .` - Build Docker image
-- `podman build -t workout-sync:latest .` - Build Podman image
-- `docker run -p 3000:3000 -e HEVY_API_KEY=... -e GROQ_API_KEY=... workout-sync:latest` - Run container locally
-
-See the [Docker Deployment](#docker-deployment) section above for detailed instructions.
-
-### Adding New Components
-
-```bash
-npx shadcn@latest add [component-name]
+```ts
+{
+  id, batchId, loggedAt, source,
+  name, grams,
+  kcal, proteinG, carbsG, fatG,
+  kcalPerG, proteinPerG, carbsPerG, fatPerG, // for local rescale on edit
+  fmaFoodId, fmaSource, fmaSourceId,
+  confidence, warnings, rawResponse, mealName, note
+}
 ```
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-For questions or issues, please contact the development team.
+MIT. See [LICENSE](LICENSE).
