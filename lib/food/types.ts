@@ -5,7 +5,7 @@
  * Adjust as FMA evolves.
  */
 
-export type FoodLogSource = "search" | "text" | "photo" | "manual";
+export type FoodLogSource = "search" | "text" | "photo" | "manual" | "barcode";
 
 export interface FmaMatched {
   food_id: number;

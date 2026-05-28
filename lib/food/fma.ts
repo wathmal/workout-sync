@@ -95,6 +95,30 @@ export async function fmaAnalyzePhoto(
   });
 }
 
+export async function fmaAnalyzeBarcode(
+  code: string,
+  opts?: { locale?: string },
+): Promise<FmaAnalyzeResponse> {
+  return fma<FmaAnalyzeResponse>("/v1/analyze/barcode", {
+    method: "POST",
+    body: { code, locale: opts?.locale },
+  });
+}
+
+export async function fmaAnalyzeBarcodePhoto(
+  imageBase64: string,
+  opts?: { locale?: string; context?: string },
+): Promise<FmaAnalyzeResponse> {
+  return fma<FmaAnalyzeResponse>("/v1/analyze/barcode-photo", {
+    method: "POST",
+    body: {
+      image_base64: imageBase64,
+      locale: opts?.locale,
+      context: opts?.context,
+    },
+  });
+}
+
 export async function fmaGetFood(foodIdOrComposite: string | number) {
   const path = `/v1/foods/${encodeURIComponent(String(foodIdOrComposite))}`;
   return fma<unknown>(path);

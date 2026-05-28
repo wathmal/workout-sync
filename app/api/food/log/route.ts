@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-const ALLOWED_SOURCES = new Set(["search", "text", "photo", "manual"]);
+const ALLOWED_SOURCES = new Set(["search", "text", "photo", "manual", "barcode"]);
 
 function isFiniteNumber(v: unknown): v is number {
   return typeof v === "number" && Number.isFinite(v);
