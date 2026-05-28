@@ -6,15 +6,22 @@ import {
   Camera,
   AlignLeft,
   Search as SearchIcon,
+  ScanBarcode,
   Trash2,
   Pencil,
   ChevronDown,
   ChevronUp,
   AlertTriangle,
   Loader2,
+  CornerDownRight,
 } from "lucide-react";
 import { Overline } from "@/app/_components/overline";
 import { useFoodLog } from "@/app/_providers/food-log-provider";
+import {
+  useFoodLocale,
+  FOOD_LOCALES,
+  type FoodLocale,
+} from "@/app/_providers/food-locale";
 import type {
   FmaAnalyzeResponse,
   FmaSearchHit,
@@ -22,8 +29,9 @@ import type {
   FoodLogSource,
   MealItem,
 } from "@/lib/food/types";
+import { prepareImageForUpload } from "@/lib/image-resize";
 
-type Mode = "search" | "text" | "snap";
+type Mode = "search" | "text" | "snap" | "barcode";
 
 interface PendingItem {
   /** stable local key */
@@ -110,10 +118,16 @@ export default function FoodPage() {
   const params = useSearchParams();
   const modeParam = (params.get("mode") as Mode | null) ?? "text";
   const [mode, setMode] = useState<Mode>(
-    modeParam === "search" || modeParam === "text" || modeParam === "snap" ? modeParam : "text",
+    modeParam === "search" ||
+      modeParam === "text" ||
+      modeParam === "snap" ||
+      modeParam === "barcode"
+      ? modeParam
+      : "text",
   );
 
   const { today, target, addMeal, deleteMeal, editGrams, error: ctxError } = useFoodLog();
+  const { locale, setLocale } = useFoodLocale();
 
   const [pending, setPending] = useState<PendingItem[]>([]);
   const [pendingMealName, setPendingMealName] = useState<string | null>(null);
@@ -147,6 +161,7 @@ export default function FoodPage() {
         search: "search",
         text: "text",
         snap: "photo",
+        barcode: "barcode",
       };
       const loggedAtIso = new Date(loggedAtLocal).toISOString();
       const trimmedName = pendingMealName?.trim() ?? "";
@@ -179,6 +194,7 @@ export default function FoodPage() {
 
   return (
     <div
+      className="food-page-shell"
       style={{
         padding: "var(--space-xl) var(--space-2xl)",
         maxWidth: 900,
@@ -196,7 +212,15 @@ export default function FoodPage() {
       />
 
       <Card>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: "var(--space-md)",
+            flexWrap: "wrap",
+          }}
+        >
           <div>
             <Overline>Log a meal</Overline>
             <h2
@@ -206,12 +230,14 @@ export default function FoodPage() {
               Add to today.
             </h2>
           </div>
+          <LocaleSelect value={locale} onChange={setLocale} />
         </div>
 
         <TabBar mode={mode} onChange={switchMode} />
 
         {mode === "search" && (
           <SearchPanel
+            locale={locale}
             onPick={(items) => {
               setPending(items);
               setPendingMealName(null);
@@ -221,6 +247,7 @@ export default function FoodPage() {
         )}
         {mode === "text" && (
           <TextPanel
+            locale={locale}
             onResult={(items, mealName) => {
               setPending(items);
               setPendingMealName(mealName ?? null);
@@ -231,6 +258,18 @@ export default function FoodPage() {
         )}
         {mode === "snap" && (
           <PhotoPanel
+            locale={locale}
+            onResult={(items, loggedAtIso, mealName) => {
+              setPending(items);
+              setPendingMealName(mealName ?? null);
+              setLoggedAtLocal(loggedAtIso ? toIsoLocal(loggedAtIso) : isoLocalNow());
+            }}
+            setError={setError}
+          />
+        )}
+        {mode === "barcode" && (
+          <BarcodePanel
+            locale={locale}
             onResult={(items, loggedAtIso, mealName) => {
               setPending(items);
               setPendingMealName(mealName ?? null);
@@ -351,7 +390,16 @@ function MealRow({
   onEditGrams: (itemId: string, grams: number) => Promise<MealItem | null>;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const totalKcal = Math.round(items.reduce((s, i) => s + i.kcal, 0));
+  const totals = items.reduce(
+    (acc, i) => ({
+      kcal: acc.kcal + i.kcal,
+      p: acc.p + i.proteinG,
+      c: acc.c + i.carbsG,
+      f: acc.f + i.fatG,
+    }),
+    { kcal: 0, p: 0, c: 0, f: 0 },
+  );
+  const totalKcal = Math.round(totals.kcal);
   const time = new Date(items[0]?.loggedAt ?? Date.now()).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
@@ -365,6 +413,7 @@ function MealRow({
 
   return (
     <div
+      className="food-mealrow"
       style={{
         background: "var(--color-surface-low)",
         borderRadius: "var(--radius-md)",
@@ -375,15 +424,16 @@ function MealRow({
       }}
     >
       <div
+        className="food-mealrow-grid"
         style={{
           display: "grid",
-          gridTemplateColumns: "56px 1fr auto auto",
-          gap: "var(--space-sm)",
+          gridTemplateColumns: "56px 1fr 140px 86px 28px",
+          gap: 8,
           alignItems: "center",
         }}
       >
         <span
-          className="font-mono-sm"
+          className="font-mono-sm food-mealrow-time"
           style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}
         >
           {time}
@@ -391,6 +441,7 @@ function MealRow({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
+          className="food-mealrow-name"
           style={{
             background: "transparent",
             border: 0,
@@ -402,36 +453,38 @@ function MealRow({
             display: "inline-flex",
             alignItems: "center",
             gap: 4,
+            minWidth: 0,
           }}
         >
-          {label}
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {label}
+          </span>
           {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
         </button>
-        <span
-          className="font-mono-sm"
-          style={{ fontSize: 13, color: "var(--color-text-secondary)" }}
-        >
-          {totalKcal}
-          <small style={{ color: "var(--color-text-tertiary)" }}> kcal</small>
-        </span>
+        <MacroChips p={totals.p} c={totals.c} f={totals.f} className="food-mealrow-macros" />
+        <KcalCell kcal={totalKcal} className="food-mealrow-kcal" />
         <button
           type="button"
           onClick={onDelete}
           title="Delete meal"
-          style={{
-            background: "transparent",
-            border: 0,
-            color: "var(--color-text-tertiary)",
-            cursor: "pointer",
-            padding: 4,
-          }}
+          className="food-mealrow-delete"
+          style={iconBtnStyle}
         >
           <Trash2 size={13} />
         </button>
       </div>
 
       {expanded && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 56 }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+            paddingLeft: 24,
+            marginLeft: 32,
+            borderLeft: "1px solid var(--color-outline)",
+          }}
+        >
           {items.map((it) => (
             <EditableItemRow key={it.id} item={it} onEditGrams={onEditGrams} />
           ))}
@@ -470,16 +523,18 @@ function EditableItemRow({
 
   return (
     <div
+      className="food-item-grid"
       style={{
         display: "grid",
-        gridTemplateColumns: "1fr auto auto auto",
+        gridTemplateColumns: "14px 1fr 56px 140px 86px 28px",
         gap: 8,
         alignItems: "center",
         fontSize: 12,
         color: "var(--color-text-secondary)",
       }}
     >
-      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <CornerDownRight size={12} color="var(--color-text-tertiary)" />
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
         {item.name}
       </span>
       {editing ? (
@@ -515,24 +570,79 @@ function EditableItemRow({
           {Math.round(item.grams)}g
         </span>
       )}
-      <span className="font-mono-sm" style={{ fontSize: 12 }}>
-        {Math.round(item.kcal)} kcal
-      </span>
+      <MacroChips p={item.proteinG} c={item.carbsG} f={item.fatG} />
+      <KcalCell kcal={item.kcal} size={12} />
       <button
         type="button"
         disabled={busy}
         onClick={() => (editing ? void save() : setEditing(true))}
-        style={{
-          background: "transparent",
-          border: 0,
-          color: "var(--color-text-tertiary)",
-          cursor: "pointer",
-          padding: 2,
-        }}
+        style={iconBtnStyle}
       >
         {busy ? <Loader2 size={12} className="spin" /> : <Pencil size={12} />}
       </button>
     </div>
+  );
+}
+
+const iconBtnStyle: React.CSSProperties = {
+  width: 28,
+  height: 28,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "transparent",
+  border: 0,
+  color: "var(--color-text-tertiary)",
+  cursor: "pointer",
+  padding: 0,
+};
+
+function MacroChips({ p, c, f, className }: { p: number; c: number; f: number; className?: string }) {
+  // padStart to 2 chars + white-space: pre keeps the leading space so single-
+  // and double-digit values align under each other in the monospace font.
+  const fmt = (n: number) => String(Math.round(n)).padStart(3, " ");
+  const sep = <span style={{ color: "var(--color-outline)" }}>·</span>;
+  const cell: React.CSSProperties = { whiteSpace: "pre" };
+  return (
+    <span
+      className={`font-mono-sm food-macros ${className ?? ""}`}
+      style={{
+        fontSize: 11,
+        color: "var(--color-text-tertiary)",
+        display: "inline-flex",
+        alignItems: "baseline",
+        justifyContent: "flex-end",
+        gap: 6,
+        width: 140,
+      }}
+    >
+      <span style={cell}>P {fmt(p)}</span>
+      <span className="food-macros-extra" style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
+        {sep}
+        <span style={cell}>C {fmt(c)}</span>
+        {sep}
+        <span style={cell}>F {fmt(f)}</span>
+      </span>
+    </span>
+  );
+}
+
+function KcalCell({ kcal, size = 13, className }: { kcal: number; size?: number; className?: string }) {
+  return (
+    <span
+      className={`font-mono-sm ${className ?? ""}`}
+      style={{
+        fontSize: size,
+        color: "var(--color-text-secondary)",
+        display: "inline-block",
+        width: 86,
+        textAlign: "right",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {Math.round(kcal)}
+      <small style={{ color: "var(--color-text-tertiary)" }}> kcal</small>
+    </span>
   );
 }
 
@@ -543,10 +653,12 @@ function TabBar({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void })
     { id: "search", label: "Search", icon: <SearchIcon size={13} /> },
     { id: "text", label: "Type", icon: <AlignLeft size={13} /> },
     { id: "snap", label: "Snap", icon: <Camera size={13} /> },
+    { id: "barcode", label: "Barcode", icon: <ScanBarcode size={13} /> },
   ];
   return (
     <div
       role="tablist"
+      className="food-tabbar"
       style={{
         display: "inline-flex",
         gap: 4,
@@ -564,6 +676,7 @@ function TabBar({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void })
             role="tab"
             aria-selected={active}
             onClick={() => onChange(t.id)}
+            className="food-tab-btn"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -576,6 +689,9 @@ function TabBar({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void })
               fontSize: 13,
               fontWeight: 500,
               cursor: "pointer",
+              whiteSpace: "nowrap",
+              flex: "1 1 0",
+              justifyContent: "center",
             }}
           >
             {t.icon}
@@ -587,9 +703,98 @@ function TabBar({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void })
   );
 }
 
+// ── Shared panel primitives ──────────────────────────────────────────────
+
+const panelStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "var(--space-sm)",
+};
+
+const panelTextareaStyle: React.CSSProperties = {
+  background: "var(--color-surface-elevated)",
+  color: "var(--color-text-primary)",
+  border: "1px solid var(--color-outline)",
+  borderRadius: "var(--radius-md)",
+  padding: "8px 10px",
+  fontFamily: "var(--font-body)",
+  fontSize: 13,
+  resize: "vertical",
+  minHeight: 56,
+};
+
+const dropzoneStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "var(--space-lg)",
+  border: "1px dashed var(--color-outline)",
+  borderRadius: "var(--radius-md)",
+  cursor: "pointer",
+  color: "var(--color-text-tertiary)",
+  fontSize: 13,
+  gap: 8,
+};
+
+const previewImgStyle: React.CSSProperties = {
+  maxHeight: 180,
+  maxWidth: "100%",
+  width: "auto",
+  alignSelf: "flex-start",
+  borderRadius: "var(--radius-md)",
+  objectFit: "contain",
+};
+
+function PanelLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label
+      className="text-label-md"
+      style={{
+        color: "var(--color-text-tertiary)",
+        fontSize: 11,
+        textTransform: "uppercase",
+        letterSpacing: "0.06em",
+      }}
+    >
+      {children}
+    </label>
+  );
+}
+
+function ActionRow({
+  busy,
+  disabled,
+  onClick,
+  label = "Analyze",
+}: {
+  busy: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  label?: string;
+}) {
+  return (
+    <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={busy || disabled}
+        style={primaryBtnStyle}
+      >
+        {busy ? <Loader2 size={13} className="spin" /> : label}
+      </button>
+    </div>
+  );
+}
+
 // ── Search panel ──────────────────────────────────────────────────────────
 
-function SearchPanel({ onPick }: { onPick: (items: PendingItem[]) => void }) {
+function SearchPanel({
+  locale,
+  onPick,
+}: {
+  locale: FoodLocale;
+  onPick: (items: PendingItem[]) => void;
+}) {
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<FmaSearchHit[]>([]);
   const [loading, setLoading] = useState(false);
@@ -606,7 +811,11 @@ function SearchPanel({ onPick }: { onPick: (items: PendingItem[]) => void }) {
       setLoading(true);
       setErr(null);
       try {
-        const res = await fetch(`/api/food/search?q=${encodeURIComponent(q)}&limit=8`);
+        const url = new URL("/api/food/search", window.location.origin);
+        url.searchParams.set("q", q);
+        url.searchParams.set("limit", "8");
+        if (locale && locale !== "en") url.searchParams.set("locale", locale);
+        const res = await fetch(url.pathname + url.search);
         const body = await res.json();
         if (!res.ok) throw new Error(body?.error ?? `${res.status}`);
         setHits((body.items ?? []) as FmaSearchHit[]);
@@ -620,12 +829,13 @@ function SearchPanel({ onPick }: { onPick: (items: PendingItem[]) => void }) {
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [q]);
+  }, [q, locale]);
 
   const [pickGrams, setPickGrams] = useState<Record<string, string>>({});
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+    <div style={panelStyle}>
+      <PanelLabel>Find food</PanelLabel>
       <input
         type="text"
         value={q}
@@ -644,6 +854,7 @@ function SearchPanel({ onPick }: { onPick: (items: PendingItem[]) => void }) {
           return (
             <div
               key={key}
+              className="food-search-row"
               style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 80px 80px auto",
@@ -689,9 +900,11 @@ function SearchPanel({ onPick }: { onPick: (items: PendingItem[]) => void }) {
 // ── Text panel ───────────────────────────────────────────────────────────
 
 function TextPanel({
+  locale,
   onResult,
   setError,
 }: {
+  locale: FoodLocale;
   onResult: (items: PendingItem[], mealName?: string | null) => void;
   setError: (msg: string | null) => void;
 }) {
@@ -706,7 +919,7 @@ function TextPanel({
       const res = await fetch("/api/food/analyze/text", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, locale: locale === "en" ? undefined : locale }),
       });
       const body = (await res.json()) as FmaAnalyzeResponse & { error?: string };
       if (!res.ok) throw new Error(body.error ?? `${res.status}`);
@@ -719,34 +932,53 @@ function TextPanel({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+    <div style={panelStyle}>
+      <PanelLabel>Describe meal</PanelLabel>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="3 scrambled eggs and a banana"
         rows={3}
-        style={{ ...inputStyle, padding: "10px", fontFamily: "var(--font-body)" }}
+        style={{ ...panelTextareaStyle, minHeight: 72 }}
       />
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <button
-          type="button"
-          onClick={submit}
-          disabled={busy || !text.trim()}
-          style={primaryBtnStyle}
-        >
-          {busy ? <Loader2 size={13} className="spin" /> : "Analyze"}
-        </button>
-      </div>
+      <ActionRow busy={busy} disabled={!text.trim()} onClick={submit} />
     </div>
   );
+}
+
+// Window-level paste listener that grabs first image File from clipboard.
+function usePasteImage(handler: (file: File) => void, enabled = true) {
+  const handlerRef = useRef(handler);
+  handlerRef.current = handler;
+  useEffect(() => {
+    if (!enabled) return;
+    const onPaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const it of items) {
+        if (it.kind === "file" && it.type.startsWith("image/")) {
+          const f = it.getAsFile();
+          if (f) {
+            e.preventDefault();
+            handlerRef.current(f);
+            return;
+          }
+        }
+      }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [enabled]);
 }
 
 // ── Photo panel ──────────────────────────────────────────────────────────
 
 function PhotoPanel({
+  locale,
   onResult,
   setError,
 }: {
+  locale: FoodLocale;
   onResult: (
     items: PendingItem[],
     loggedAtIso?: string,
@@ -756,20 +988,24 @@ function PhotoPanel({
 }) {
   const [busy, setBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [context, setContext] = useState("");
+  const contextRef = useRef(context);
+  contextRef.current = context;
 
   const handleFile = async (file: File) => {
     setBusy(true);
     setError(null);
     try {
-      const buf = await file.arrayBuffer();
-      const base64 = Buffer.from(buf).toString("base64");
+      const prepared = await prepareImageForUpload(file);
       const res = await fetch("/api/food/analyze/photo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageBase64: base64,
-          filename: file.name,
-          mimeType: file.type,
+          imageBase64: prepared.base64,
+          filename: prepared.filename,
+          mimeType: prepared.mimeType,
+          locale: locale === "en" ? undefined : locale,
+          context: contextRef.current.trim() || undefined,
         }),
       });
       const body = (await res.json()) as FmaAnalyzeResponse & {
@@ -790,24 +1026,22 @@ function PhotoPanel({
     }
   };
 
+  usePasteImage(handleFile);
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "var(--space-lg)",
-          border: "1px dashed var(--color-outline)",
-          borderRadius: "var(--radius-md)",
-          cursor: "pointer",
-          color: "var(--color-text-tertiary)",
-          fontSize: 13,
-          gap: 8,
-        }}
-      >
+    <div style={panelStyle}>
+      <PanelLabel>Context (optional)</PanelLabel>
+      <textarea
+        value={context}
+        onChange={(e) => setContext(e.target.value)}
+        rows={2}
+        placeholder="e.g. 'two eggs, sourdough toast, butter'"
+        style={panelTextareaStyle}
+      />
+      <PanelLabel>Meal photo</PanelLabel>
+      <label style={dropzoneStyle}>
         {busy ? <Loader2 size={14} className="spin" /> : <Camera size={14} />}
-        {busy ? "Analyzing…" : "Tap to pick a photo"}
+        {busy ? "Analyzing…" : "Tap to pick a photo · or paste"}
         <input
           type="file"
           accept="image/*,.heic,.heif"
@@ -820,13 +1054,201 @@ function PhotoPanel({
       </label>
       {previewUrl && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={previewUrl}
-          alt="meal"
-          style={{ maxHeight: 200, borderRadius: "var(--radius-md)", objectFit: "cover" }}
-        />
+        <img src={previewUrl} alt="meal" style={previewImgStyle} />
       )}
     </div>
+  );
+}
+
+// ── Barcode panel ────────────────────────────────────────────────────────
+
+function BarcodePanel({
+  locale,
+  onResult,
+  setError,
+}: {
+  locale: FoodLocale;
+  onResult: (
+    items: PendingItem[],
+    loggedAtIso?: string,
+    mealName?: string | null,
+  ) => void;
+  setError: (msg: string | null) => void;
+}) {
+  const [code, setCode] = useState("");
+  const [busyCode, setBusyCode] = useState(false);
+  const [busyPhoto, setBusyPhoto] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const submitCode = async () => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    setBusyCode(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/food/analyze/barcode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: trimmed,
+          locale: locale === "en" ? undefined : locale,
+        }),
+      });
+      const body = (await res.json()) as FmaAnalyzeResponse & { error?: string };
+      if (!res.ok) throw new Error(body.error ?? `${res.status}`);
+      onResult(body.items.map(fromFmaItem), undefined, body.meal_name ?? null);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusyCode(false);
+    }
+  };
+
+  const handleFile = async (file: File) => {
+    setBusyPhoto(true);
+    setError(null);
+    try {
+      const prepared = await prepareImageForUpload(file);
+      const res = await fetch("/api/food/analyze/barcode-photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageBase64: prepared.base64,
+          filename: prepared.filename,
+          mimeType: prepared.mimeType,
+          locale: locale === "en" ? undefined : locale,
+        }),
+      });
+      const body = (await res.json()) as FmaAnalyzeResponse & {
+        exifDate?: string | null;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(body.error ?? `${res.status}`);
+      setPreviewUrl(URL.createObjectURL(file));
+      onResult(
+        body.items.map(fromFmaItem),
+        body.exifDate ?? undefined,
+        body.meal_name ?? null,
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusyPhoto(false);
+    }
+  };
+
+  usePasteImage(handleFile);
+
+  return (
+    <div style={panelStyle}>
+      <PanelLabel>Type a barcode</PanelLabel>
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") void submitCode();
+        }}
+        placeholder="0123456789012"
+        style={inputStyle}
+      />
+      <ActionRow busy={busyCode} disabled={!code.trim()} onClick={submitCode} />
+
+      <Divider label="or snap a barcode" />
+
+      <PanelLabel>Barcode photo</PanelLabel>
+      <label style={dropzoneStyle}>
+        {busyPhoto ? <Loader2 size={14} className="spin" /> : <ScanBarcode size={14} />}
+        {busyPhoto ? "Decoding…" : "Tap to pick a barcode photo · or paste"}
+        <input
+          type="file"
+          accept="image/*,.heic,.heif"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void handleFile(f);
+          }}
+        />
+      </label>
+      {previewUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={previewUrl} alt="barcode" style={previewImgStyle} />
+      )}
+    </div>
+  );
+}
+
+function Divider({ label }: { label: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "var(--space-sm)",
+        color: "var(--color-text-tertiary)",
+        fontSize: 11,
+        textTransform: "uppercase",
+        letterSpacing: "0.06em",
+      }}
+    >
+      <span style={{ flex: 1, height: 1, background: "var(--color-outline)" }} />
+      {label}
+      <span style={{ flex: 1, height: 1, background: "var(--color-outline)" }} />
+    </div>
+  );
+}
+
+// ── Locale select ────────────────────────────────────────────────────────
+
+function LocaleSelect({
+  value,
+  onChange,
+}: {
+  value: FoodLocale;
+  onChange: (v: FoodLocale) => void;
+}) {
+  return (
+    <label
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        height: 32,
+        padding: "0 8px 0 12px",
+        borderRadius: "var(--radius-md)",
+        background: "var(--color-surface-elevated)",
+        color: "var(--color-text-primary)",
+        boxShadow: "inset 0 0 0 1px var(--color-outline)",
+        fontSize: 12,
+        cursor: "pointer",
+      }}
+      title="Preferred food data source"
+    >
+      <span style={{ color: "var(--color-text-tertiary)" }}>Source</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as FoodLocale)}
+        style={{
+          appearance: "none",
+          background: "transparent",
+          color: "var(--color-text-primary)",
+          border: 0,
+          fontFamily: "var(--font-mono)",
+          fontSize: 12,
+          padding: "0 16px 0 4px",
+          cursor: "pointer",
+        }}
+      >
+        {FOOD_LOCALES.map((l) => (
+          <option key={l.value} value={l.value}>
+            {l.label} · {l.hint}
+          </option>
+        ))}
+      </select>
+      <ChevronDown size={12} style={{ marginLeft: -14, pointerEvents: "none" }} />
+    </label>
   );
 }
 
@@ -995,6 +1417,7 @@ function ReviewRow({
       }}
     >
       <div
+        className="food-review-row-grid"
         style={{
           display: "grid",
           gridTemplateColumns: "auto 1fr 72px 80px auto",
