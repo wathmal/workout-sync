@@ -44,7 +44,7 @@ export function ManualLog({ data }: { data: ActionsData }) {
         width: "100%",
       }}
     >
-      <WorkoutCard lastSync={data.lastSync} />
+      <WorkoutCard />
       <MealCard
         quickAdd={chips}
         onQuickAdd={async (q) => {
@@ -71,18 +71,13 @@ export function ManualLog({ data }: { data: ActionsData }) {
   );
 }
 
-function WorkoutCard({ lastSync }: { lastSync: string }) {
+function WorkoutCard() {
   return (
     <Card>
       <CardHeader
         overline="Strength · Hevy"
         title="Log a workout."
-        pill={
-          <Pill tone="info">
-            <RefreshCw size={11} strokeWidth={2.5} />
-            {lastSync}
-          </Pill>
-        }
+        pill={null}
       />
       <p
         style={{

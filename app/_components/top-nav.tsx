@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { CircleUser, Moon, RefreshCw, Sun } from "lucide-react";
-import { refreshDashboard } from "@/app/_actions/refresh";
-
-const REFRESH_MIN = 15;
+import { useHevy } from "@/app/_providers/hevy-provider";
+import { useFoodLog } from "@/app/_providers/food-log-provider";
 
 const TABS = [
   { href: "/", label: "Overview" },
@@ -39,12 +38,13 @@ function WordmarkGlyph() {
 
 export function TopNav() {
   const pathname = usePathname();
-  const router = useRouter();
+  const { refresh: refreshHevy, lastFetched: hevyLastFetched } = useHevy();
+  const { refresh: refreshFood, lastFetched: foodLastFetched } = useFoodLog();
 
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [mounted, setMounted] = useState(false);
   const [refreshing, startRefresh] = useTransition();
-  const [mins, setMins] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     const current = (document.documentElement.getAttribute("data-theme") as
@@ -57,15 +57,23 @@ export function TopNav() {
   }, []);
 
   useEffect(() => {
-    const t = setInterval(() => setMins((m) => m + 1), 60_000);
+    const t = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(t);
   }, []);
 
-  const sinceCycle = mins % REFRESH_MIN;
+  const oldest = (() => {
+    const a = hevyLastFetched ?? Infinity;
+    const b = foodLastFetched ?? Infinity;
+    const min = Math.min(a, b);
+    return Number.isFinite(min) ? min : null;
+  })();
+  const ageMin = oldest == null ? null : Math.max(0, Math.floor((now - oldest) / 60_000));
   const updated =
-    sinceCycle === 0
+    ageMin == null
+      ? "Loading…"
+      : ageMin === 0
       ? "Last updated just now"
-      : `Last updated ${sinceCycle}m ago`;
+      : `Last updated ${ageMin}m ago`;
 
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
@@ -224,9 +232,8 @@ export function TopNav() {
           type="button"
           onClick={() =>
             startRefresh(async () => {
-              await refreshDashboard();
-              router.refresh();
-              setMins(0);
+              await Promise.all([refreshHevy(), refreshFood()]);
+              setNow(Date.now());
             })
           }
           disabled={refreshing}

@@ -3,26 +3,13 @@ import { ViewportGuard } from "@/app/_components/viewport-guard";
 import { OverviewHeading } from "@/components/dashboard/OverviewHeading";
 import { WeeklyAgenda } from "@/components/dashboard/WeeklyAgenda";
 import { CalorieSummary } from "@/components/dashboard/CalorieSummary";
-import { MuscleCoverage } from "@/components/dashboard/MuscleCoverage";
+import { MuscleCoverageCard } from "@/components/dashboard/MuscleCoverageCard";
 import { ManualLog } from "@/components/dashboard/ManualLog";
 import { RaceTimeline } from "@/components/dashboard/RaceTimeline";
 import { BodyTrendChart } from "@/components/dashboard/BodyTrendChart";
 import { BodyCard } from "@/components/body-card/BodyCard";
-import {
-  getWorkoutsSince,
-  startOfCalendarWeekMs,
-} from "@/lib/hevy/workouts-since";
-import { computeMuscleCoverage } from "@/lib/dashboard/muscle-coverage";
-import { WEEKLY_SET_TARGET } from "@/lib/dashboard/config";
 
-export const dynamic = "force-dynamic";
-
-export default async function OverviewPage() {
-  const workoutsResult = await getWorkoutsSince(startOfCalendarWeekMs());
-  const coverage = workoutsResult.ok
-    ? computeMuscleCoverage(workoutsResult.workouts, WEEKLY_SET_TARGET)
-    : { entries: [], attention: [] };
-  const coverageError = workoutsResult.ok ? undefined : workoutsResult.error;
+export default function OverviewPage() {
   return (
     <ViewportGuard>
       <div
@@ -52,11 +39,7 @@ export default async function OverviewPage() {
             <CalorieSummary />
           </div>
           <div style={{ minWidth: 0, display: "flex" }}>
-            <MuscleCoverage
-              entries={coverage.entries}
-              attention={coverage.attention}
-              error={coverageError}
-            />
+            <MuscleCoverageCard />
           </div>
           <div style={{ minWidth: 0, display: "flex" }}>
             <ManualLog data={overviewMock.actions} />

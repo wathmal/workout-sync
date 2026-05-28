@@ -5,7 +5,7 @@
  * Server-only HTTP calls to Hevy live in app/api/hevy-{sync,workouts}/route.ts.
  */
 
-import { Workout, HevyWorkoutEvent } from "../types";
+import { Workout } from "../types";
 import { format } from "date-fns";
 
 /**
@@ -216,73 +216,24 @@ export function validateWorkout(workout: Workout): { valid: boolean; error?: str
  * Compares only the date (yyyy-MM-dd), not the time
  * Returns information about any duplicate workout found
  */
-export async function checkForDuplicateWorkout(
-  workoutDate: Date
-): Promise<{
-  hasDuplicate: boolean;
-  duplicateWorkout?: {
-    date: Date;
-    time: string;
-    name: string;
-  };
-  error?: string;
-}> {
-  try {
-    // Use the workout date as the 'since' parameter (start of the day)
-    const since = new Date(workoutDate);
-    since.setHours(0, 0, 0, 0);
-    const sinceParam = since.toISOString();
-
-    // Call our API endpoint
-    const response = await fetch(`/api/hevy-workouts?since=${encodeURIComponent(sinceParam)}`);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("Error fetching workouts:", errorData);
-      return {
-        hasDuplicate: false,
-        error: "Failed to check for duplicates",
-      };
-    }
-
-    const data = await response.json();
-    const events: HevyWorkoutEvent[] = data.events || [];
-
-    // Filter for workouts on the same date (ignoring time)
-    const workoutDateStr = format(workoutDate, "yyyy-MM-dd");
-    
-    const duplicates = events.filter((event) => {
-      // Skip deleted events
-      if (event.type === "deleted") return false;
-      
-      const workoutStartTime = new Date(event.workout.start_time);
-      const workoutStartDateStr = format(workoutStartTime, "yyyy-MM-dd");
-      
-      return workoutStartDateStr === workoutDateStr;
-    });
-
-    if (duplicates.length > 0) {
-      // Return the first duplicate found
-      const duplicate = duplicates[0].workout;
-      const duplicateDate = new Date(duplicate.start_time);
-      
-      return {
-        hasDuplicate: true,
-        duplicateWorkout: {
-          date: duplicateDate,
-          time: format(duplicateDate, "HH:mm"),
-          name: duplicate.title || "Untitled Workout",
-        },
-      };
-    }
-
-    return { hasDuplicate: false };
-  } catch (error) {
-    console.error("Error checking for duplicate workout:", error);
+/**
+ * Pure date-filter: find a workout already logged on the same calendar day.
+ * Caller supplies the workouts list (sourced from useHevy().workouts).
+ */
+export function findDuplicateOnDate(
+  workoutDate: Date,
+  workouts: Array<{ start_time: string; title: string }>,
+): { date: Date; time: string; name: string } | null {
+  const workoutDateStr = format(workoutDate, "yyyy-MM-dd");
+  for (const w of workouts) {
+    const startTime = new Date(w.start_time);
+    if (format(startTime, "yyyy-MM-dd") !== workoutDateStr) continue;
     return {
-      hasDuplicate: false,
-      error: "Failed to check for duplicates",
+      date: startTime,
+      time: format(startTime, "HH:mm"),
+      name: w.title || "Untitled Workout",
     };
   }
+  return null;
 }
 

@@ -4,6 +4,7 @@ import "./globals.css";
 import { WorkoutProvider } from "@/app/_providers/workout-provider";
 import { MeasurementsProvider } from "@/app/_providers/measurements-provider";
 import { FoodLogProvider } from "@/app/_providers/food-log-provider";
+import { HevyProvider } from "@/app/_providers/hevy-provider";
 import { TopNav } from "@/app/_components/top-nav";
 import { Footer } from "@/app/_components/footer";
 
@@ -60,13 +61,15 @@ export default function RootLayout({
       >
         <WorkoutProvider>
           <MeasurementsProvider>
-            <FoodLogProvider>
-              <div className="app-shell" style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-                <TopNav />
-                <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
-                <Footer />
-              </div>
-            </FoodLogProvider>
+            <HevyProvider>
+              <FoodLogProvider>
+                <div className="app-shell" style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+                  <TopNav />
+                  <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
+                  <Footer />
+                </div>
+              </FoodLogProvider>
+            </HevyProvider>
           </MeasurementsProvider>
         </WorkoutProvider>
       </body>

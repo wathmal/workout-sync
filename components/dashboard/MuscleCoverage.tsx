@@ -1,11 +1,13 @@
+"use client";
+
 import type {
   AttentionRow,
   MuscleBucket,
   MuscleCoverageEntry,
   TrackedMuscle,
 } from "@/lib/dashboard/muscle-coverage";
-import { loadMuscleSvgs } from "@/lib/dashboard/muscle-svg-loader";
 import { SectionHead } from "./SectionHead";
+import { useHevy } from "@/app/_providers/hevy-provider";
 
 const BUCKET_COLOR: Record<MuscleBucket, string> = {
   met: "var(--color-semantic-success)",
@@ -67,14 +69,10 @@ function buildColorStyle(entries: MuscleCoverageEntry[]): string {
   return [...baseRules, ...coloured].join("\n");
 }
 
-interface Props {
-  entries: MuscleCoverageEntry[];
-  attention: AttentionRow[];
-  error?: "no-key" | "fetch-fail";
-}
-
-export function MuscleCoverage({ entries, attention, error }: Props) {
-  const svgs = loadMuscleSvgs();
+export function MuscleCoverage({ svgs }: { svgs: { front: string; back: string } }) {
+  const { coverage, error } = useHevy();
+  const entries = coverage.entries;
+  const attention = coverage.attention;
   const css = buildColorStyle(entries);
 
   return (
@@ -152,7 +150,7 @@ export function MuscleCoverage({ entries, attention, error }: Props) {
         </div>
 
         {error ? (
-          <EmptyMessage error={error} />
+          <EmptyMessage error={/api key|not configured/i.test(error) ? "no-key" : "fetch-fail"} />
         ) : attention.length === 0 ? (
           <div
             style={{
@@ -168,58 +166,86 @@ export function MuscleCoverage({ entries, attention, error }: Props) {
         ) : (
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 6,
+              display: "flex",
+              flexDirection: "column",
+              gap: "var(--space-sm)",
             }}
           >
-            {attention.map((a) => {
-              const accent =
-                a.sets === 0
-                  ? "var(--color-semantic-error)"
-                  : "var(--color-semantic-warning)";
-              return (
-                <div
-                  key={a.group}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr auto",
-                    alignItems: "center",
-                    gap: "var(--space-sm)",
-                    padding: "8px var(--space-sm)",
-                    background: "var(--color-surface-low)",
-                    borderRadius: "var(--radius-md)",
-                    minWidth: 0,
-                  }}
-                >
-                  <span
-                    style={{
-                      color: "var(--color-text-primary)",
-                      fontSize: 13,
-                      lineHeight: 1.2,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {a.label}
-                  </span>
-                  <span
-                    className="font-mono-sm"
-                    style={{
-                      color: accent,
-                      fontSize: 12,
-                      lineHeight: 1.2,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {a.meta}
-                  </span>
-                </div>
-              );
-            })}
+            <RegionGroup label="Upper" rows={attention.filter((a) => a.region === "upper")} />
+            <RegionGroup label="Lower" rows={attention.filter((a) => a.region === "lower")} />
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function RegionGroup({ label, rows }: { label: string; rows: AttentionRow[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div
+        style={{
+          fontSize: 10,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "var(--color-text-tertiary)",
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 6,
+        }}
+      >
+        {rows.map((a) => {
+          const accent =
+            a.sets === 0
+              ? "var(--color-semantic-error)"
+              : "var(--color-semantic-warning)";
+          return (
+            <div
+              key={a.group}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr auto",
+                alignItems: "center",
+                gap: "var(--space-sm)",
+                padding: "8px var(--space-sm)",
+                background: "var(--color-surface-low)",
+                borderRadius: "var(--radius-md)",
+                minWidth: 0,
+              }}
+            >
+              <span
+                style={{
+                  color: "var(--color-text-primary)",
+                  fontSize: 13,
+                  lineHeight: 1.2,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {a.label}
+              </span>
+              <span
+                className="font-mono-sm"
+                style={{
+                  color: accent,
+                  fontSize: 12,
+                  lineHeight: 1.2,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {a.meta}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

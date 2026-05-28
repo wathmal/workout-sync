@@ -22,6 +22,7 @@ interface FoodLogContextType {
   week: DayAggregate[];
   target: MacroTarget | null;
   quickAdd: QuickAddSuggestion[];
+  lastFetched: number | null;
   loading: boolean;
   error: string | null;
 
@@ -47,6 +48,7 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
   const [week, setWeek] = useState<DayAggregate[]>([]);
   const [target, setTarget] = useState<MacroTarget | null>(null);
   const [quickAdd, setQuickAdd] = useState<QuickAddSuggestion[]>([]);
+  const [lastFetched, setLastFetched] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,6 +66,7 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
       setWeek(w.week);
       setTarget(tg.target);
       setQuickAdd(qa.items);
+      setLastFetched(Date.now());
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -115,8 +118,20 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ today, week, target, quickAdd, loading, error, addMeal, deleteMeal, editGrams, refresh }),
-    [today, week, target, quickAdd, loading, error, addMeal, deleteMeal, editGrams, refresh],
+    () => ({
+      today,
+      week,
+      target,
+      quickAdd,
+      lastFetched,
+      loading,
+      error,
+      addMeal,
+      deleteMeal,
+      editGrams,
+      refresh,
+    }),
+    [today, week, target, quickAdd, lastFetched, loading, error, addMeal, deleteMeal, editGrams, refresh],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -3,17 +3,19 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWorkout } from "@/app/_providers/workout-provider";
+import { useHevy, type SyncSummary } from "@/app/_providers/hevy-provider";
 import { ExerciseCard } from "@/components/ExerciseCard";
 import { WorkoutExercise, Exercise, DuplicateWorkoutInfo } from "@/lib/types";
-import { calculateWorkoutMetrics, formatVolume, syncWorkoutToHevy } from "@/lib/mock-data";
+import { calculateWorkoutMetrics, formatVolume } from "@/lib/mock-data";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { ExercisePickerDropdown } from "@/components/ExercisePickerDropdown";
-import { checkForDuplicateWorkout } from "@/lib/hevy/api";
+import { findDuplicateOnDate } from "@/lib/hevy/api";
 import { Overline } from "@/app/_components/overline";
-import { WGhost, WPrimary } from "@/app/_components/web-button";
+import { WGhost, WPrimary, WText } from "@/app/_components/web-button";
+import { EquipBadge } from "@/app/_components/equip-badge";
 import {
   AlertTriangle,
   X,
@@ -22,6 +24,8 @@ import {
   Maximize2,
   Send,
   Plus,
+  ExternalLink,
+  Check,
 } from "lucide-react";
 
 function partOfDay(date: Date) {
@@ -45,14 +49,17 @@ export default function ReviewPage() {
     processedExercises,
     setProcessedExercises,
     uploadedImage,
+    setUploadedImage,
     caption,
     setCaption,
     extractedWorkoutDate,
     extractedWorkoutTime,
     detectionModel,
     detectionConfidence,
-    setLastSyncedWorkout,
   } = useWorkout();
+
+  const { workouts: hevyEvents, commitWorkout } = useHevy();
+  const [syncResult, setSyncResult] = useState<SyncSummary | null>(null);
 
   const [exercises, setExercises] = useState<WorkoutExercise[]>(processedExercises);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -102,28 +109,12 @@ export default function ReviewPage() {
     return () => URL.revokeObjectURL(url);
   }, [uploadedImage]);
 
-  // Duplicate check
-  const runDuplicateCheck = React.useCallback(async () => {
-    setDuplicate(null);
-    try {
-      const res = await checkForDuplicateWorkout(workoutDate);
-      if (res.hasDuplicate && res.duplicateWorkout) {
-        setDuplicate(res.duplicateWorkout);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }, [workoutDate]);
-
+  // Duplicate check — pure filter against hevy-provider events.
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      runDuplicateCheck();
-    }, 300);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [runDuplicateCheck]);
+    const dup = findDuplicateOnDate(workoutDate, hevyEvents);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDuplicate(dup);
+  }, [workoutDate, hevyEvents]);
 
   // Set updates. For weight (and reps when changing the first row), if the
   // user fills a value into one set we propagate it down to all subsequent
@@ -317,22 +308,22 @@ export default function ReviewPage() {
       sync_to_hevy: true,
       share_to_instagram: false,
     };
-    const res = await syncWorkoutToHevy(workout);
-    if (res.success) {
-      setLastSyncedWorkout({
-        date: combined,
-        time: workoutTime,
-        duration_minutes: durationMinutes,
-        total_volume_kg: metrics.total_volume_kg,
-        total_sets: metrics.total_sets,
-        exercises,
-        caption,
-      });
-      router.push("/sync");
-    } else {
-      setSyncError(res.error ?? "Sync failed");
+    try {
+      const summary = await commitWorkout(workout);
+      setSyncResult(summary);
+    } catch (err) {
+      setSyncError((err as Error).message ?? "Sync failed");
+    } finally {
       setIsSyncing(false);
     }
+  };
+
+  const handleSyncAnother = () => {
+    setSyncResult(null);
+    setProcessedExercises([]);
+    setUploadedImage(null);
+    setCaption("");
+    router.push("/");
   };
 
   const handleDiscard = () => {
@@ -346,6 +337,17 @@ export default function ReviewPage() {
   const _dayDt = new Date(workoutDate);
   _dayDt.setHours(hh, mm, 0, 0);
   const dayPart = partOfDay(_dayDt);
+
+  if (syncResult) {
+    return (
+      <SyncedHero
+        summary={syncResult}
+        exercises={exercises}
+        onSyncAnother={handleSyncAnother}
+        onEdit={() => setSyncResult(null)}
+      />
+    );
+  }
 
   return (
     <div style={{ maxWidth: 1400, margin: "0 auto" }}>
@@ -905,4 +907,251 @@ function ZoomBtn({
       {children}
     </button>
   );
+}
+
+// ── Synced hero (post-commit state of /review) ──────────────────────────
+
+function SyncedHero({
+  summary,
+  exercises,
+  onSyncAnother,
+  onEdit,
+}: {
+  summary: SyncSummary;
+  exercises: WorkoutExercise[];
+  onSyncAnother: () => void;
+  onEdit: () => void;
+}) {
+  const dateStr = format(summary.date, "MMM dd");
+  const timeStr = summary.time ? fmtTime12(summary.time) : "";
+
+  return (
+    <div className="sync-page-shell" style={{ maxWidth: 1400, margin: "0 auto", padding: "var(--space-xl) var(--space-2xl)" }}>
+      <div
+        className="web-grid-6040"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1.4fr 1fr",
+          gap: 28,
+          alignItems: "start",
+          marginBottom: 16,
+        }}
+      >
+        <div>
+          <Overline>STEP 03 · SYNCED</Overline>
+          <h1
+            className="text-display-md sync-display"
+            style={{
+              fontSize: 80,
+              lineHeight: 0.92,
+              letterSpacing: "-2.4px",
+              margin: "10px 0 10px",
+              color: "var(--color-text-primary)",
+            }}
+          >
+            Synced.
+          </h1>
+          <p
+            className="text-body-md"
+            style={{ color: "var(--color-text-secondary)", margin: 0, maxWidth: 440 }}
+          >
+            Your workout is in your training log. Logged at{" "}
+            <span style={{ color: "var(--color-text-primary)", fontWeight: 500 }}>
+              {dateStr}
+              {timeStr && ` · ${timeStr}`}
+            </span>
+            .
+          </p>
+          <div style={{ display: "flex", gap: 8, marginTop: 18, flexWrap: "wrap" }}>
+            <WPrimary
+              icon={<ExternalLink size={14} color="#fff" strokeWidth={1.6} />}
+              onClick={() => window.open(summary.hevy_url ?? "https://hevy.com", "_blank")}
+            >
+              Open in Hevy
+            </WPrimary>
+            <WGhost onClick={onSyncAnother}>Sync another</WGhost>
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: "var(--color-low)",
+            borderRadius: "var(--radius-lg)",
+            padding: 14,
+          }}
+        >
+          <Overline>THIS WORKOUT</Overline>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 8,
+              marginTop: 10,
+            }}
+          >
+            {(
+              [
+                ["DURATION", `${summary.duration_minutes}m`],
+                ["VOLUME", `${formatVolume(summary.total_volume_kg)} kg`],
+                ["TOTAL SETS", String(summary.total_sets)],
+                ["EXERCISES", String(exercises.length)],
+              ] as const
+            ).map(([k, v]) => (
+              <div
+                key={k}
+                style={{
+                  background: "var(--color-card)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "10px 12px",
+                }}
+              >
+                <Overline style={{ fontSize: 9 }}>{k}</Overline>
+                <div
+                  className="font-mono-lg"
+                  style={{
+                    color: "var(--color-text-primary)",
+                    marginTop: 2,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {v}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          background: "var(--color-low)",
+          borderRadius: "var(--radius-lg)",
+          padding: 16,
+          marginTop: 12,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            marginBottom: 10,
+          }}
+        >
+          <Overline>LOGGED EXERCISES · {exercises.length}</Overline>
+          <WText onClick={onEdit}>Edit workout</WText>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {exercises.map((we, i) => {
+            const ex = we.exercise;
+            const setsCount = we.sets.length;
+            const summary = `${setsCount} ${setsCount === 1 ? "set" : "sets"}`;
+            let volume = "";
+            switch (ex.type) {
+              case "weight_reps": {
+                const vol = we.sets.reduce(
+                  (acc, s) => acc + (s.weight_kg ?? s.kg ?? 0) * (s.reps ?? 0),
+                  0,
+                );
+                volume = `${formatVolume(vol)} kg`;
+                break;
+              }
+              case "reps_only": {
+                const reps = we.sets.reduce((acc, s) => acc + (s.reps ?? 0), 0);
+                volume = `${reps} reps`;
+                break;
+              }
+              case "duration": {
+                const sec = we.sets.reduce((acc, s) => acc + (s.duration_seconds ?? 0), 0);
+                const mins = Math.floor(sec / 60);
+                volume = `${mins}m`;
+                break;
+              }
+              case "distance_duration": {
+                const dist = we.sets.reduce((acc, s) => acc + (s.distance_meters ?? 0), 0);
+                volume = `${dist} m`;
+                break;
+              }
+            }
+            return (
+              <div
+                key={i}
+                className="sync-logged-row"
+                style={{
+                  background: "var(--color-card)",
+                  borderRadius: "var(--radius-md)",
+                  display: "grid",
+                  gridTemplateColumns: "1fr 100px 120px 22px",
+                  gap: 14,
+                  alignItems: "center",
+                  padding: "10px 14px",
+                }}
+              >
+                <div className="sync-logged-ident">
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <EquipBadge official={!ex.is_custom}>
+                      {guessEquipment(ex.title)}
+                    </EquipBadge>
+                    <span
+                      className="text-body-sm"
+                      style={{ color: "var(--color-text-tertiary)", fontSize: 12 }}
+                    >
+                      {capitalize(ex.primary_muscle_group)}
+                    </span>
+                  </div>
+                  <div
+                    className="text-title-md"
+                    style={{ color: "var(--color-text-primary)", marginTop: 2, fontWeight: 500 }}
+                  >
+                    {ex.title}
+                  </div>
+                </div>
+                <div
+                  className="text-body-sm sync-logged-summary"
+                  style={{ color: "var(--color-text-tertiary)", fontWeight: 500, fontSize: 12 }}
+                >
+                  {summary}
+                </div>
+                <div
+                  className="font-mono-sm sync-logged-volume"
+                  style={{ color: "var(--color-text-primary)", fontWeight: 500 }}
+                >
+                  {volume}
+                </div>
+                <div
+                  className="sync-logged-check"
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: 999,
+                    background: "var(--color-secondary)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Check size={10} color="#fff" strokeWidth={2.4} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function guessEquipment(title: string): string {
+  const m = title.match(/\(([^)]+)\)/);
+  if (m) return m[1].toUpperCase();
+  if (/barbell/i.test(title)) return "BARBELL";
+  if (/dumbbell/i.test(title)) return "DUMBBELL";
+  if (/kettlebell/i.test(title)) return "KETTLEBELL";
+  if (/machine/i.test(title)) return "MACHINE";
+  if (/cable/i.test(title)) return "CABLE";
+  return "BODYWEIGHT";
+}
+
+function capitalize(s: string) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
