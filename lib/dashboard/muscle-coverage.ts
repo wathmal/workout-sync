@@ -25,6 +25,29 @@ export type TrackedMuscle = (typeof TRACKED_MUSCLES)[number];
 
 const TRACKED_SET = new Set<string>(TRACKED_MUSCLES);
 
+export type MuscleRegion = "upper" | "lower";
+
+// lower_back lives with the lower group — trained with deadlifts / leg-day
+// posterior chain in most splits.
+const MUSCLE_REGION: Record<TrackedMuscle, MuscleRegion> = {
+  abdominals: "upper",
+  abductors: "lower",
+  adductors: "lower",
+  biceps: "upper",
+  calves: "lower",
+  chest: "upper",
+  forearms: "upper",
+  glutes: "lower",
+  hamstrings: "lower",
+  lats: "upper",
+  lower_back: "lower",
+  quadriceps: "lower",
+  shoulders: "upper",
+  traps: "upper",
+  triceps: "upper",
+  upper_back: "upper",
+};
+
 export interface MuscleCoverageEntry {
   group: TrackedMuscle;
   sets: number; // weighted set count
@@ -37,6 +60,7 @@ export interface AttentionRow {
   meta: string;
   bucket: Exclude<MuscleBucket, "met">;
   sets: number;
+  region: MuscleRegion;
 }
 
 export interface MuscleCoverageResult {
@@ -120,6 +144,7 @@ export function computeMuscleCoverage(
       meta: `0/${target}`,
       bucket: "untouched",
       sets: 0,
+      region: MUSCLE_REGION[e.group],
     }));
 
   const below = entries
@@ -131,7 +156,12 @@ export function computeMuscleCoverage(
       meta: `${formatSets(e.sets)}/${target}`,
       bucket: "below",
       sets: e.sets,
+      region: MUSCLE_REGION[e.group],
     }));
 
   return { entries, attention: [...untouched, ...below] };
+}
+
+export function muscleRegion(m: TrackedMuscle): MuscleRegion {
+  return MUSCLE_REGION[m];
 }

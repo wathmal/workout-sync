@@ -60,3 +60,10 @@ body3d/pipeline/data/
 body3d/pipeline/__pycache__/
 
 /public/body-mock.html.tmp/
+
+# Local scratch + tool artifacts
+.tmp/
+tmp/
+.playwright-mcp/
+*.bak
+test.txt
