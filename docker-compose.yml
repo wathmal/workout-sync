@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: workout-sync-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: workout
+      POSTGRES_PASSWORD: workout
+      POSTGRES_DB: workout
+    ports:
+      - "5433:5432"
+    volumes:
+      - workout_sync_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workout -d workout"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  workout_sync_pgdata:

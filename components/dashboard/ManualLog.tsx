@@ -9,9 +9,12 @@ import {
   AlignLeft,
   Sparkles,
 } from "lucide-react";
+import { useFoodLog } from "@/app/_providers/food-log-provider";
+import type { QuickAddSuggestion } from "@/lib/food/types";
 
 interface ActionsData {
   lastSync: string;
+  /** Static fallback chips shown when no recent logs exist. */
   quickAdd: { name: string; kcal: number }[];
 }
 
@@ -20,6 +23,17 @@ interface ActionsData {
  * middle row in tmp/dashboard.html: "Log a workout" + "Log a meal".
  */
 export function ManualLog({ data }: { data: ActionsData }) {
+  const { quickAdd: live, addMeal } = useFoodLog();
+  const chips: QuickAddSuggestion[] = live.length
+    ? live
+    : data.quickAdd.map((q) => ({
+        name: q.name,
+        kcal: q.kcal,
+        grams: 0,
+        proteinG: 0,
+        carbsG: 0,
+        fatG: 0,
+      }));
   return (
     <div
       style={{
@@ -30,24 +44,40 @@ export function ManualLog({ data }: { data: ActionsData }) {
         width: "100%",
       }}
     >
-      <WorkoutCard lastSync={data.lastSync} />
-      <MealCard quickAdd={data.quickAdd} />
+      <WorkoutCard />
+      <MealCard
+        quickAdd={chips}
+        onQuickAdd={async (q) => {
+          if (!Number.isFinite(q.grams) || q.grams <= 0) return; // static fallback w/o macros — skip
+          await addMeal({
+            loggedAt: new Date().toISOString(),
+            source: "manual",
+            items: [
+              {
+                name: q.name,
+                grams: q.grams,
+                kcal: q.kcal,
+                proteinG: q.proteinG,
+                carbsG: q.carbsG,
+                fatG: q.fatG,
+                confidence: null,
+                warnings: null,
+              },
+            ],
+          }).catch((err) => console.error(err));
+        }}
+      />
     </div>
   );
 }
 
-function WorkoutCard({ lastSync }: { lastSync: string }) {
+function WorkoutCard() {
   return (
     <Card>
       <CardHeader
         overline="Strength · Hevy"
         title="Log a workout."
-        pill={
-          <Pill tone="info">
-            <RefreshCw size={11} strokeWidth={2.5} />
-            {lastSync}
-          </Pill>
-        }
+        pill={null}
       />
       <p
         style={{
@@ -76,7 +106,13 @@ function WorkoutCard({ lastSync }: { lastSync: string }) {
   );
 }
 
-function MealCard({ quickAdd }: { quickAdd: { name: string; kcal: number }[] }) {
+function MealCard({
+  quickAdd,
+  onQuickAdd,
+}: {
+  quickAdd: QuickAddSuggestion[];
+  onQuickAdd: (q: QuickAddSuggestion) => Promise<void> | void;
+}) {
   return (
     <Card>
       <CardHeader
@@ -105,63 +141,66 @@ function MealCard({ quickAdd }: { quickAdd: { name: string; kcal: number }[] }) 
           flexWrap: "wrap",
         }}
       >
-        <SecondaryButton href="/food" icon={<Camera size={14} />}>
+        <SecondaryButton href="/food?mode=snap" icon={<Camera size={14} />}>
           Snap
         </SecondaryButton>
-        <PrimaryButton href="/food" icon={<AlignLeft size={14} strokeWidth={2.2} />}>
+        <PrimaryButton href="/food?mode=text" icon={<AlignLeft size={14} strokeWidth={2.2} />}>
           Type meal
         </PrimaryButton>
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "var(--space-xs)",
-        }}
-      >
-        <span
-          className="text-label-md"
-          style={{ color: "var(--color-text-tertiary)" }}
-        >
-          Quick add
-        </span>
+      {quickAdd.length > 0 && (
         <div
           style={{
             display: "flex",
-            flexWrap: "wrap",
-            gap: 6,
+            flexDirection: "column",
+            gap: "var(--space-xs)",
           }}
         >
-          {quickAdd.map((q) => (
-            <button
-              key={q.name}
-              type="button"
-              style={{
-                background: "var(--color-surface-chip)",
-                color: "var(--color-text-primary)",
-                padding: "5px 10px",
-                borderRadius: "var(--radius-full)",
-                fontSize: 12,
-                fontWeight: 500,
-                border: 0,
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-              }}
-            >
-              + {q.name}
-              <span
-                className="font-mono-sm"
-                style={{ color: "var(--color-text-tertiary)", fontSize: 11 }}
+          <span
+            className="text-label-md"
+            style={{ color: "var(--color-text-tertiary)" }}
+          >
+            Quick add
+          </span>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 6,
+            }}
+          >
+            {quickAdd.map((q) => (
+              <button
+                key={q.name}
+                type="button"
+                onClick={() => void onQuickAdd(q)}
+                style={{
+                  background: "var(--color-surface-chip)",
+                  color: "var(--color-text-primary)",
+                  padding: "5px 10px",
+                  borderRadius: "var(--radius-full)",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  border: 0,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
               >
-                {q.kcal}
-              </span>
-            </button>
-          ))}
+                + {q.name}
+                <span
+                  className="font-mono-sm"
+                  style={{ color: "var(--color-text-tertiary)", fontSize: 11 }}
+                >
+                  {Math.round(q.kcal)}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </Card>
   );
 }
