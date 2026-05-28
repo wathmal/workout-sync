@@ -40,10 +40,6 @@ AGENT_HARNESS_PROVIDER=groq       npm run agent:extract -- tests/fixtures/workou
 AGENT_HARNESS_PROVIDER=lm-studio  npm run agent:extract -- tests/fixtures/workout-revl-1.jpeg
 AGENT_HARNESS_PROVIDER=claude-cli npm run agent:extract -- tests/fixtures/workout-revl-1.jpeg
 AGENT_DEBUG_LOG=1 ...             # writes JSONL trace to .agent-runs/
-
-# Body fit API (Python, optional 3D body viz)
-npm run body3d:api:setup          # one-time venv + deps
-npm run body3d:api                # serve on http://127.0.0.1:8000
 ```
 
 `npm run dev` reads `.env.local`. Required keys:
@@ -92,7 +88,7 @@ Two domains share the app shell: **Hevy workout sync** and **food/macro log**. T
 
 **`drizzle/`** — generated migration SQL + `meta/`. Run `npm run db:generate` after schema changes.
 
-**`tools/body-fit-api/`** — local Python FastAPI service. Takes `BodyMeasurementsInput` → fitted Anny mesh GLB. Optional, only needed for 3D body viz. Setup + run via `npm run body3d:api:*`.
+3D body visualisation is not in repo. Future candidate model: https://github.com/datar-psa/clad-body
 
 ### Matching scoring
 Threshold ≥60. Levenshtein base (0-100) + word overlap (+10 per match) + same starting word (+20) + equipment match (+15) + official bonus (+5). Max 150. Vector mode (cosine) blends with fuzzy via env vars `MATCHING_MODE` (`fuzzy|vector|both`) and `EMBEDDING_SOURCE` (`lm-studio|transformers|auto|off`). Abbreviation expansion: `BB→barbell, DB→dumbbell, KB→kettlebell, EZ→ez bar, SZ→sz bar, Swiss→swiss bar, Trap→trap bar`. Equipment word reordered to end so "DB Curl" matches "Bicep Curl (Dumbbell)".

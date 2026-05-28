@@ -29,7 +29,10 @@ Built with Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui, Drizzle, an
 - Muscle coverage map driven by recent Hevy workouts
 - Calorie/macro summary against active target
 - Body measurements card and trend chart
-- Optional 3D body visualisation via a local Python service (`tools/body-fit-api`)
+
+> 3D body visualisation is on the roadmap — see
+> https://github.com/datar-psa/clad-body for the candidate model
+> when this lands.
 
 ## Tech stack
 
@@ -110,9 +113,6 @@ npm run e2e:heic                  # HEIC + Groq
 
 npm run debug:match -- "DB Curl"  # score breakdown for one query
 npm run agent:extract -- tests/fixtures/workout-revl-1.jpeg
-
-npm run body3d:api:setup          # create venv + install body-fit-api deps
-npm run body3d:api                # run body-fit-api on :8000
 ```
 
 ## Container deployment
