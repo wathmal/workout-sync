@@ -6,9 +6,23 @@ Built with Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui, Drizzle, an
 
 ## Screenshots
 
-![Hevy Sync Screen 1](docs/hevy-sync-screen-1.png)
-![Hevy Sync Screen 3](docs/hevy-sync-screen-3.png)
-![Hevy Sync Screen 2](docs/hevy-sync-screen-2.png)
+### Dashboard
+
+Muscle coverage, calories vs target, race calendar, and body-composition trend in one view.
+
+![Dashboard](docs/dashboard.png)
+
+### Workout sync (Hevy)
+
+Drop a workout photo — vision parses every exercise, set, and rep, then matches Hevy's catalog.
+
+![Workout upload](docs/workout-upload.png)
+
+### Food / macro log
+
+Log meals by search, text, photo, or barcode against the local macro store.
+
+![Food log](docs/food-log.png)
 
 ## Features
 
