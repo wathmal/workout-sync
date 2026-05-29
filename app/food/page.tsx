@@ -11,6 +11,8 @@ import {
   Pencil,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   AlertTriangle,
   Loader2,
   CornerDownRight,
@@ -31,6 +33,11 @@ import type {
 } from "@/lib/food/types";
 import { PhotoDropzone } from "@/app/_components/photo-dropzone";
 import type { PreparedImage } from "@/lib/image-resize";
+import {
+  todayLocalStr,
+  addDaysStr,
+  formatDayLabel,
+} from "@/lib/food/local-date";
 
 type Mode = "search" | "text" | "snap" | "barcode";
 
@@ -67,6 +74,11 @@ function toIsoLocal(iso: string): string {
   if (isNaN(d.getTime())) return isoLocalNow();
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** Default log timestamp for the navigator's selected day: now if today, else noon. */
+function defaultLoggedAt(dateStr: string): string {
+  return dateStr === todayLocalStr() ? isoLocalNow() : `${dateStr}T12:00`;
 }
 
 function fromFmaItem(it: FmaItem, idx: number): PendingItem {
@@ -127,14 +139,31 @@ export default function FoodPage() {
       : "text",
   );
 
-  const { today, target, addMeal, deleteMeal, editGrams, error: ctxError } = useFoodLog();
+  const {
+    dayMeals,
+    target,
+    selectedDate,
+    setSelectedDate,
+    dayLoading,
+    addMeal,
+    deleteMeal,
+    editGrams,
+    error: ctxError,
+  } = useFoodLog();
   const { locale, setLocale } = useFoodLocale();
 
   const [pending, setPending] = useState<PendingItem[]>([]);
   const [pendingMealName, setPendingMealName] = useState<string | null>(null);
-  const [loggedAtLocal, setLoggedAtLocal] = useState<string>(isoLocalNow());
+  const [loggedAtLocal, setLoggedAtLocal] = useState<string>(() =>
+    defaultLoggedAt(selectedDate),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // New meals default to the day being viewed (now if today, noon otherwise).
+  useEffect(() => {
+    setLoggedAtLocal(defaultLoggedAt(selectedDate));
+  }, [selectedDate]);
 
   const switchMode = useCallback(
     (m: Mode) => {
@@ -149,8 +178,8 @@ export default function FoodPage() {
   const resetPending = useCallback(() => {
     setPending([]);
     setPendingMealName(null);
-    setLoggedAtLocal(isoLocalNow());
-  }, []);
+    setLoggedAtLocal(defaultLoggedAt(selectedDate));
+  }, [selectedDate]);
 
   const onCommit = useCallback(async () => {
     setError(null);
@@ -206,8 +235,13 @@ export default function FoodPage() {
       }}
     >
       <TodayStrip
-        today={today}
+        meals={dayMeals}
         target={target}
+        selectedDate={selectedDate}
+        loading={dayLoading}
+        canGoNext={selectedDate < todayLocalStr()}
+        onPrev={() => setSelectedDate(addDaysStr(selectedDate, -1))}
+        onNext={() => setSelectedDate(addDaysStr(selectedDate, 1))}
         onDelete={deleteMeal}
         onEditGrams={editGrams}
       />
@@ -228,7 +262,9 @@ export default function FoodPage() {
               className="text-headline-md"
               style={{ color: "var(--color-text-primary)", margin: "var(--space-2xs) 0 0" }}
             >
-              Add to today.
+              {selectedDate === todayLocalStr()
+                ? "Add to today."
+                : `Add to ${formatDayLabel(selectedDate)}.`}
             </h2>
           </div>
           <LocaleSelect value={locale} onChange={setLocale} />
@@ -242,7 +278,7 @@ export default function FoodPage() {
             onPick={(items) => {
               setPending(items);
               setPendingMealName(null);
-              setLoggedAtLocal(isoLocalNow());
+              setLoggedAtLocal(defaultLoggedAt(selectedDate));
             }}
           />
         )}
@@ -252,7 +288,7 @@ export default function FoodPage() {
             onResult={(items, mealName) => {
               setPending(items);
               setPendingMealName(mealName ?? null);
-              setLoggedAtLocal(isoLocalNow());
+              setLoggedAtLocal(defaultLoggedAt(selectedDate));
             }}
             setError={setError}
           />
@@ -263,7 +299,7 @@ export default function FoodPage() {
             onResult={(items, loggedAtIso, mealName) => {
               setPending(items);
               setPendingMealName(mealName ?? null);
-              setLoggedAtLocal(loggedAtIso ? toIsoLocal(loggedAtIso) : isoLocalNow());
+              setLoggedAtLocal(loggedAtIso ? toIsoLocal(loggedAtIso) : defaultLoggedAt(selectedDate));
             }}
             setError={setError}
           />
@@ -274,7 +310,7 @@ export default function FoodPage() {
             onResult={(items, loggedAtIso, mealName) => {
               setPending(items);
               setPendingMealName(mealName ?? null);
-              setLoggedAtLocal(loggedAtIso ? toIsoLocal(loggedAtIso) : isoLocalNow());
+              setLoggedAtLocal(loggedAtIso ? toIsoLocal(loggedAtIso) : defaultLoggedAt(selectedDate));
             }}
             setError={setError}
           />
@@ -302,21 +338,67 @@ export default function FoodPage() {
 
 // ── Today strip ────────────────────────────────────────────────────────────
 
+function DayNavButton({
+  label,
+  onClick,
+  disabled,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 26,
+        height: 26,
+        border: "none",
+        background: "transparent",
+        color: disabled ? "var(--color-text-muted)" : "var(--color-text-secondary)",
+        borderRadius: "var(--radius-md)",
+        cursor: disabled ? "default" : "pointer",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 function TodayStrip({
-  today,
+  meals,
   target,
+  selectedDate,
+  loading,
+  canGoNext,
+  onPrev,
+  onNext,
   onDelete,
   onEditGrams,
 }: {
-  today: MealItem[];
+  meals: MealItem[];
   target: { kcal: number } | null;
+  selectedDate: string;
+  loading: boolean;
+  canGoNext: boolean;
+  onPrev: () => void;
+  onNext: () => void;
   onDelete: (batchId: string) => Promise<void>;
   onEditGrams: (itemId: string, grams: number) => Promise<MealItem | null>;
 }) {
-  const totalKcal = today.reduce((s, m) => s + m.kcal, 0);
+  const isToday = selectedDate === todayLocalStr();
+  const totalKcal = meals.reduce((s, m) => s + m.kcal, 0);
   const groups = useMemo(() => {
     const byBatch = new Map<string, MealItem[]>();
-    for (const m of today) {
+    for (const m of meals) {
       const arr = byBatch.get(m.batchId) ?? [];
       arr.push(m);
       byBatch.set(m.batchId, arr);
@@ -329,13 +411,21 @@ function TodayStrip({
       .sort((a, b) =>
         b.items[0]?.loggedAt.localeCompare(a.items[0]?.loggedAt ?? "") ?? 0,
       );
-  }, [today]);
+  }, [meals]);
 
   return (
     <Card>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
         <div>
-          <Overline>Today</Overline>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2xs)" }}>
+            <DayNavButton label="Previous day" onClick={onPrev}>
+              <ChevronLeft size={16} />
+            </DayNavButton>
+            <Overline>{formatDayLabel(selectedDate)}</Overline>
+            <DayNavButton label="Next day" onClick={onNext} disabled={!canGoNext}>
+              <ChevronRight size={16} />
+            </DayNavButton>
+          </div>
           <h2
             className="text-headline-md"
             style={{ color: "var(--color-text-primary)", margin: "var(--space-2xs) 0 0" }}
@@ -350,11 +440,11 @@ function TodayStrip({
           className="font-mono-sm"
           style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}
         >
-          {today.length} item{today.length === 1 ? "" : "s"}
+          {loading ? "…" : `${meals.length} item${meals.length === 1 ? "" : "s"}`}
         </span>
       </div>
 
-      {groups.length === 0 && (
+      {!loading && groups.length === 0 && (
         <div
           style={{
             padding: "var(--space-lg)",
@@ -363,7 +453,7 @@ function TodayStrip({
             fontSize: 13,
           }}
         >
-          Nothing logged yet today.
+          {isToday ? "Nothing logged yet today." : "Nothing logged this day."}
         </div>
       )}
 
@@ -838,7 +928,11 @@ function SearchPanel({
           const key = `${h.source}:${h.source_id}`;
           const gStr = pickGrams[key] ?? "100";
           const grams = Number(gStr) || 100;
-          const kcal = ((h.kcal_per_100g ?? 0) * grams) / 100;
+          const scale = grams / 100;
+          const kcal = (h.kcal_per_100g ?? 0) * scale;
+          const protein = (h.protein_g_per_100g ?? 0) * scale;
+          const carbs = (h.carbs_g_per_100g ?? 0) * scale;
+          const fat = (h.fat_g_per_100g ?? 0) * scale;
           return (
             <div
               key={key}
@@ -853,7 +947,10 @@ function SearchPanel({
                 borderRadius: "var(--radius-md)",
               }}
             >
-              <span style={{ fontSize: 13 }}>{h.name}</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0, alignItems: "flex-start" }}>
+                <span style={{ fontSize: 13 }}>{h.name}</span>
+                <MacroChips p={protein} c={carbs} f={fat} />
+              </div>
               <input
                 type="number"
                 value={gStr}

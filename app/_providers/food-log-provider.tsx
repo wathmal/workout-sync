@@ -6,6 +6,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -16,8 +17,10 @@ import type {
   MealItem,
   QuickAddSuggestion,
 } from "@/lib/food/types";
+import { todayLocalStr } from "@/lib/food/local-date";
 
 interface FoodLogContextType {
+  /** Actual today's meals — drives the dashboard, independent of navigation. */
   today: MealItem[];
   week: DayAggregate[];
   target: MacroTarget | null;
@@ -25,6 +28,12 @@ interface FoodLogContextType {
   lastFetched: number | null;
   loading: boolean;
   error: string | null;
+
+  /** Day navigator (food page). `dayMeals` = meals for `selectedDate`. */
+  selectedDate: string;
+  setSelectedDate: (date: string) => void;
+  dayMeals: MealItem[];
+  dayLoading: boolean;
 
   addMeal: (batch: MealBatchInput) => Promise<MealItem[]>;
   deleteMeal: (batchId: string) => Promise<void>;
@@ -52,6 +61,12 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [selectedDate, setSelectedDate] = useState<string>(() => todayLocalStr());
+  const [dayMeals, setDayMeals] = useState<MealItem[]>([]);
+  const [dayLoading, setDayLoading] = useState(false);
+  const selectedDateRef = useRef(selectedDate);
+  selectedDateRef.current = selectedDate;
+
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -74,9 +89,29 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Fetch meals for an arbitrary day (the navigator's selected date).
+  const reloadDay = useCallback(async (date: string) => {
+    setDayLoading(true);
+    try {
+      const { items } = await getJson<{ items: MealItem[] }>(
+        `/api/food/log?date=${encodeURIComponent(date)}`,
+      );
+      // Ignore stale responses if the user moved on to another date.
+      if (selectedDateRef.current === date) setDayMeals(items);
+    } catch (err) {
+      if (selectedDateRef.current === date) setError((err as Error).message);
+    } finally {
+      setDayLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    void reloadDay(selectedDate);
+  }, [selectedDate, reloadDay]);
 
   const addMeal = useCallback(
     async (batch: MealBatchInput) => {
@@ -85,10 +120,10 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(batch),
       });
-      await refresh();
+      await Promise.all([refresh(), reloadDay(selectedDateRef.current)]);
       return items;
     },
-    [refresh],
+    [refresh, reloadDay],
   );
 
   const deleteMeal = useCallback(
@@ -96,9 +131,9 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
       await getJson(`/api/food/log?batch_id=${encodeURIComponent(batchId)}`, {
         method: "DELETE",
       });
-      await refresh();
+      await Promise.all([refresh(), reloadDay(selectedDateRef.current)]);
     },
-    [refresh],
+    [refresh, reloadDay],
   );
 
   const editGrams = useCallback(
@@ -111,10 +146,10 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({ grams }),
         },
       );
-      await refresh();
+      await Promise.all([refresh(), reloadDay(selectedDateRef.current)]);
       return item;
     },
-    [refresh],
+    [refresh, reloadDay],
   );
 
   const value = useMemo(
@@ -126,12 +161,16 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
       lastFetched,
       loading,
       error,
+      selectedDate,
+      setSelectedDate,
+      dayMeals,
+      dayLoading,
       addMeal,
       deleteMeal,
       editGrams,
       refresh,
     }),
-    [today, week, target, quickAdd, lastFetched, loading, error, addMeal, deleteMeal, editGrams, refresh],
+    [today, week, target, quickAdd, lastFetched, loading, error, selectedDate, dayMeals, dayLoading, addMeal, deleteMeal, editGrams, refresh],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
