@@ -27,11 +27,17 @@ export async function normalizeImage(
   mimeType: string | undefined,
   filename: string | undefined,
   originalBase64: string,
+  capturedAt?: Date | null,
 ): Promise<NormalizedImage> {
   let extractedDate: Date | null = null;
   let workoutStartTime: { date: Date; timeString: string } | null = null;
   try {
-    extractedDate = await extractImageDateFromBuffer(buffer);
+    // Client-extracted date wins (survives a client resize that strips EXIF);
+    // fall back to parsing the received buffer.
+    extractedDate =
+      capturedAt && !Number.isNaN(capturedAt.getTime())
+        ? capturedAt
+        : await extractImageDateFromBuffer(buffer);
     if (extractedDate) {
       workoutStartTime = calculateWorkoutStartTime(extractedDate);
       console.log("📅 Extracted workout date/time from image EXIF:", workoutStartTime);

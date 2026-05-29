@@ -5,10 +5,11 @@ import { AgentLoopError } from "@/lib/agents/types";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { image, mimeType, filename } = body as {
+    const { image, mimeType, filename, capturedAt } = body as {
       image?: string;
       mimeType?: string;
       filename?: string;
+      capturedAt?: string | null;
     };
 
     if (!image) {
@@ -21,7 +22,8 @@ export async function POST(request: NextRequest) {
     console.log("📊 Image size:", Math.round(image.length / 1024), "KB (base64)");
 
     const buffer = Buffer.from(image, "base64");
-    const result = await extractWorkout(buffer, mimeType, filename, image);
+    const capturedDate = typeof capturedAt === "string" ? new Date(capturedAt) : undefined;
+    const result = await extractWorkout(buffer, mimeType, filename, image, capturedDate);
 
     return NextResponse.json({
       success: true,

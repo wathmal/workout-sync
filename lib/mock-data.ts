@@ -44,7 +44,7 @@ export const MOCK_EXERCISES: Exercise[] = [
   },
 ];
 
-import { convertFileToBase64, validateImageFile } from "./upload-utils";
+import type { PreparedImage } from "./image-resize";
 
 // Result type for image processing
 export interface ProcessWorkoutImageResult {
@@ -58,19 +58,10 @@ export interface ProcessWorkoutImageResult {
   confidence: number | null;
 }
 
-// Mock image processing function with fallback
-export async function processWorkoutImage(imageFile: File): Promise<ProcessWorkoutImageResult> {
+// Workout extraction with mock fallback. Validation + resize/EXIF prep happen
+// upstream (PhotoDropzone → prepareImageForUpload); this just calls the API.
+export async function processWorkoutImage(prepared: PreparedImage): Promise<ProcessWorkoutImageResult> {
   try {
-    // Validate the image file
-    const validation = validateImageFile(imageFile);
-    if (!validation.valid) {
-      throw new Error(validation.error);
-    }
-
-    console.log("📸 Converting image to base64...");
-    // Convert image to base64
-    const base64Image = await convertFileToBase64(imageFile);
-    
     console.log("🚀 Calling Groq Vision API...");
     // Call the API route
     const response = await fetch("/api/process-workout", {
@@ -79,9 +70,10 @@ export async function processWorkoutImage(imageFile: File): Promise<ProcessWorko
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        image: base64Image,
-        mimeType: imageFile.type,
-        filename: imageFile.name,
+        image: prepared.base64,
+        mimeType: prepared.mimeType,
+        filename: prepared.filename,
+        capturedAt: prepared.capturedAt ? prepared.capturedAt.toISOString() : null,
       }),
     });
 
@@ -119,7 +111,7 @@ export async function processWorkoutImage(imageFile: File): Promise<ProcessWorko
         workoutStartDate: data.workoutStartDate ? new Date(data.workoutStartDate) : null,
         workoutStartTime: data.workoutStartTime || null,
         convertedImageFile: data.convertedImageBase64
-          ? base64ToJpegFile(data.convertedImageBase64, imageFile.name)
+          ? base64ToJpegFile(data.convertedImageBase64, prepared.filename)
           : null,
         modelName: data.modelName ?? null,
         confidence: typeof data.confidence === "number" ? data.confidence : null,
@@ -132,15 +124,7 @@ export async function processWorkoutImage(imageFile: File): Promise<ProcessWorko
     console.error("⚠️ Error processing image with Groq API:", error);
     console.log("🔄 Falling back to mock data...");
 
-    // Re-throw validation errors (don't fall back for these)
-    if (error instanceof Error && (
-      error.message.includes("Invalid file type") ||
-      error.message.includes("size exceeds")
-    )) {
-      throw error;
-    }
-
-    // Fallback to mock data for API failures
+    // Fallback to mock data for API failures (file validation happens upstream)
     return {
       exercises: getMockWorkoutData(),
       extractedDate: null,

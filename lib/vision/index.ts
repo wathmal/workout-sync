@@ -34,8 +34,15 @@ export async function extractWorkout(
   mimeType: string | undefined,
   filename: string | undefined,
   originalBase64: string,
+  capturedAt?: Date | null,
 ): Promise<ExtractionResult> {
-  const normalized = await normalizeImage(buffer, mimeType, filename, originalBase64);
+  const normalized = await normalizeImage(
+    buffer,
+    mimeType,
+    filename,
+    originalBase64,
+    capturedAt,
+  );
 
   const agentProvider = getAgentHarnessProvider();
   if (agentProvider !== "off") {

@@ -14,12 +14,13 @@ export async function POST(request: NextRequest) {
     const mimeType: string | undefined = body?.mimeType;
     const locale: string | undefined = body?.locale || undefined;
     const context: string | undefined = body?.context || undefined;
+    const capturedAt: string | null | undefined = body?.capturedAt;
 
     if (!base64) {
       return NextResponse.json({ error: "imageBase64 required" }, { status: 400 });
     }
 
-    const prepared = await preparePhoto(base64, filename, mimeType);
+    const prepared = await preparePhoto(base64, filename, mimeType, capturedAt);
     const analyze = await fmaAnalyzeBarcodePhoto(prepared.base64, { locale, context });
 
     return NextResponse.json({

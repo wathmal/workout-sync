@@ -1,22 +1,29 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Clipboard, AlertCircle, Info, X } from "lucide-react";
+import { Camera, AlertCircle, Info, X } from "lucide-react";
 import { useWorkout } from "@/app/_providers/workout-provider";
 import { processWorkoutImage } from "@/lib/mock-data";
 import { Overline } from "@/app/_components/overline";
-import { WPrimary, WGhost } from "@/app/_components/web-button";
+import { PhotoDropzone } from "@/app/_components/photo-dropzone";
+import type { PreparedImage } from "@/lib/image-resize";
 
-const ACCEPTED = "image/*,.heic,.heif";
+/** Formats the prepared image emits as a renderable preview File. */
+const RENDERABLE_MIME = /^image\/(jpe?g|png|webp)$/i;
+
+function base64ToFile(base64: string, name: string, mime: string): File {
+  const bin = atob(base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new File([bytes], name, { type: mime });
+}
 
 export default function UploadPage() {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
 
   const {
     setUploadedImage,
@@ -27,17 +34,25 @@ export default function UploadPage() {
     setDetectionConfidence,
   } = useWorkout();
 
-  const processFile = async (file: File) => {
-    setUploadedImage(file);
+  const handlePrepared = async (prepared: PreparedImage) => {
     setError(null);
     setIsUsingFallback(false);
     setExtractedWorkoutDate(null);
     setExtractedWorkoutTime(null);
+
+    // Optimistic preview: the prepared image is browser-renderable for non-HEIC
+    // and for client-resized HEIC. Only small pass-through HEIC needs the
+    // server-converted JPEG (set below from the response).
+    const renderable = RENDERABLE_MIME.test(prepared.mimeType);
+    if (renderable) {
+      setUploadedImage(base64ToFile(prepared.base64, prepared.filename, prepared.mimeType));
+    }
+
     setIsProcessing(true);
     try {
-      const result = await processWorkoutImage(file);
+      const result = await processWorkoutImage(prepared);
       setProcessedExercises(result.exercises);
-      if (result.convertedImageFile) {
+      if (!renderable && result.convertedImageFile) {
         setUploadedImage(result.convertedImageFile);
       }
       if (result.workoutStartDate && result.workoutStartTime) {
@@ -73,75 +88,16 @@ export default function UploadPage() {
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file);
-  };
-
-  const handleChooseFile = () => fileInputRef.current?.click();
-
-  const handlePasteClick = async () => {
-    try {
-      const items = await navigator.clipboard.read();
-      for (const item of items) {
-        const imageType = item.types.find((t: string) => t.startsWith("image/"));
-        if (imageType) {
-          const blob = await item.getType(imageType);
-          const file = new File([blob], `pasted.${imageType.split("/")[1]}`, { type: imageType });
-          await processFile(file);
-          return;
-        }
-      }
-      setError("No image on clipboard. Copy an image first.");
-    } catch (err) {
-      console.error(err);
-      setError("Could not read clipboard. Allow clipboard access or use Choose file.");
-    }
-  };
-
-  const onDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragActive(true);
-  };
-  const onDragLeave = () => setDragActive(false);
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragActive(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) processFile(file);
-  };
-
-  // Global paste handler
-  useEffect(() => {
-    const onPaste = (e: ClipboardEvent) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      for (const item of Array.from(items)) {
-        if (item.type.startsWith("image/")) {
-          const file = item.getAsFile();
-          if (file) {
-            processFile(file);
-            return;
-          }
-        }
-      }
-    };
-    document.addEventListener("paste", onPaste);
-    return () => document.removeEventListener("paste", onPaste);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
     <div
       className="upload-page-shell"
       style={{
-        padding: "var(--space-xl) var(--space-2xl) var(--space-2xl)",
-        maxWidth: 1400,
+        padding: "var(--space-xl) var(--space-2xl)",
+        maxWidth: 900,
         margin: "0 auto",
-        minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
-        gap: "var(--space-lg)",
+        gap: "var(--space-xl)",
       }}
     >
       {/* Errors / fallback banners */}
@@ -164,136 +120,48 @@ export default function UploadPage() {
         </Banner>
       )}
 
-      {/* Hero stack: heading top, drop area below */}
+      {/* Capture card — mirrors the /food "Log a meal" card layout */}
       <div
         style={{
+          background: "var(--color-surface-card)",
+          borderRadius: "var(--radius-lg)",
+          padding: "var(--space-lg)",
           display: "flex",
           flexDirection: "column",
-          gap: 16,
-          flex: 1,
-          minHeight: 0,
+          gap: "var(--space-md)",
+          width: "100%",
         }}
       >
-        {/* Heading block */}
         <div>
-          <Overline>STEP 01 · CAPTURE</Overline>
-          <h1
-            className="text-display-sm upload-headline"
-            style={{
-              color: "var(--color-text-primary)",
-              margin: "8px 0 8px",
-              maxWidth: 720,
-              fontSize: 40,
-              lineHeight: 1.02,
-            }}
+          <Overline>Step 01 · Capture</Overline>
+          <h2
+            className="text-headline-md"
+            style={{ color: "var(--color-text-primary)", margin: "var(--space-2xs) 0 0" }}
           >
-            From the gym&nbsp;board to Hevy in one&nbsp;shot.
-          </h1>
-          <p
-            className="text-body-sm"
-            style={{
-              color: "var(--color-text-secondary)",
-              margin: 0,
-              maxWidth: 640,
-            }}
-          >
-            Drop a photo of any workout board, screenshot, or note. Vision parses every exercise,
-            set, and rep — you review, then sync.
-          </p>
+            From the gym board to Hevy.
+          </h2>
         </div>
 
-        {/* Drop area fills remaining vertical space */}
-        <div
+        <label
+          className="text-label-md"
           style={{
-            background: "var(--color-low)",
-            borderRadius: "var(--radius-lg)",
-            padding: 12,
-            display: "flex",
-            flexDirection: "column",
-            flex: 1,
-            minHeight: 0,
+            color: "var(--color-text-tertiary)",
+            fontSize: 11,
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
           }}
         >
-          <div
-            onDragOver={onDragOver}
-            onDragLeave={onDragLeave}
-            onDrop={onDrop}
-            style={{
-              minHeight: 280,
-              flex: 1,
-              borderRadius: "var(--radius-lg)",
-              background:
-                "repeating-linear-gradient(45deg, var(--color-card) 0 18px, var(--color-low) 18px 36px)",
-              position: "relative",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              padding: 18,
-              outline: dragActive ? "2px solid var(--color-primary)" : "none",
-              outlineOffset: -6,
-              transition: "outline 0.15s ease",
-            }}
-          >
-            <div
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: "var(--radius-lg)",
-                background: "var(--color-surface-chip)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Camera size={26} color="var(--color-brand-primary)" strokeWidth={1.6} />
-            </div>
-            <div
-              className="text-headline-sm"
-              style={{ color: "var(--color-text-primary)", marginTop: 2, textAlign: "center" }}
-            >
-              {isProcessing ? "Processing…" : "Drop your workout photo"}
-            </div>
-            <div
-              className="text-body-sm"
-              style={{
-                color: "var(--color-text-tertiary)",
-                textAlign: "center",
-                fontSize: 12,
-              }}
-            >
-              PNG · JPG · HEIC up to 20 MB · or paste from clipboard
-            </div>
-            <div
-              style={{
-                marginTop: 4,
-                display: "flex",
-                gap: 8,
-                flexWrap: "wrap",
-                justifyContent: "center",
-              }}
-            >
-              <WPrimary
-                icon={<Camera size={14} color="#fff" strokeWidth={1.7} />}
-                onClick={handleChooseFile}
-                disabled={isProcessing}
-              >
-                Choose file
-              </WPrimary>
-              <WGhost onClick={handlePasteClick} disabled={isProcessing} icon={<Clipboard size={13} />}>
-                Paste image
-              </WGhost>
-            </div>
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={ACCEPTED}
-            onChange={handleFileSelect}
-            style={{ display: "none" }}
-          />
-        </div>
+          Workout photo
+        </label>
+        <PhotoDropzone
+          icon={<Camera size={14} />}
+          label="Tap to pick a workout photo · or paste"
+          busyLabel="Processing…"
+          busy={isProcessing}
+          minHeight={260}
+          onPrepared={handlePrepared}
+          onError={setError}
+        />
       </div>
 
       {/* How it works — compact 3-up below fold */}

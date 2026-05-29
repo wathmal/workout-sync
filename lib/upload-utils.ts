@@ -13,6 +13,9 @@ const ALLOWED_MIMES = [
 const ALLOWED_EXT = /\.(jpe?g|png|webp|heic|heif)$/i;
 const MAX_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
 
+/** Single source for the file-input `accept` attribute across upload surfaces. */
+export const ACCEPT_ATTR = "image/*,.heic,.heif";
+
 export async function convertFileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

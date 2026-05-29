@@ -18,6 +18,32 @@ export interface PreparedImage {
   byteLength: number;
   /** True if downscaled/re-encoded; false if original was small enough. */
   resized: boolean;
+  /**
+   * EXIF capture date parsed client-side from the ORIGINAL file, before any
+   * canvas re-encode strips it. null when absent/unreadable.
+   */
+  capturedAt: Date | null;
+}
+
+/**
+ * Read the EXIF capture date off the original file, client-side, BEFORE resize.
+ * Canvas re-encode drops EXIF, so this must run on the raw file. exifr is
+ * lazy-imported so it stays out of the initial bundle (only loads on pick).
+ */
+async function extractCapturedAt(file: File): Promise<Date | null> {
+  try {
+    const { parse } = await import("exifr");
+    const out = await parse(file, [
+      "DateTimeOriginal",
+      "CreateDate",
+      "DateTimeDigitized",
+    ]);
+    const d: unknown =
+      out?.DateTimeOriginal ?? out?.CreateDate ?? out?.DateTimeDigitized;
+    return d instanceof Date && !Number.isNaN(d.getTime()) ? d : null;
+  } catch {
+    return null;
+  }
 }
 
 function readAsDataUrl(file: Blob): Promise<string> {
@@ -61,8 +87,15 @@ async function fileToBase64(file: File): Promise<string> {
  * Return a base64-encoded image suitable for /api/food/analyze/photo.
  * Skips re-encode if original is already under the size budget.
  */
-export async function prepareImageForUpload(file: File): Promise<PreparedImage> {
-  if (file.size * 1.34 < MAX_BASE64_BYTES) {
+export async function prepareImageForUpload(
+  file: File,
+  opts?: { maxBase64Bytes?: number },
+): Promise<PreparedImage> {
+  const maxBytes = opts?.maxBase64Bytes ?? MAX_BASE64_BYTES;
+  // EXIF date off the raw file first — resize below would strip it.
+  const capturedAt = await extractCapturedAt(file);
+
+  if (file.size * 1.34 < maxBytes) {
     const base64 = await fileToBase64(file);
     return {
       base64,
@@ -70,6 +103,7 @@ export async function prepareImageForUpload(file: File): Promise<PreparedImage> 
       filename: file.name,
       byteLength: file.size,
       resized: false,
+      capturedAt,
     };
   }
 
@@ -97,7 +131,7 @@ export async function prepareImageForUpload(file: File): Promise<PreparedImage> 
       canvas.toBlob((b) => resolve(b), "image/jpeg", q),
     );
     if (!blob) continue;
-    if (blob.size * 1.34 < MAX_BASE64_BYTES) {
+    if (blob.size * 1.34 < maxBytes) {
       const base64 = await blobToBase64(blob);
       const baseName = file.name.replace(/\.[^.]+$/, "");
       return {
@@ -106,6 +140,7 @@ export async function prepareImageForUpload(file: File): Promise<PreparedImage> 
         filename: `${baseName}.jpg`,
         byteLength: blob.size,
         resized: true,
+        capturedAt,
       };
     }
   }

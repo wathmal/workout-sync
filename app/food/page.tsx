@@ -29,7 +29,8 @@ import type {
   FoodLogSource,
   MealItem,
 } from "@/lib/food/types";
-import { prepareImageForUpload } from "@/lib/image-resize";
+import { PhotoDropzone } from "@/app/_components/photo-dropzone";
+import type { PreparedImage } from "@/lib/image-resize";
 
 type Mode = "search" | "text" | "snap" | "barcode";
 
@@ -723,19 +724,6 @@ const panelTextareaStyle: React.CSSProperties = {
   minHeight: 56,
 };
 
-const dropzoneStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "var(--space-lg)",
-  border: "1px dashed var(--color-outline)",
-  borderRadius: "var(--radius-md)",
-  cursor: "pointer",
-  color: "var(--color-text-tertiary)",
-  fontSize: 13,
-  gap: 8,
-};
-
 const previewImgStyle: React.CSSProperties = {
   maxHeight: 180,
   maxWidth: "100%",
@@ -946,31 +934,6 @@ function TextPanel({
   );
 }
 
-// Window-level paste listener that grabs first image File from clipboard.
-function usePasteImage(handler: (file: File) => void, enabled = true) {
-  const handlerRef = useRef(handler);
-  handlerRef.current = handler;
-  useEffect(() => {
-    if (!enabled) return;
-    const onPaste = (e: ClipboardEvent) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      for (const it of items) {
-        if (it.kind === "file" && it.type.startsWith("image/")) {
-          const f = it.getAsFile();
-          if (f) {
-            e.preventDefault();
-            handlerRef.current(f);
-            return;
-          }
-        }
-      }
-    };
-    window.addEventListener("paste", onPaste);
-    return () => window.removeEventListener("paste", onPaste);
-  }, [enabled]);
-}
-
 // ── Photo panel ──────────────────────────────────────────────────────────
 
 function PhotoPanel({
@@ -992,11 +955,10 @@ function PhotoPanel({
   const contextRef = useRef(context);
   contextRef.current = context;
 
-  const handleFile = async (file: File) => {
+  const handlePrepared = async (prepared: PreparedImage) => {
     setBusy(true);
     setError(null);
     try {
-      const prepared = await prepareImageForUpload(file);
       const res = await fetch("/api/food/analyze/photo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1004,6 +966,7 @@ function PhotoPanel({
           imageBase64: prepared.base64,
           filename: prepared.filename,
           mimeType: prepared.mimeType,
+          capturedAt: prepared.capturedAt ? prepared.capturedAt.toISOString() : null,
           locale: locale === "en" ? undefined : locale,
           context: contextRef.current.trim() || undefined,
         }),
@@ -1013,7 +976,7 @@ function PhotoPanel({
         error?: string;
       };
       if (!res.ok) throw new Error(body.error ?? `${res.status}`);
-      setPreviewUrl(URL.createObjectURL(file));
+      setPreviewUrl(`data:${prepared.mimeType};base64,${prepared.base64}`);
       onResult(
         body.items.map(fromFmaItem),
         body.exifDate ?? undefined,
@@ -1026,8 +989,6 @@ function PhotoPanel({
     }
   };
 
-  usePasteImage(handleFile);
-
   return (
     <div style={panelStyle}>
       <PanelLabel>Context (optional)</PanelLabel>
@@ -1039,19 +1000,14 @@ function PhotoPanel({
         style={panelTextareaStyle}
       />
       <PanelLabel>Meal photo</PanelLabel>
-      <label style={dropzoneStyle}>
-        {busy ? <Loader2 size={14} className="spin" /> : <Camera size={14} />}
-        {busy ? "Analyzing…" : "Tap to pick a photo · or paste"}
-        <input
-          type="file"
-          accept="image/*,.heic,.heif"
-          style={{ display: "none" }}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void handleFile(f);
-          }}
-        />
-      </label>
+      <PhotoDropzone
+        icon={<Camera size={14} />}
+        label="Tap to pick a photo · or paste"
+        busyLabel="Analyzing…"
+        busy={busy}
+        onPrepared={handlePrepared}
+        onError={setError}
+      />
       {previewUrl && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={previewUrl} alt="meal" style={previewImgStyle} />
@@ -1104,11 +1060,10 @@ function BarcodePanel({
     }
   };
 
-  const handleFile = async (file: File) => {
+  const handlePrepared = async (prepared: PreparedImage) => {
     setBusyPhoto(true);
     setError(null);
     try {
-      const prepared = await prepareImageForUpload(file);
       const res = await fetch("/api/food/analyze/barcode-photo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1116,6 +1071,7 @@ function BarcodePanel({
           imageBase64: prepared.base64,
           filename: prepared.filename,
           mimeType: prepared.mimeType,
+          capturedAt: prepared.capturedAt ? prepared.capturedAt.toISOString() : null,
           locale: locale === "en" ? undefined : locale,
         }),
       });
@@ -1124,7 +1080,7 @@ function BarcodePanel({
         error?: string;
       };
       if (!res.ok) throw new Error(body.error ?? `${res.status}`);
-      setPreviewUrl(URL.createObjectURL(file));
+      setPreviewUrl(`data:${prepared.mimeType};base64,${prepared.base64}`);
       onResult(
         body.items.map(fromFmaItem),
         body.exifDate ?? undefined,
@@ -1136,8 +1092,6 @@ function BarcodePanel({
       setBusyPhoto(false);
     }
   };
-
-  usePasteImage(handleFile);
 
   return (
     <div style={panelStyle}>
@@ -1159,19 +1113,14 @@ function BarcodePanel({
       <Divider label="or snap a barcode" />
 
       <PanelLabel>Barcode photo</PanelLabel>
-      <label style={dropzoneStyle}>
-        {busyPhoto ? <Loader2 size={14} className="spin" /> : <ScanBarcode size={14} />}
-        {busyPhoto ? "Decoding…" : "Tap to pick a barcode photo · or paste"}
-        <input
-          type="file"
-          accept="image/*,.heic,.heif"
-          style={{ display: "none" }}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void handleFile(f);
-          }}
-        />
-      </label>
+      <PhotoDropzone
+        icon={<ScanBarcode size={14} />}
+        label="Tap to pick a barcode photo · or paste"
+        busyLabel="Decoding…"
+        busy={busyPhoto}
+        onPrepared={handlePrepared}
+        onError={setError}
+      />
       {previewUrl && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={previewUrl} alt="barcode" style={previewImgStyle} />
