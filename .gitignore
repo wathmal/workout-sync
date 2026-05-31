@@ -13,6 +13,10 @@
 # testing
 /coverage
 
+# python (garmin sync scripts)
+__pycache__/
+*.pyc
+
 # next.js
 /.next/
 /out/
@@ -64,3 +68,4 @@ test.txt
 # data/ — keep README + design spec; ignore raw Garmin data + generated cards
 data/activities/
 data/cards/
+/garmin/

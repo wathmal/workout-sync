@@ -53,6 +53,7 @@ export interface JoinedWorkout {
   id: string;
   title: string;
   start_time: string;
+  end_time?: string;
   exercises: JoinedExercise[];
 }
 
@@ -92,6 +93,7 @@ function joinWorkout(raw: HevyRawWorkout): JoinedWorkout {
     id: raw.id,
     title: raw.title ?? "",
     start_time: raw.start_time,
+    end_time: raw.end_time,
     exercises: raw.exercises.map((ex) => ({
       exercise_template_id: ex.exercise_template_id,
       template: getHevyTemplateById(ex.exercise_template_id),

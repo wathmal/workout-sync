@@ -1,14 +1,7 @@
-import type { DayAgenda, Session, SessionTag, SessionStatus } from "@/lib/dashboard/mock-data";
+import type { ReactNode } from "react";
+import { CalendarDays, Check, Clock, Dumbbell, Timer, Watch } from "lucide-react";
+import type { DayAgenda, Session, SessionStatus, SessionSource } from "@/lib/dashboard/mock-data";
 import { SectionHead } from "./SectionHead";
-
-const TAG_COLOR: Record<SessionTag, { fg: string; bg: string; label: string }> = {
-  push:  { fg: "#FFC94A", bg: "rgba(255,201,74,0.12)",  label: "Push"  },
-  pull:  { fg: "#5BA3F5", bg: "rgba(91,163,245,0.12)",  label: "Pull"  },
-  legs:  { fg: "#A484C7", bg: "rgba(164,132,199,0.16)", label: "Legs"  },
-  run:   { fg: "#4DD4A3", bg: "rgba(77,212,163,0.12)",  label: "Run"   },
-  hyrox: { fg: "#FF6B6B", bg: "rgba(255,107,107,0.12)", label: "Hyrox" },
-  mob:   { fg: "#A3A09A", bg: "rgba(163,160,154,0.14)", label: "Mob"   },
-};
 
 const STATUS_PILL: Record<
   SessionStatus,
@@ -17,6 +10,12 @@ const STATUS_PILL: Record<
   done:    { fg: "var(--color-semantic-success)", bg: "rgba(77,212,163,0.15)", label: "Done" },
   planned: { fg: "var(--color-brand-accent)",     bg: "rgba(174,51,237,0.16)", label: "Planned" },
   rest:    { fg: "var(--color-text-tertiary)",    bg: "var(--color-surface-chip)", label: "Rest" },
+};
+
+const SOURCE_META: Record<SessionSource, { icon: ReactNode; label: string }> = {
+  hevy:     { icon: <Dumbbell size={10} />,     label: "Hevy"     },
+  garmin:   { icon: <Watch size={10} />,        label: "Garmin"   },
+  calendar: { icon: <CalendarDays size={10} />, label: "Calendar" },
 };
 
 export function WeeklyAgenda({
@@ -157,7 +156,7 @@ function Day({ day }: { day: DayAgenda }) {
 }
 
 function SessionCard({ s }: { s: Session }) {
-  const tag = TAG_COLOR[s.tag];
+  const source = s.source ? SOURCE_META[s.source] : null;
   const pill = STATUS_PILL[s.status];
   return (
     <div
@@ -184,51 +183,59 @@ function SessionCard({ s }: { s: Session }) {
         >
           {s.name}
         </span>
-        <span
+        {s.status === "done" ? (
+          <Check
+            size={15}
+            strokeWidth={2.5}
+            aria-label="Done"
+            style={{ color: "var(--color-semantic-success)", flexShrink: 0 }}
+          />
+        ) : (
+          <span
+            style={{
+              background: pill.bg,
+              color: pill.fg,
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: 0.6,
+              textTransform: "uppercase",
+              padding: "2px 6px",
+              borderRadius: 999,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {pill.label}
+          </span>
+        )}
+      </div>
+      {(s.time || source || s.meta) && (
+        <div
+          className="font-mono-xs"
           style={{
-            background: pill.bg,
-            color: pill.fg,
-            fontSize: 10,
-            fontWeight: 600,
-            letterSpacing: 0.6,
-            textTransform: "uppercase",
-            padding: "2px 6px",
-            borderRadius: 999,
-            whiteSpace: "nowrap",
+            color: "var(--color-text-tertiary)",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: "2px 8px",
           }}
         >
-          {pill.label}
-        </span>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
-        <span
-          style={{
-            background: tag.bg,
-            color: tag.fg,
-            fontSize: 10,
-            fontWeight: 600,
-            letterSpacing: 0.4,
-            padding: "2px 6px",
-            borderRadius: 4,
-          }}
-        >
-          {tag.label}
-        </span>
-        <span
-          className="font-mono-sm"
-          style={{ color: "var(--color-text-tertiary)", fontSize: 11 }}
-        >
-          {s.meta}
-        </span>
-      </div>
+          {s.time && <MetaBit icon={<Clock size={10} />} text={s.time} />}
+          {source && <MetaBit icon={source.icon} text={source.label} />}
+          {s.meta && <MetaBit icon={<Timer size={10} />} text={s.meta} />}
+        </div>
+      )}
     </div>
+  );
+}
+
+function MetaBit({ icon, text }: { icon: ReactNode; text: string }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, minWidth: 0 }}>
+      <span style={{ display: "inline-flex", flexShrink: 0, opacity: 0.7 }}>{icon}</span>
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {text}
+      </span>
+    </span>
   );
 }
 

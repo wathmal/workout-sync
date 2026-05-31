@@ -1,7 +1,7 @@
 import { overviewMock } from "@/lib/dashboard/mock-data";
 import { ViewportGuard } from "@/app/_components/viewport-guard";
 import { OverviewHeading } from "@/components/dashboard/OverviewHeading";
-import { WeeklyAgenda } from "@/components/dashboard/WeeklyAgenda";
+import { WeeklyAgendaLive } from "@/components/dashboard/WeeklyAgendaLive";
 import { CalorieSummary } from "@/components/dashboard/CalorieSummary";
 import { MuscleCoverageCard } from "@/components/dashboard/MuscleCoverageCard";
 import { ManualLog } from "@/components/dashboard/ManualLog";
@@ -24,7 +24,7 @@ export default function OverviewPage() {
       >
         <OverviewHeading data={overviewMock.heading} />
 
-        <WeeklyAgenda days={overviewMock.agenda} rangeLabel="May 18 – 24" />
+        <WeeklyAgendaLive />
 
         <section
           aria-label="Calorie tracking, muscle coverage, manual logging"

@@ -8,11 +8,18 @@
 
 export type SessionTag = "push" | "pull" | "legs" | "run" | "hyrox" | "mob";
 export type SessionStatus = "done" | "planned" | "rest";
+export type SessionSource = "hevy" | "garmin" | "calendar";
 
 export interface Session {
   name: string;
-  tag: SessionTag;
-  meta: string;
+  /** Category badge. Omitted for live agenda cards (classification was cut). */
+  tag?: SessionTag;
+  /** Where the card came from — shown as a small source label. */
+  source?: SessionSource;
+  /** Local start time, e.g. "07:00". */
+  time?: string;
+  /** Sub-line, e.g. "52m". Omitted for planned (calendar) cards. */
+  meta?: string;
   status: SessionStatus;
 }
 

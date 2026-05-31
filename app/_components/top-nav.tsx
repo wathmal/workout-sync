@@ -6,6 +6,7 @@ import { useEffect, useState, useTransition } from "react";
 import { CircleUser, Moon, RefreshCw, Sun } from "lucide-react";
 import { useHevy } from "@/app/_providers/hevy-provider";
 import { useFoodLog } from "@/app/_providers/food-log-provider";
+import { useAgenda } from "@/app/_providers/agenda-provider";
 
 const TABS = [
   { href: "/", label: "Overview", shortLabel: "Home" },
@@ -42,6 +43,7 @@ export function TopNav() {
   const pathname = usePathname();
   const { refresh: refreshHevy, lastFetched: hevyLastFetched } = useHevy();
   const { refresh: refreshFood, lastFetched: foodLastFetched } = useFoodLog();
+  const { sync: syncAgenda } = useAgenda();
 
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [mounted, setMounted] = useState(false);
@@ -243,7 +245,8 @@ export function TopNav() {
           type="button"
           onClick={() =>
             startRefresh(async () => {
-              await Promise.all([refreshHevy(), refreshFood()]);
+              // syncAgenda pulls Garmin + Calendar into Postgres, then re-reads.
+              await Promise.all([refreshHevy(), refreshFood(), syncAgenda()]);
               setNow(Date.now());
             })
           }

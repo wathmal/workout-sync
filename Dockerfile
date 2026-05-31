@@ -54,7 +54,21 @@ ENV EMBEDDING_SOURCE=off
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# --- Garmin sync (Python garminconnect via subprocess; see docs/agenda-integration.md) ---
+# curl_cffi (garminconnect's TLS dep) is native. On Alpine/musl pip may build it
+# from source, so build deps go in a virtual package that's removed afterwards;
+# libstdc++ stays for the runtime wheel. If a working curl_cffi can't be produced
+# here, switch this stage's base to node:22-bookworm-slim (glibc), where prebuilt
+# wheels are reliable.
+RUN apk add --no-cache python3 libstdc++ \
+ && apk add --no-cache --virtual .py-build py3-pip gcc musl-dev libffi-dev \
+ && python3 -m venv /opt/garmin-venv \
+ && /opt/garmin-venv/bin/pip install --no-cache-dir garminconnect \
+ && apk del .py-build
+ENV GARMIN_PYTHON=/opt/garmin-venv/bin/python3
+
 COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/garmin ./scripts/garmin
 
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing

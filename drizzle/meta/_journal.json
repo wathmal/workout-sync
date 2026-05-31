@@ -36,6 +36,13 @@
       "when": 1780195477881,
       "tag": "0004_adorable_master_chief",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780209086935,
+      "tag": "0005_chemical_shard",
+      "breakpoints": true
     }
   ]
 }

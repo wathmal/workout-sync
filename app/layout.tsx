@@ -6,6 +6,7 @@ import { MeasurementsProvider } from "@/app/_providers/measurements-provider";
 import { FoodLogProvider } from "@/app/_providers/food-log-provider";
 import { RaceProvider } from "@/app/_providers/race-provider";
 import { HevyProvider } from "@/app/_providers/hevy-provider";
+import { AgendaProvider } from "@/app/_providers/agenda-provider";
 import { TopNav } from "@/app/_components/top-nav";
 import { Footer } from "@/app/_components/footer";
 
@@ -65,11 +66,13 @@ export default function RootLayout({
             <HevyProvider>
               <FoodLogProvider>
                 <RaceProvider>
-                  <div className="app-shell" style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-                    <TopNav />
-                    <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
-                    <Footer />
-                  </div>
+                  <AgendaProvider>
+                    <div className="app-shell" style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+                      <TopNav />
+                      <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
+                      <Footer />
+                    </div>
+                  </AgendaProvider>
                 </RaceProvider>
               </FoodLogProvider>
             </HevyProvider>

@@ -46,6 +46,7 @@ AGENT_DEBUG_LOG=1 ...             # writes JSONL trace to .agent-runs/
 - `GROQ_API_KEY` — without it, workout extraction falls back to mock data (yellow banner).
 - `HEVY_API_KEY` — needed for sync + catalog refresh.
 - `DATABASE_URL`, `FMA_BASE_URL`, `FMA_API_KEY`, `USER_TZ` — needed for the food log.
+- `GARMIN_TOKEN_B64`, `GOOGLE_SA_KEY`, `GCAL_ID`, `AGENDA_SYNC_SECRET` — dashboard agenda (Garmin + Calendar). Optional; without them the agenda just shows Hevy + an empty planned side. `GARMIN_TOKEN_B64` is minted by `scripts/garmin/bootstrap.py` (env-only, no volume). See `docs/agenda-integration.md`.
 
 ## Architecture
 
@@ -124,7 +125,8 @@ All server-side only — API keys never reach client.
 - **Food edit-grams.** Per-gram rates (`kcal_per_g`, etc.) are stored at commit time so edits rescale locally without re-querying FMA. Don't drop those columns.
 - **Macro target overlap.** Disallowed by policy — inserting a new period auto-closes the prior by setting `prior.end_date = new.start_date - 1`. Always exactly one active target.
 - **Hevy dup detection** is a pure date-filter against `useHevy().workouts` (last 14d). Don't reintroduce a raw API call inside `/review`.
-- **Provider roles.** `workout-provider` = in-flight UI state. `hevy-provider` = persistent reads + commit. `food-log-provider` = persistent reads + mutators. Don't mix sync state into `workout-provider` again — it was extracted on purpose.
+- **Provider roles.** `workout-provider` = in-flight UI state. `hevy-provider` = persistent reads + commit. `food-log-provider` = persistent reads + mutators. `agenda-provider` = reads `/api/agenda` (merged week) + `sync()` (server action). Don't mix sync state into `workout-provider` again — it was extracted on purpose.
+- **Dashboard agenda.** Merge is the pure `buildAgenda()` in `lib/dashboard/agenda.ts` (unit-tested) — keep it pure (no DB/clock/network; `now`+`tz` injected). Garmin runs as a Python subprocess (`scripts/garmin/fetch.py`); its **stdout must stay clean JSON** (logging + login prints forced to stderr — same rule as the agent CLI shims) and the script dir must be **COPYed into the Docker runner** (Next standalone output excludes it). Manual sync = same-origin server action (`app/_actions/agenda.ts`, no secret); cron = `POST /api/agenda/sync` with `x-sync-secret`. Full design: `docs/agenda-integration.md`.
 - **Agent harness — tool schemas defined ONCE.** Edit `lib/agents/tools.ts` `AGENT_TOOLS`. Adapters consume per-provider shape via `toOpenAITools()` / `toAnthropicTools()` / `toCliBashAllowlist()`. Don't duplicate schema in adapters. If you add a tool, also add a CLI shim in `scripts/agent-tools/<name>.ts` (one-line `runShim("toolName")`) and extend the `--allowedTools` list in `lib/agents/providers/claude-cli.ts`.
 - **Agent harness — CLI shim stdout MUST stay clean JSON.** Each shim imports `./_silence` first to redirect `console.log` (catalog boot prints) to stderr. Don't add `console.log` to anything in the shim's import path or you'll break the parent's JSON parse.
 - **Agent harness — Vercel deploy + `claude-cli`.** `claude` binary isn't in serverless runtimes. `claude-cli` provider is local-dev / self-hosted only. Production deploys should use `groq` or stay `off`.
