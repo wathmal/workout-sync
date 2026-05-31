@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useAgenda } from "@/app/_providers/agenda-provider";
 import type { DayAgenda, DayName } from "@/lib/dashboard/mock-data";
 import { WeeklyAgenda } from "./WeeklyAgenda";
@@ -37,10 +38,11 @@ function emptyWeek(): DayAgenda[] {
  */
 export function WeeklyAgendaLive() {
   const { days, rangeLabel, loading } = useAgenda();
+  const placeholder = useMemo(() => emptyWeek(), []);
   const ready = days.length > 0;
   return (
     <WeeklyAgenda
-      days={ready ? days : emptyWeek()}
+      days={ready ? days : placeholder}
       rangeLabel={ready ? rangeLabel : loading ? "Loading…" : rangeLabel || "This week"}
     />
   );

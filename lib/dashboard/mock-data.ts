@@ -6,14 +6,11 @@
  * Values mirror tmp/dashboard.html where applicable.
  */
 
-export type SessionTag = "push" | "pull" | "legs" | "run" | "hyrox" | "mob";
 export type SessionStatus = "done" | "planned" | "rest";
 export type SessionSource = "hevy" | "garmin" | "calendar";
 
 export interface Session {
   name: string;
-  /** Category badge. Omitted for live agenda cards (classification was cut). */
-  tag?: SessionTag;
   /** Where the card came from — shown as a small source label. */
   source?: SessionSource;
   /** Local start time, e.g. "07:00". */
@@ -78,7 +75,6 @@ export interface OverviewMock {
     title: string;
     subtitle: string;
   };
-  agenda: DayAgenda[];
   calories: {
     week: CalorieDay[];
     targetTotal: number;
@@ -138,56 +134,6 @@ export const overviewMock: OverviewMock = {
     title: "Push day.",
     subtitle: "8 km easy after.",
   },
-
-  agenda: [
-    {
-      day: "Mon",
-      date: 18,
-      sessions: [
-        { name: "Push", tag: "push", meta: "52m · 5.8t", status: "done" },
-        { name: "5 km easy", tag: "run", meta: "27:14 · z2", status: "done" },
-      ],
-    },
-    {
-      day: "Tue",
-      date: 19,
-      sessions: [
-        { name: "Pull", tag: "pull", meta: "58m · 6.2t", status: "done" },
-        { name: "Mobility", tag: "mob", meta: "22m", status: "done" },
-      ],
-    },
-    {
-      day: "Wed",
-      date: 20,
-      sessions: [
-        { name: "Legs", tag: "legs", meta: "64m · 8.4t", status: "done" },
-      ],
-    },
-    {
-      day: "Thu",
-      date: 21,
-      sessions: [
-        { name: "Hyrox sim", tag: "hyrox", meta: "48:32 · pr", status: "done" },
-      ],
-    },
-    { day: "Fri", date: 22, sessions: [], isRest: true },
-    {
-      day: "Sat",
-      date: 23,
-      isToday: true,
-      sessions: [
-        { name: "Push", tag: "push", meta: "5×5 + acc.", status: "planned" },
-        { name: "8 km easy", tag: "run", meta: "z2 · 42m", status: "planned" },
-      ],
-    },
-    {
-      day: "Sun",
-      date: 24,
-      sessions: [
-        { name: "Long run", tag: "run", meta: "15 km · z2", status: "planned" },
-      ],
-    },
-  ],
 
   calories: {
     week: [

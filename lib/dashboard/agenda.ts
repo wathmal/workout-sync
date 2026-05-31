@@ -46,21 +46,35 @@ export interface BuildAgendaInput {
 
 // --- timezone-aware date parts (no Date-construction quirks) ---
 
+// Intl.DateTimeFormat construction is costly and buildAgenda formats ~50 items
+// per request — cache one formatter per (purpose, tz).
+const dtfCache = new Map<string, Intl.DateTimeFormat>();
+function dtf(key: string, make: () => Intl.DateTimeFormat): Intl.DateTimeFormat {
+  let f = dtfCache.get(key);
+  if (!f) {
+    f = make();
+    dtfCache.set(key, f);
+  }
+  return f;
+}
+
 interface LocalParts {
   dateKey: string; // YYYY-MM-DD in tz
   hour: number; // 0-23 in tz
 }
 
 function localParts(date: Date, tz: string): LocalParts {
-  const fmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  const fmt = dtf(`parts:${tz}`, () =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }),
+  );
   const parts = fmt.formatToParts(date);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
   // hour can come back as "24" at midnight in some engines — normalise.
@@ -91,9 +105,9 @@ function dowMon0(key: string): number {
 }
 
 function monthShort(key: string): string {
-  return new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" }).format(
-    new Date(keyToUTC(key)),
-  );
+  return dtf("month", () =>
+    new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" }),
+  ).format(new Date(keyToUTC(key)));
 }
 
 // --- card helpers ---
@@ -114,12 +128,14 @@ function durationMeta(minutes: number | null): string | undefined {
 function localTimeLabel(iso: string, tz: string): string | undefined {
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return undefined;
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: tz,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(ms));
+  return dtf(`time:${tz}`, () =>
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }),
+  ).format(new Date(ms));
 }
 
 function humanizeType(activityType: string): string {
