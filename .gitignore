@@ -60,3 +60,7 @@ tmp/
 .playwright-mcp/
 *.bak
 test.txt
+
+# data/ — keep README + design spec; ignore raw Garmin data + generated cards
+data/activities/
+data/cards/
