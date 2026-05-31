@@ -62,7 +62,7 @@ export interface ProcessWorkoutImageResult {
 // upstream (PhotoDropzone → prepareImageForUpload); this just calls the API.
 export async function processWorkoutImage(prepared: PreparedImage): Promise<ProcessWorkoutImageResult> {
   try {
-    console.log("🚀 Calling Groq Vision API...");
+    console.log("Calling Groq Vision API...");
     // Call the API route
     const response = await fetch("/api/process-workout", {
       method: "POST",
@@ -82,7 +82,7 @@ export async function processWorkoutImage(prepared: PreparedImage): Promise<Proc
       const errorMessage = errorData.error || "Failed to process image";
       const errorDetails = errorData.details || "";
       
-      console.error("❌ API Error:", errorMessage);
+      console.error("API Error:", errorMessage);
       if (errorDetails) {
         console.error("Details:", errorDetails);
       }
@@ -101,8 +101,8 @@ export async function processWorkoutImage(prepared: PreparedImage): Promise<Proc
 
     const data = await response.json();
     
-    console.log("✅ Successfully processed image with Groq Vision API");
-    console.log("📊 Extracted exercises:", data.exercises);
+    console.log("Successfully processed image with Groq Vision API");
+    console.log("Extracted exercises:", data.exercises);
 
     if (data.exercises && data.exercises.length > 0) {
       return {
@@ -121,8 +121,8 @@ export async function processWorkoutImage(prepared: PreparedImage): Promise<Proc
     // If no exercises found, throw error to trigger fallback
     throw new Error("No exercises detected in image");
   } catch (error) {
-    console.error("⚠️ Error processing image with Groq API:", error);
-    console.log("🔄 Falling back to mock data...");
+    console.error("Error processing image with Groq API:", error);
+    console.log("Falling back to mock data...");
 
     // Fallback to mock data for API failures (file validation happens upstream)
     return {
@@ -214,7 +214,7 @@ export async function syncWorkoutToHevy(workout: Workout): Promise<{
   error?: string;
 }> {
   try {
-    console.log("🔄 Syncing workout to Hevy via API...");
+    console.log("Syncing workout to Hevy via API...");
     
     const response = await fetch("/api/hevy-sync", {
       method: "POST",
@@ -226,7 +226,7 @@ export async function syncWorkoutToHevy(workout: Workout): Promise<{
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("❌ Hevy sync failed:", errorData);
+      console.error("Hevy sync failed:", errorData);
       return {
         success: false,
         error: errorData.error || "Failed to sync to Hevy",
@@ -234,10 +234,10 @@ export async function syncWorkoutToHevy(workout: Workout): Promise<{
     }
 
     const result = await response.json();
-    console.log("✅ Workout synced successfully!", result);
+    console.log("Workout synced successfully!", result);
     return { success: true };
   } catch (error) {
-    console.error("❌ Network error syncing to Hevy:", error);
+    console.error("Network error syncing to Hevy:", error);
     return {
       success: false,
       error: "Network error. Please check your connection and try again.",

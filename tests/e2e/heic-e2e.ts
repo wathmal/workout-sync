@@ -74,7 +74,7 @@ async function main() {
   const detectedByBytes = isHeic("", "", heicBuf);
   console.log(`    mime=${detectedByMime}  ext=${detectedByExt}  magic=${detectedByBytes}`);
   if (!detectedByBytes) {
-    console.error("❌ magic-byte detection failed on real HEIC fixture");
+    console.error("magic-byte detection failed on real HEIC fixture");
     process.exit(1);
   }
 
@@ -87,7 +87,7 @@ async function main() {
   const jpegBuf = await convertHeicToJpeg(heicBuf);
   console.log(`    ${Date.now() - tConv}ms  ${(heicBuf.length / 1024).toFixed(1)}KB → ${(jpegBuf.length / 1024).toFixed(1)}KB`);
   if (jpegBuf.slice(0, 3).toString("hex") !== "ffd8ff") {
-    console.error("❌ converted buffer is not a JPEG (missing SOI marker)");
+    console.error("converted buffer is not a JPEG (missing SOI marker)");
     process.exit(1);
   }
 
@@ -101,14 +101,14 @@ async function main() {
   try {
     parsed = JSON.parse(responseText);
   } catch {
-    console.error("❌ Groq response is not valid JSON:");
+    console.error("Groq response is not valid JSON:");
     console.error(responseText.slice(0, 500));
     process.exit(1);
   }
   const count = Array.isArray(parsed.exercises) ? parsed.exercises.length : 0;
   console.log(`    detected ${count} exercise(s)`);
 
-  console.log("\n✅ HEIC pipeline OK");
+  console.log("\nHEIC pipeline OK");
 }
 
 main().catch((err) => {

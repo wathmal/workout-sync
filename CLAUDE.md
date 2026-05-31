@@ -108,6 +108,10 @@ All server-side only — API keys never reach client.
 - Hevy: `app/api/process-workout/`, `app/api/hevy-sync/`, `app/api/hevy-workouts/` (used by `hevy-provider` for last-14d + dup detection), `app/api/hevy-user/`.
 - Food: `app/api/food/search/`, `app/api/food/analyze/{text,photo,barcode,barcode-photo}/`, `app/api/food/log/` (GET today, POST commit, DELETE batch; `[itemId]/` PATCH grams; `week/` aggregates), `app/api/food/quick-add/`, `app/api/food/targets/`.
 
+## Conventions
+
+- **No emoji in logs.** Keep `console.log/warn/error` (and any script output) plain ASCII — no 📅✅❌🔄 etc. Use word tags (`PASS`/`FAIL`/`WARNING`) when a status marker is needed. Typographic glyphs like `→` and box-drawing dividers are fine.
+
 ## Gotchas
 
 - **Next.js client/server split.** `lib/hevy/exercises.ts` lazy-imports embedding code (`@huggingface/transformers`, `fs`). Don't break this — adding a top-level import will pull Node-only deps into client bundle and break build. Same rule applies to `lib/food/db.ts` (Postgres pool) — must stay `import "server-only"`.

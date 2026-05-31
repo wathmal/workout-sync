@@ -47,7 +47,7 @@ export async function parseGroqResponse(responseText: string): Promise<WorkoutEx
       throw new Error("Invalid response format: missing exercises array");
     }
 
-    console.log(`📋 Parsing ${parsed.exercises.length} exercise(s) from Groq response...`);
+    console.log(`Parsing ${parsed.exercises.length} exercise(s) from Groq response...`);
 
     const workoutExercises: WorkoutExercise[] = await Promise.all(parsed.exercises.map(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -82,11 +82,11 @@ export async function parseGroqResponse(responseText: string): Promise<WorkoutEx
       }
     ));
 
-    console.log(`\n✅ Successfully parsed ${workoutExercises.length} exercise(s)`);
+    console.log(`\nSuccessfully parsed ${workoutExercises.length} exercise(s)`);
 
     return workoutExercises;
   } catch (error) {
-    console.error("❌ Error parsing Groq response:", error);
+    console.error("Error parsing Groq response:", error);
     throw new Error(`Failed to parse workout data: ${error instanceof Error ? error.message : "Unknown error"}`);
   }
 }

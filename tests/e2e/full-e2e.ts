@@ -198,7 +198,7 @@ async function runFixture(fixture: Fixture): Promise<{ pass: number; failed: num
   let pass = 0;
   let unknown = 0;
   for (const r of results) {
-    const tag = r.expectation === null ? "  ???  " : r.pass ? "  ✅   " : "  ❌   ";
+    const tag = r.expectation === null ? "  ???  " : r.pass ? " PASS  " : " FAIL  ";
     console.log(`${tag}| ${r.detected.padEnd(40)} → ${r.matched}`);
     if (r.expectation === null) unknown++;
     else if (r.pass) pass++;
@@ -211,7 +211,7 @@ async function runFixture(fixture: Fixture): Promise<{ pass: number; failed: num
 
   if (results.length < fixture.expected.length / 2) {
     console.warn(
-      `\n⚠️  Vision detected only ${results.length} exercises but board has ~${fixture.expected.length}.`,
+      `\nWARNING: Vision detected only ${results.length} exercises but board has ~${fixture.expected.length}.`,
     );
   }
 
@@ -249,7 +249,7 @@ async function main() {
   // Exit non-zero if too many cumulative failures (more lenient than the
   // single-fixture variant because we now run multiple boards).
   if (totalFailed > 4) {
-    console.error(`\n❌ ${totalFailed} match failures across all fixtures (>4 threshold)`);
+    console.error(`\n${totalFailed} match failures across all fixtures (>4 threshold)`);
     process.exit(1);
   }
 }

@@ -51,7 +51,7 @@ async function runTests() {
     }
 
     const isCorrect = match.title === expected;
-    console.log(`\n✓ Result: ${isCorrect ? '✅ CORRECT MATCH' : '❌ INCORRECT MATCH'}`);
+    console.log(`\nResult: ${isCorrect ? 'CORRECT MATCH' : 'INCORRECT MATCH'}`);
   }
 }
 

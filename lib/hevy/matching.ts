@@ -91,7 +91,7 @@ export async function matchExerciseImplScored(
   mode: MatchingMode,
   cosines: CosineLookup | null,
 ): Promise<{ exercise: Exercise; score: number }> {
-  console.log(`🔍 Matching exercise: "${detectedName}"`);
+  console.log(`Matching exercise: "${detectedName}"`);
 
   // 1. Exact match (fastest)
   const normalized = normalizeExerciseName(detectedName);
@@ -99,7 +99,7 @@ export async function matchExerciseImplScored(
     (ex) => normalizeExerciseName(ex.title) === normalized,
   );
   if (exactMatch) {
-    console.log(`✅ Exact match found: "${exactMatch.title}"`);
+    console.log(`Exact match found: "${exactMatch.title}"`);
     return { exercise: convertHevyToExercise(exactMatch), score: SCORE_CAP };
   }
 
@@ -114,7 +114,7 @@ export async function matchExerciseImplScored(
       const firstScored = scoreAll(firstPart, mode, cosines);
       const firstBest = sortMatches(firstScored.filter((m) => m.score >= SCORE_THRESHOLD))[0];
       if (firstBest) {
-        console.log(`✅ Compound match (first part "${firstPart}"): "${firstBest.exercise.title}"`);
+        console.log(`Compound match (first part "${firstPart}"): "${firstBest.exercise.title}"`);
         console.log(`   Score: ${Math.round(firstBest.score)}%`);
         return { exercise: convertHevyToExercise(firstBest.exercise), score: firstBest.score };
       }
@@ -130,7 +130,7 @@ export async function matchExerciseImplScored(
 
   if (validMatches.length > 0) {
     const best = validMatches[0];
-    console.log(`✅ Best match: "${best.exercise.title}"`);
+    console.log(`Best match: "${best.exercise.title}"`);
     console.log(`   Score: ${Math.round(best.score)}% (mode=${mode})`);
     console.log(`   Official: ${!best.exercise.is_custom}`);
     console.log(`   Equipment: ${best.exercise.equipment}`);
@@ -144,7 +144,7 @@ export async function matchExerciseImplScored(
   const allMatchesSorted = sortMatches(matches);
   if (allMatchesSorted.length > 0) {
     const best = allMatchesSorted[0];
-    console.warn(`⚠️ No match above threshold (${SCORE_THRESHOLD}%) for "${detectedName}"`);
+    console.warn(`No match above threshold (${SCORE_THRESHOLD}%) for "${detectedName}"`);
     console.log(`   Using best available match: "${best.exercise.title}"`);
     console.log(`   Score: ${Math.round(best.score)}% (mode=${mode})`);
     console.log(`   Official: ${!best.exercise.is_custom}`);
@@ -156,6 +156,6 @@ export async function matchExerciseImplScored(
     return { exercise: convertHevyToExercise(best.exercise), score: best.score };
   }
 
-  console.error(`❌ No exercises in database! Cannot match "${detectedName}"`);
+  console.error(`No exercises in database! Cannot match "${detectedName}"`);
   throw new Error(`Exercise database not loaded. Cannot match exercise: "${detectedName}"`);
 }

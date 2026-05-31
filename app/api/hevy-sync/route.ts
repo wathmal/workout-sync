@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     // 1. Validate Hevy API key exists
     const apiKey = process.env.HEVY_API_KEY;
     if (!apiKey) {
-      console.error("❌ HEVY_API_KEY not configured");
+      console.error("HEVY_API_KEY not configured");
       return NextResponse.json(
         { error: "Hevy API key not configured. Please add HEVY_API_KEY to .env.local" },
         { status: 500 }
@@ -20,8 +20,8 @@ export async function POST(request: NextRequest) {
 
     // 2. Parse request body
     const workout: Workout = await request.json();
-    console.log("🔄 Syncing workout to Hevy API");
-    console.log("📊 Workout:", {
+    console.log("Syncing workout to Hevy API");
+    console.log("Workout:", {
       id: workout.id,
       date: workout.date,
       exercises: workout.exercises.length,
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     // 3. Validate workout data
     const validation = validateWorkout(workout);
     if (!validation.valid) {
-      console.error("❌ Workout validation failed:", validation.error);
+      console.error("Workout validation failed:", validation.error);
       return NextResponse.json(
         { error: validation.error },
         { status: 400 }
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     // 4. Transform to Hevy format
     const hevyWorkout = transformToHevyFormat(workout);
-    console.log("📤 Transformed data:", JSON.stringify(workout, null, 2));
+    console.log("Transformed data:", JSON.stringify(workout, null, 2));
 
     // 5. Make API request to Hevy
     const response = await fetch("https://api.hevyapp.com/v1/workouts", {
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
         errorData = { message: errorText };
       }
 
-      console.error("❌ Hevy API error:", {
+      console.error("Hevy API error:", {
         status: response.status,
         statusText: response.statusText,
         error: errorData,
@@ -80,15 +80,15 @@ export async function POST(request: NextRequest) {
 
     // 7. Success - parse and return response
     const result = await response.json();
-    console.log("✅ Workout synced successfully to Hevy!");
-    console.log("📥 Hevy response:", result);
+    console.log("Workout synced successfully to Hevy!");
+    console.log("Hevy response:", result);
 
     return NextResponse.json({
       success: true,
       workout: result,
     });
   } catch (error) {
-    console.error("❌ Error syncing to Hevy:", error);
+    console.error("Error syncing to Hevy:", error);
     
     // Check for network errors
     if (error instanceof TypeError && error.message.includes("fetch")) {

@@ -46,7 +46,7 @@ export async function extractWorkout(
 
   const agentProvider = getAgentHarnessProvider();
   if (agentProvider !== "off") {
-    console.log(`🤖 Agent harness active: ${agentProvider}`);
+    console.log(`Agent harness active: ${agentProvider}`);
     const agentResult = await runAgent(normalized.imageBase64, normalized.mimeType);
     return {
       exercises: agentResult.workout,
@@ -61,7 +61,7 @@ export async function extractWorkout(
 
   const provider = getSingleShotProvider();
   console.log(
-    `🔄 Single-shot vision provider: ${provider}` +
+    `Single-shot vision provider: ${provider}` +
       (provider === "lm-studio" ? ` (LM Studio)` : ""),
   );
 
@@ -71,13 +71,13 @@ export async function extractWorkout(
     normalized.mimeType,
   );
 
-  console.log(`✅ ${provider} response:`);
+  console.log(`${provider} response:`);
   console.log(rawResponse);
   console.log("---");
 
   const workoutExercises = await parseGroqResponse(rawResponse);
 
-  console.log("📋 Parsed Exercises:");
+  console.log("Parsed Exercises:");
   console.log(JSON.stringify(workoutExercises, null, 2));
   console.log("---");
 

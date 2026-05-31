@@ -61,10 +61,10 @@ async function main() {
     }
     console.log("\n=== JSON ===");
     console.log(JSON.stringify(result.workout, null, 2));
-    console.log(`\n✓ done in ${ms}ms · model: ${result.modelLabel}`);
+    console.log(`\ndone in ${ms}ms · model: ${result.modelLabel}`);
   } catch (err) {
     const ms = Date.now() - start;
-    console.error(`\n✗ failed after ${ms}ms`);
+    console.error(`\nfailed after ${ms}ms`);
     console.error(err);
     process.exit(1);
   }

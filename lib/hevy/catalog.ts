@@ -95,7 +95,7 @@ export function getExercisePosition(id: string): number | undefined {
   return exerciseIdToPosition.get(id);
 }
 
-console.log(`📊 Hevy Exercise Database Loaded:`);
+console.log(`Hevy Exercise Database Loaded:`);
 const stats = getExerciseStats();
 console.log(`   Total: ${stats.total} exercises`);
 console.log(`   Official: ${stats.official}`);

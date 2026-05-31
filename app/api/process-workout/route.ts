@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("📊 Image size:", Math.round(image.length / 1024), "KB (base64)");
+    console.log("Image size:", Math.round(image.length / 1024), "KB (base64)");
 
     const buffer = Buffer.from(image, "base64");
     const capturedDate = typeof capturedAt === "string" ? new Date(capturedAt) : undefined;
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       confidence: result.confidence,
     });
   } catch (error) {
-    console.error("❌ Error processing workout image:", error);
+    console.error("Error processing workout image:", error);
     return mapErrorToResponse(error);
   }
 }

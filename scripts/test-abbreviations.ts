@@ -11,7 +11,7 @@ import { matchExerciseWithEmbeddings as matchExerciseWithFuzzy } from '../lib/he
  * Test abbreviation expansion
  */
 export function testAbbreviations() {
-  console.log('\n🧪 Testing Abbreviation Expansion:\n');
+  console.log('\nTesting Abbreviation Expansion:\n');
   
   const testCases = [
     { input: 'BB Bench Press', expected: 'barbell bench press' },
@@ -27,8 +27,8 @@ export function testAbbreviations() {
   testCases.forEach(({ input, expected }) => {
     const result = normalizeExerciseName(input);
     const passed = result === expected;
-    const icon = passed ? '✅' : '❌';
-    console.log(`${icon} "${input}" → "${result}" ${passed ? '' : `(expected: "${expected}")`}`);
+    const status = passed ? 'PASS' : 'FAIL';
+    console.log(`${status} "${input}" → "${result}" ${passed ? '' : `(expected: "${expected}")`}`);
   });
 }
 
@@ -36,7 +36,7 @@ export function testAbbreviations() {
  * Test exercise matching with abbreviations
  */
 export async function testExerciseMatching() {
-  console.log('\n🧪 Testing Exercise Matching with Abbreviations:\n');
+  console.log('\nTesting Exercise Matching with Abbreviations:\n');
 
   const testCases = [
     'BB Bench Press',
@@ -61,7 +61,7 @@ export async function testExerciseMatching() {
  * Test expansion function directly
  */
 export function testExpansion() {
-  console.log('\n🧪 Testing expandAbbreviations Function:\n');
+  console.log('\nTesting expandAbbreviations Function:\n');
   
   const testCases = [
     'BB Press',
