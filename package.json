@@ -25,7 +25,7 @@
     "db:down": "(command -v docker >/dev/null && docker compose down || podman compose down)",
     "db:generate": "node --env-file-if-exists=.env.local node_modules/drizzle-kit/bin.cjs generate",
     "db:migrate": "node --env-file-if-exists=.env.local node_modules/drizzle-kit/bin.cjs migrate",
-    "db:seed": "NODE_OPTIONS=--conditions=react-server tsx --env-file-if-exists=.env.local scripts/seed-food.ts",
+    "db:seed": "NODE_OPTIONS=--conditions=react-server tsx --env-file-if-exists=.env.local scripts/seed-food.ts && NODE_OPTIONS=--conditions=react-server tsx --env-file-if-exists=.env.local scripts/seed-races.ts",
     "db:reset": "(command -v docker >/dev/null && docker compose down -v && docker compose up -d db || podman compose down -v && podman compose up -d db) && sleep 2 && npm run db:migrate && npm run db:seed"
   },
   "dependencies": {

@@ -26,20 +26,6 @@ export interface DayAgenda {
   isRest?: boolean;
 }
 
-export type EventCategory = "hyrox" | "road" | "team";
-export type EventStatus = "past" | "next" | "upcoming";
-
-export interface RaceEvent {
-  name: string;
-  date: string;       // human label e.g. "Jun 14"
-  fullDate: string;   // ISO YYYY-MM-DD for axis math
-  category: EventCategory;
-  meta: string;
-  status: EventStatus;
-  lane?: 1 | 2;
-  result?: string;    // e.g. "1:25:00"
-}
-
 export type CalDay = "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
 
 export interface CalorieDay {
@@ -99,7 +85,6 @@ export interface OverviewMock {
     entries: import("./muscle-coverage").MuscleCoverageEntry[];
     attention: import("./muscle-coverage").AttentionRow[];
   };
-  races: RaceEvent[];
   log: LogEntry[];
   actions: {
     lastSync: string; // e.g. "Synced 5m"
@@ -253,60 +238,6 @@ export const overviewMock: OverviewMock = {
       { group: "hamstrings", label: "Hamstrings", meta: "9/10", bucket: "below", sets: 9, region: "lower" },
     ],
   },
-
-  races: [
-    {
-      name: "Hyrox Brisbane",
-      date: "Apr 11",
-      fullDate: "2026-04-11",
-      category: "hyrox",
-      meta: "mixed doubles",
-      result: "1:25:00",
-      status: "past",
-    },
-    {
-      name: "Bay 2 Bay Run",
-      date: "Jun 14",
-      fullDate: "2026-06-14",
-      category: "road",
-      meta: "22d · 12 km",
-      status: "next",
-    },
-    {
-      name: "Hyrox Sydney",
-      date: "Jul 5",
-      fullDate: "2026-07-05",
-      category: "hyrox",
-      meta: "solo",
-      status: "upcoming",
-      lane: 2,
-    },
-    {
-      name: "City 2 Surf",
-      date: "Aug 9",
-      fullDate: "2026-08-09",
-      category: "road",
-      meta: "14 km Sydney",
-      status: "upcoming",
-    },
-    {
-      name: "REVL Team Games",
-      date: "Oct 24",
-      fullDate: "2026-10-24",
-      category: "team",
-      meta: "Superordinary, BNE",
-      status: "upcoming",
-      lane: 2,
-    },
-    {
-      name: "Hyrox Melbourne",
-      date: "Dec · TBC",
-      fullDate: "2026-12-15",
-      category: "hyrox",
-      meta: "mixed doubles",
-      status: "upcoming",
-    },
-  ],
 
   log: [
     { kind: "workout", label: "Pull — 58m · 6.2t", time: "Tue 18:24" },

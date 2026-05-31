@@ -1,17 +1,12 @@
 "use client";
 
-import type { RaceEvent, EventCategory } from "@/lib/dashboard/mock-data";
-import { SectionHead } from "./SectionHead";
-import { Check, Plus } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
-
-const CAT_COLOR: Record<EventCategory, string> = {
-  hyrox: "var(--color-data-4)",
-  road: "var(--color-semantic-error)",
-  team: "var(--color-data-5)",
-};
-
-const TODAY = new Date("2026-05-23");
+import { Calendar, Clock, MapPin, Plus, StickyNote, Target } from "lucide-react";
+import { SectionHead } from "./SectionHead";
+import { useRaces } from "@/app/_providers/race-provider";
+import { categoryColor, categoryLabel, type RaceView } from "@/lib/race/types";
+import { todayLocalStr } from "@/lib/food/local-date";
 
 // Axis: month-aligned 12-month window. Two presets:
 //   12m   — 12 months starting one month before today (today sits in left third)
@@ -22,8 +17,11 @@ const RANGES = [
 ] as const;
 type RangeKey = (typeof RANGES)[number]["key"];
 
-export function RaceTimeline({ events }: { events: RaceEvent[] }) {
+export function RaceTimeline() {
+  const { views } = useRaces();
   const [range, setRange] = useState<RangeKey>("year");
+
+  const TODAY = useMemo(() => new Date(`${todayLocalStr()}T00:00:00`), []);
 
   const { axisStart, axisEnd, months } = useMemo(() => {
     let start: Date;
@@ -47,23 +45,27 @@ export function RaceTimeline({ events }: { events: RaceEvent[] }) {
       cursor.setMonth(cursor.getMonth() + 1);
     }
     return { axisStart: start, axisEnd: end, months: ms };
-  }, [range]);
+  }, [range, TODAY]);
 
   const todayLeft = pct(TODAY, axisStart, axisEnd);
 
-  const visible = events.filter((e) => {
-    const d = new Date(e.fullDate);
-    return d >= axisStart && d <= axisEnd;
-  });
+  // visible races within the axis window, in date order (views are pre-sorted).
+  const visible = useMemo(
+    () =>
+      views.filter((e) => {
+        const d = new Date(`${e.date}T00:00:00`);
+        return d >= axisStart && d <= axisEnd;
+      }),
+    [views, axisStart, axisEnd],
+  );
 
-  const doneCount = events.filter((e) => e.status === "past").length;
-  const nextEvent = events.find((e) => e.status === "next");
-  const nextDays = nextEvent
-    ? Math.max(0, Math.round((+new Date(nextEvent.fullDate) - +TODAY) / 86400000))
-    : null;
+  const doneCount = views.filter((e) => e.status === "past").length;
+  const nextEvent = views.find((e) => e.status === "next");
+  const nextDays = nextEvent ? Math.max(0, nextEvent.daysUntil) : null;
 
-  // 200px axis container; axis line sits at vertical center.
-  const AXIS_HEIGHT = 200;
+  // axis container; axis line sits at vertical center. Height accounts for the
+  // taller connector (GAP_FROM_AXIS) + box on both lanes so nothing clips.
+  const AXIS_HEIGHT = 290;
   const AXIS_CENTER = AXIS_HEIGHT / 2;
 
   return (
@@ -81,8 +83,8 @@ export function RaceTimeline({ events }: { events: RaceEvent[] }) {
         right={
           <div style={{ display: "flex", gap: "var(--space-sm)", alignItems: "center" }}>
             <SegGroup value={range} onChange={setRange} />
-            <button
-              type="button"
+            <Link
+              href="/races"
               style={{
                 padding: "6px 10px",
                 display: "inline-flex",
@@ -91,14 +93,12 @@ export function RaceTimeline({ events }: { events: RaceEvent[] }) {
                 color: "var(--color-text-secondary)",
                 fontWeight: 500,
                 fontSize: 13,
-                background: "transparent",
-                border: 0,
-                cursor: "pointer",
+                textDecoration: "none",
               }}
             >
               Add event
               <Plus size={14} />
-            </button>
+            </Link>
           </div>
         }
       />
@@ -186,11 +186,34 @@ export function RaceTimeline({ events }: { events: RaceEvent[] }) {
           TODAY
         </div>
 
-        {/* events */}
-        {visible.map((e) => {
-          const left = pct(new Date(e.fullDate), axisStart, axisEnd);
-          return <EventMarker key={e.name} ev={e} left={left} axisCenter={AXIS_CENTER} />;
+        {/* events — alternate lanes to dodge label collisions */}
+        {visible.map((e, i) => {
+          const left = pct(new Date(`${e.date}T00:00:00`), axisStart, axisEnd);
+          return (
+            <EventMarker
+              key={e.id}
+              ev={e}
+              left={left}
+              lane={i % 2 === 1 ? 2 : 1}
+              axisCenter={AXIS_CENTER}
+            />
+          );
         })}
+
+        {visible.length === 0 && (
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: AXIS_CENTER + 24,
+              transform: "translateX(-50%)",
+              color: "var(--color-text-muted)",
+              fontSize: 13,
+            }}
+          >
+            No races in this window.
+          </div>
+        )}
       </div>
 
       {/* footer legend */}
@@ -204,11 +227,11 @@ export function RaceTimeline({ events }: { events: RaceEvent[] }) {
         }}
       >
         <Legend color="var(--color-data-4)" label="Hyrox" />
-        <Legend color="var(--color-semantic-error)" label="Road race" />
+        <Legend color="var(--color-semantic-error)" label="Running" />
         <Legend color="var(--color-data-5)" label="Team games" />
         <Legend color="var(--color-semantic-success)" label="Completed" />
         <span style={{ marginLeft: "auto" }}>
-          {events.length} events · {doneCount} done
+          {views.length} events · {doneCount} done
           {nextDays !== null && (
             <>
               {" "}
@@ -230,21 +253,23 @@ export function RaceTimeline({ events }: { events: RaceEvent[] }) {
 function EventMarker({
   ev,
   left,
+  lane,
   axisCenter,
 }: {
-  ev: RaceEvent;
+  ev: RaceView;
   left: number;
+  lane: 1 | 2;
   axisCenter: number;
 }) {
   const isNext = ev.status === "next";
   const isPast = ev.status === "past";
-  const color = isPast ? "var(--color-semantic-success)" : CAT_COLOR[ev.category];
-  const lane2 = ev.lane === 2;
+  const color = isPast ? "var(--color-semantic-success)" : categoryColor(ev.category);
+  const lane2 = lane === 2;
 
   // Uniform event card geometry — keeps row visually balanced.
-  const BOX_WIDTH = 160;
-  const BOX_HEIGHT = 76;
-  const GAP_FROM_AXIS = 14;
+  const BOX_WIDTH = 180;
+  const BOX_HEIGHT = 92;
+  const GAP_FROM_AXIS = 34;
 
   // Edge alignment so labels never spill outside axis bounds.
   const align: "start" | "end" | "center" =
@@ -272,12 +297,12 @@ function EventMarker({
           left: `${left}%`,
           top: axisCenter,
           transform: "translate(-50%, -50%)",
-          width: isNext ? 14 : 10,
-          height: isNext ? 14 : 10,
+          width: 10,
+          height: 10,
           borderRadius: 999,
           background: isNext ? "var(--color-brand-accent)" : color,
           boxShadow: isNext
-            ? "0 0 0 5px rgba(174,51,237,0.20), 0 0 20px 4px rgba(174,51,237,0.35)"
+            ? "0 0 0 3px color-mix(in srgb, var(--color-brand-accent) 18%, transparent)"
             : `0 0 0 3px color-mix(in srgb, ${color} 18%, transparent)`,
           zIndex: isNext ? 5 : 1,
           opacity: isPast ? 0.85 : 1,
@@ -307,60 +332,83 @@ function EventMarker({
           top: labelTop,
           transform: labelTransform,
           width: BOX_WIDTH,
-          minHeight: BOX_HEIGHT,
-          padding: "8px 10px",
+          height: BOX_HEIGHT,
+          overflow: "hidden",
+          padding: "10px 12px",
           borderRadius: "var(--radius-sm)",
           background: "var(--color-surface-elevated)",
           border: isNext
-            ? "2px solid var(--color-brand-accent)"
+            ? "1px solid var(--color-brand-accent)"
             : "1px solid var(--color-outline)",
-          boxShadow: isNext
-            ? "0 12px 28px -8px rgba(174,51,237,0.45)"
-            : "none",
+          boxShadow: "none",
           display: "flex",
           flexDirection: "column",
-          gap: 2,
+          gap: 1,
           zIndex: isNext ? 10 : 2,
           opacity: isPast ? 0.85 : 1,
         }}
       >
         <div
+          className="text-label-sm"
           style={{
-            fontSize: 9,
-            fontWeight: 700,
-            letterSpacing: "0.08em",
+            display: "flex",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            gap: 6,
             textTransform: "uppercase",
             color: isPast ? "var(--color-semantic-success)" : color,
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
           }}
         >
-          {isPast && <Check size={10} strokeWidth={3} />}
-          {isPast ? "Done" : isNext ? "Next" : labelForCategory(ev.category)}
-          <span style={tinyDot} />
-          {ev.category === "hyrox" ? "Hyrox" : ev.category === "road" ? "Road race" : "Team games"}
+          <span>{categoryLabel(ev.category)}</span>
+          {(ev.resultTime || ev.resultPlacement) && (
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                color: "var(--color-semantic-success)",
+                letterSpacing: "normal",
+                textTransform: "none",
+                whiteSpace: "nowrap",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 3,
+              }}
+            >
+              <Clock size={10} style={{ opacity: 0.7 }} />
+              {[ev.resultTime, ev.resultPlacement].filter(Boolean).join(" · ")}
+            </span>
+          )}
         </div>
-        <div
-          className="text-title-sm"
-          style={{ color: "var(--color-text-primary)" }}
-        >
+        <div className="text-title-sm" style={{ color: "var(--color-text-primary)" }}>
           {ev.name}
         </div>
         <div
-          className="font-mono-sm"
-          style={{ color: "var(--color-text-tertiary)", fontSize: 10 }}
+          className="font-mono-xs"
+          style={{
+            color: "var(--color-text-tertiary)",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: "2px 8px",
+          }}
         >
-          {ev.date} · {ev.meta}
-          {ev.result && (
-            <>
-              {" · "}
-              <span style={{ color: "var(--color-semantic-success)" }}>{ev.result}</span>
-            </>
-          )}
+          <TlMetaBit icon={<Calendar size={10} />} text={ev.dateLabel} />
+          {ev.location && <TlMetaBit icon={<MapPin size={10} />} text={ev.location} />}
+          {ev.note && <TlMetaBit icon={<StickyNote size={10} />} text={ev.note} />}
+          {ev.eventTarget && <TlMetaBit icon={<Target size={10} />} text={ev.eventTarget} />}
         </div>
       </div>
     </>
+  );
+}
+
+function TlMetaBit({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, minWidth: 0 }}>
+      <span style={{ display: "inline-flex", flexShrink: 0, opacity: 0.7 }}>{icon}</span>
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {text}
+      </span>
+    </span>
   );
 }
 
@@ -431,10 +479,6 @@ function pct(d: Date, start: Date, end: Date): number {
   return ((+d - +start) / total) * 100;
 }
 
-function labelForCategory(c: EventCategory): string {
-  return c === "hyrox" ? "Hyrox" : c === "road" ? "Road" : "Team";
-}
-
 function Sep() {
   return (
     <span
@@ -451,12 +495,3 @@ function Sep() {
   );
 }
 
-const tinyDot: React.CSSProperties = {
-  display: "inline-block",
-  width: 3,
-  height: 3,
-  borderRadius: 999,
-  background: "var(--color-text-muted)",
-  margin: "0 4px",
-  verticalAlign: "middle",
-};

@@ -46,7 +46,7 @@ export default function OverviewPage() {
           </div>
         </section>
 
-        <RaceTimeline events={overviewMock.races} />
+        <RaceTimeline />
 
         <section
           aria-label="Body shape and composition trend"

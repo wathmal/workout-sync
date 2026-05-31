@@ -11,6 +11,7 @@ const TABS = [
   { href: "/", label: "Overview", shortLabel: "Home" },
   { href: "/upload", label: "Log Workout", shortLabel: "Workout" },
   { href: "/food", label: "Log Food", shortLabel: "Food" },
+  { href: "/races", label: "Races", shortLabel: "Races" },
 ] as const;
 
 const ENV_LABEL = "DEV";
