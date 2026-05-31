@@ -24,6 +24,12 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# lib/db/client.ts throws at import when DATABASE_URL is unset. `next build`
+# only needs the route modules to load (they're dynamic — no query runs at
+# build), so give it a placeholder. Stays in this stage; the runner gets the
+# real value from the container env at runtime.
+ENV DATABASE_URL=postgres://build:build@localhost:5432/build
+
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
 # Uncomment the following line in case you want to disable telemetry during the build.

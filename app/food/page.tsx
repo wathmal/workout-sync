@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Camera,
@@ -137,7 +137,16 @@ function fromSearchHit(hit: FmaSearchHit, grams: number): PendingItem {
   };
 }
 
+// useSearchParams (date nav) requires a Suspense boundary for static prerender.
 export default function FoodPage() {
+  return (
+    <Suspense fallback={null}>
+      <FoodPageInner />
+    </Suspense>
+  );
+}
+
+function FoodPageInner() {
   const router = useRouter();
   const params = useSearchParams();
   const modeParam = (params.get("mode") as Mode | null) ?? "text";

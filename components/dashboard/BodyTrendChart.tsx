@@ -177,11 +177,12 @@ export function BodyTrendChart({ series }: { series: TrendPoint[] }) {
               }}
               labelStyle={{ color: "var(--color-text-tertiary)", fontSize: 11 }}
               itemStyle={{ color: "var(--color-text-primary)" }}
-              formatter={(value: number, name: string) =>
-                name === "bodyFatPct" ? [`${value.toFixed(1)}%`, "BF"] : [`${value.toFixed(1)} kg`, "Weight"]
-              }
-              labelFormatter={(d: string) =>
-                new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+              formatter={(value, name) => {
+                const v = Number(value);
+                return name === "bodyFatPct" ? [`${v.toFixed(1)}%`, "BF"] : [`${v.toFixed(1)} kg`, "Weight"];
+              }}
+              labelFormatter={(label) =>
+                new Date(String(label)).toLocaleDateString("en-US", { month: "short", day: "numeric" })
               }
             />
             <Line
