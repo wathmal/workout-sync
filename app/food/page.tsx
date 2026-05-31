@@ -7,6 +7,7 @@ import {
   AlignLeft,
   Search as SearchIcon,
   ScanBarcode,
+  Package,
   Trash2,
   Pencil,
   ChevronDown,
@@ -27,7 +28,9 @@ import {
 import type {
   FmaAnalyzeResponse,
   FmaSearchHit,
+  FmaOffSearchHit,
   FmaItem,
+  FmaServing,
   FoodLogSource,
   MealItem,
 } from "@/lib/food/types";
@@ -39,17 +42,21 @@ import {
   formatDayLabel,
 } from "@/lib/food/local-date";
 
-type Mode = "search" | "text" | "snap" | "barcode";
+type Mode = "search" | "off" | "text" | "snap" | "barcode";
 
 interface PendingItem {
   /** stable local key */
   key: string;
+  /** origin tab this item came from */
+  source: FoodLogSource;
   name: string;
   grams: number;
   kcal: number;
   proteinG: number;
   carbsG: number;
   fatG: number;
+  /** FMA serving descriptor, for display in review (not persisted). */
+  serving?: FmaServing | null;
   fmaFoodId?: number | null;
   fmaSource?: string | null;
   fmaSourceId?: string | null;
@@ -81,15 +88,17 @@ function defaultLoggedAt(dateStr: string): string {
   return dateStr === todayLocalStr() ? isoLocalNow() : `${dateStr}T12:00`;
 }
 
-function fromFmaItem(it: FmaItem, idx: number): PendingItem {
+function fromFmaItem(it: FmaItem, idx: number, source: FoodLogSource): PendingItem {
   return {
     key: `fma-${idx}-${it.matched.source_id}`,
+    source,
     name: it.matched.name,
     grams: it.grams,
     kcal: it.macros.kcal,
     proteinG: it.macros.protein_g,
     carbsG: it.macros.carbs_g,
     fatG: it.macros.fat_g,
+    serving: it.matched.serving ?? null,
     fmaFoodId: it.matched.food_id,
     fmaSource: it.matched.source,
     fmaSourceId: it.matched.source_id,
@@ -109,12 +118,14 @@ function fromSearchHit(hit: FmaSearchHit, grams: number): PendingItem {
   const scale = grams / 100;
   return {
     key: `search-${hit.source}-${hit.source_id}`,
+    source: "search",
     name: hit.name,
     grams,
     kcal: k100 * scale,
     proteinG: p100 * scale,
     carbsG: c100 * scale,
     fatG: f100 * scale,
+    serving: hit.serving ?? null,
     fmaFoodId: hit.food_id,
     fmaSource: hit.source,
     fmaSourceId: hit.source_id,
@@ -132,6 +143,7 @@ export default function FoodPage() {
   const modeParam = (params.get("mode") as Mode | null) ?? "text";
   const [mode, setMode] = useState<Mode>(
     modeParam === "search" ||
+      modeParam === "off" ||
       modeParam === "text" ||
       modeParam === "snap" ||
       modeParam === "barcode"
@@ -159,10 +171,16 @@ export default function FoodPage() {
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Monotonic counter so repeated foods get unique React keys (dupes allowed).
+  const keyCounter = useRef(0);
+  // First-write-wins for the log time: once a panel (EXIF) or the user sets it,
+  // later appends must not move it.
+  const loggedAtTouched = useRef(false);
 
   // New meals default to the day being viewed (now if today, noon otherwise).
   useEffect(() => {
     setLoggedAtLocal(defaultLoggedAt(selectedDate));
+    loggedAtTouched.current = false;
   }, [selectedDate]);
 
   const switchMode = useCallback(
@@ -179,7 +197,42 @@ export default function FoodPage() {
     setPending([]);
     setPendingMealName(null);
     setLoggedAtLocal(defaultLoggedAt(selectedDate));
+    loggedAtTouched.current = false;
   }, [selectedDate]);
+
+  // Append a panel's result to the running meal instead of replacing it.
+  // Meal name + log time are first-write-wins so later sources don't clobber them.
+  const appendItems = useCallback(
+    (
+      items: PendingItem[],
+      meta?: { mealName?: string | null; loggedAtIso?: string },
+    ) => {
+      if (!items.length) return;
+      setError(null);
+      const tagged = items.map((it) => ({
+        ...it,
+        key: `${it.key}#${keyCounter.current++}`,
+      }));
+      setPending((prev) => [...prev, ...tagged]);
+      if (meta?.mealName) {
+        setPendingMealName((prev) =>
+          prev && prev.trim().length > 0 ? prev : meta.mealName ?? prev,
+        );
+      }
+      if (meta?.loggedAtIso && !loggedAtTouched.current) {
+        setLoggedAtLocal(toIsoLocal(meta.loggedAtIso));
+        loggedAtTouched.current = true;
+      }
+    },
+    [],
+  );
+
+  // The review "When" field — mark the time as user-touched so EXIF from a
+  // later appended photo won't override it.
+  const handleSetLoggedAt = useCallback((v: string) => {
+    setLoggedAtLocal(v);
+    loggedAtTouched.current = true;
+  }, []);
 
   const onCommit = useCallback(async () => {
     setError(null);
@@ -187,17 +240,12 @@ export default function FoodPage() {
     if (!items.length) return;
     setBusy(true);
     try {
-      const sourceMap: Record<Mode, FoodLogSource> = {
-        search: "search",
-        text: "text",
-        snap: "photo",
-        barcode: "barcode",
-      };
       const loggedAtIso = new Date(loggedAtLocal).toISOString();
       const trimmedName = pendingMealName?.trim() ?? "";
       await addMeal({
         loggedAt: loggedAtIso,
-        source: sourceMap[mode],
+        // Per-item `source` carries the true origin; batch source is a fallback only.
+        source: items[0]?.source ?? "manual",
         mealName: trimmedName.length > 0 ? trimmedName : null,
         items: items.map((it) => ({
           name: it.name,
@@ -206,6 +254,7 @@ export default function FoodPage() {
           proteinG: it.proteinG,
           carbsG: it.carbsG,
           fatG: it.fatG,
+          source: it.source,
           fmaFoodId: it.fmaFoodId ?? null,
           fmaSource: it.fmaSource ?? null,
           fmaSourceId: it.fmaSourceId ?? null,
@@ -220,7 +269,7 @@ export default function FoodPage() {
     } finally {
       setBusy(false);
     }
-  }, [pending, mode, loggedAtLocal, pendingMealName, addMeal, resetPending]);
+  }, [pending, loggedAtLocal, pendingMealName, addMeal, resetPending]);
 
   return (
     <div
@@ -275,43 +324,38 @@ export default function FoodPage() {
         {mode === "search" && (
           <SearchPanel
             locale={locale}
-            onPick={(items) => {
-              setPending(items);
-              setPendingMealName(null);
-              setLoggedAtLocal(defaultLoggedAt(selectedDate));
-            }}
+            onPick={(items) => appendItems(items)}
+          />
+        )}
+        {mode === "off" && (
+          <OffSearchPanel
+            locale={locale}
+            onResult={(items) => appendItems(items)}
+            setError={setError}
           />
         )}
         {mode === "text" && (
           <TextPanel
             locale={locale}
-            onResult={(items, mealName) => {
-              setPending(items);
-              setPendingMealName(mealName ?? null);
-              setLoggedAtLocal(defaultLoggedAt(selectedDate));
-            }}
+            onResult={(items, mealName) => appendItems(items, { mealName })}
             setError={setError}
           />
         )}
         {mode === "snap" && (
           <PhotoPanel
             locale={locale}
-            onResult={(items, loggedAtIso, mealName) => {
-              setPending(items);
-              setPendingMealName(mealName ?? null);
-              setLoggedAtLocal(loggedAtIso ? toIsoLocal(loggedAtIso) : defaultLoggedAt(selectedDate));
-            }}
+            onResult={(items, loggedAtIso, mealName) =>
+              appendItems(items, { mealName, loggedAtIso })
+            }
             setError={setError}
           />
         )}
         {mode === "barcode" && (
           <BarcodePanel
             locale={locale}
-            onResult={(items, loggedAtIso, mealName) => {
-              setPending(items);
-              setPendingMealName(mealName ?? null);
-              setLoggedAtLocal(loggedAtIso ? toIsoLocal(loggedAtIso) : defaultLoggedAt(selectedDate));
-            }}
+            onResult={(items, loggedAtIso, mealName) =>
+              appendItems(items, { mealName, loggedAtIso })
+            }
             setError={setError}
           />
         )}
@@ -323,7 +367,7 @@ export default function FoodPage() {
             mealName={pendingMealName}
             setMealName={setPendingMealName}
             loggedAtLocal={loggedAtLocal}
-            setLoggedAtLocal={setLoggedAtLocal}
+            setLoggedAtLocal={handleSetLoggedAt}
             onCommit={onCommit}
             onCancel={resetPending}
             busy={busy}
@@ -737,11 +781,52 @@ function KcalCell({ kcal, size = 13, className }: { kcal: number; size?: number;
   );
 }
 
+function fmtServingNum(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, "");
+}
+
+/** "1 slice · 30 g" / "30 g" / "1 slice" / null — for the review serving sub-line. */
+function formatServing(s: FmaServing | null | undefined): string | null {
+  if (!s) return null;
+  const size =
+    s.amount !== null && s.amount !== undefined && s.unit
+      ? `${fmtServingNum(s.amount)} ${s.unit}`
+      : null;
+  if (s.label && size) return `${s.label} · ${size}`;
+  return s.label ?? size ?? null;
+}
+
+/** Tiny muted icon showing which tab an item came from. */
+function SourceBadge({ source }: { source: FoodLogSource }) {
+  const icon: Record<FoodLogSource, React.ReactNode> = {
+    search: <SearchIcon size={11} />,
+    text: <AlignLeft size={11} />,
+    photo: <Camera size={11} />,
+    barcode: <ScanBarcode size={11} />,
+    off: <Package size={11} />,
+    manual: <Pencil size={11} />,
+  };
+  return (
+    <span
+      title={source}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        color: "var(--color-text-tertiary)",
+        flexShrink: 0,
+      }}
+    >
+      {icon[source]}
+    </span>
+  );
+}
+
 // ── Tabs ──────────────────────────────────────────────────────────────────
 
 function TabBar({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
   const tabs: Array<{ id: Mode; label: string; icon: React.ReactNode }> = [
     { id: "search", label: "Search", icon: <SearchIcon size={13} /> },
+    { id: "off", label: "Brands", icon: <Package size={13} /> },
     { id: "text", label: "Type", icon: <AlignLeft size={13} /> },
     { id: "snap", label: "Snap", icon: <Camera size={13} /> },
     { id: "barcode", label: "Barcode", icon: <ScanBarcode size={13} /> },
@@ -785,7 +870,7 @@ function TabBar({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void })
               justifyContent: "center",
             }}
           >
-            {t.icon}
+            <span style={{ display: "inline-flex", flexShrink: 0 }}>{t.icon}</span>
             {t.label}
           </button>
         );
@@ -982,6 +1067,159 @@ function SearchPanel({
   );
 }
 
+// ── Brands (Open Food Facts) panel ────────────────────────────────────────
+
+function OffSearchPanel({
+  locale,
+  onResult,
+  setError,
+}: {
+  locale: FoodLocale;
+  onResult: (items: PendingItem[]) => void;
+  setError: (msg: string | null) => void;
+}) {
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<FmaOffSearchHit[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  // barcode currently being resolved via /analyze/barcode (per-row spinner)
+  const [resolving, setResolving] = useState<string | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // OFF search ignores locale (upstream takes only q/limit/page).
+  useEffect(() => {
+    if (timer.current) clearTimeout(timer.current);
+    if (q.trim().length < 2) {
+      setHits([]);
+      return;
+    }
+    timer.current = setTimeout(async () => {
+      setLoading(true);
+      setErr(null);
+      try {
+        const url = new URL("/api/food/off-search", window.location.origin);
+        url.searchParams.set("q", q);
+        url.searchParams.set("limit", "10");
+        const res = await fetch(url.pathname + url.search);
+        const body = await res.json();
+        if (!res.ok) throw new Error(body?.error ?? `${res.status}`);
+        setHits((body.items ?? []) as FmaOffSearchHit[]);
+      } catch (e) {
+        setErr((e as Error).message);
+        setHits([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [q]);
+
+  // Resolve a chosen barcode into a loggable item (serving + complete macros),
+  // then append it. Locale flows into the resolve, not the OFF search.
+  const resolve = async (hit: FmaOffSearchHit) => {
+    if (!hit.barcode) return;
+    setResolving(hit.barcode);
+    setError(null);
+    try {
+      const res = await fetch("/api/food/analyze/barcode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: hit.barcode,
+          locale: locale === "en" ? undefined : locale,
+        }),
+      });
+      const body = (await res.json()) as FmaAnalyzeResponse & { error?: string };
+      if (!res.ok) throw new Error(body.error ?? `${res.status}`);
+      if (!body.items?.length) {
+        throw new Error("No product data for that barcode.");
+      }
+      onResult(body.items.map((it, i) => fromFmaItem(it, i, "off")));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setResolving(null);
+    }
+  };
+
+  return (
+    <div style={panelStyle}>
+      <PanelLabel>Search brands &amp; packaged foods</PanelLabel>
+      <input
+        type="text"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="ferrero rocher"
+        style={inputStyle}
+      />
+      {loading && <Loader />}
+      {err && <ErrorBanner message={err} />}
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {hits.map((h, i) => {
+          const brand = h.brands.length ? h.brands.join(", ") : null;
+          const per100 = h.kcal_per_100g;
+          const busyRow = resolving === h.barcode;
+          return (
+            <div
+              key={`${h.barcode}-${i}`}
+              className="food-search-row"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr auto auto",
+                gap: 8,
+                alignItems: "center",
+                padding: "8px 10px",
+                background: "var(--color-surface-low)",
+                borderRadius: "var(--radius-md)",
+              }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0, alignItems: "flex-start" }}>
+                <span
+                  style={{
+                    fontSize: 13,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: "100%",
+                  }}
+                >
+                  {h.name ?? h.barcode}
+                </span>
+                {brand && (
+                  <span style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>
+                    {brand}
+                  </span>
+                )}
+              </div>
+              <span
+                className="font-mono-sm"
+                style={{ fontSize: 12, color: "var(--color-text-tertiary)", textAlign: "right", whiteSpace: "nowrap" }}
+              >
+                {per100 !== null ? `${Math.round(per100)} kcal/100g` : "—"}
+              </span>
+              <button
+                type="button"
+                onClick={() => resolve(h)}
+                disabled={!h.barcode || busyRow}
+                title={!h.barcode ? "No barcode — can't resolve" : undefined}
+                style={{
+                  ...primaryBtnStyle,
+                  opacity: !h.barcode ? 0.5 : 1,
+                  cursor: !h.barcode ? "default" : "pointer",
+                }}
+              >
+                {busyRow ? <Loader2 size={13} className="spin" /> : "Add"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Text panel ───────────────────────────────────────────────────────────
 
 function TextPanel({
@@ -1008,7 +1246,10 @@ function TextPanel({
       });
       const body = (await res.json()) as FmaAnalyzeResponse & { error?: string };
       if (!res.ok) throw new Error(body.error ?? `${res.status}`);
-      onResult(body.items.map(fromFmaItem), body.meal_name ?? null);
+      onResult(
+        body.items.map((it, i) => fromFmaItem(it, i, "text")),
+        body.meal_name ?? null,
+      );
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -1075,7 +1316,7 @@ function PhotoPanel({
       if (!res.ok) throw new Error(body.error ?? `${res.status}`);
       setPreviewUrl(`data:${prepared.mimeType};base64,${prepared.base64}`);
       onResult(
-        body.items.map(fromFmaItem),
+        body.items.map((it, i) => fromFmaItem(it, i, "photo")),
         body.exifDate ?? undefined,
         body.meal_name ?? null,
       );
@@ -1149,7 +1390,11 @@ function BarcodePanel({
       });
       const body = (await res.json()) as FmaAnalyzeResponse & { error?: string };
       if (!res.ok) throw new Error(body.error ?? `${res.status}`);
-      onResult(body.items.map(fromFmaItem), undefined, body.meal_name ?? null);
+      onResult(
+        body.items.map((it, i) => fromFmaItem(it, i, "barcode")),
+        undefined,
+        body.meal_name ?? null,
+      );
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -1179,7 +1424,7 @@ function BarcodePanel({
       if (!res.ok) throw new Error(body.error ?? `${res.status}`);
       setPreviewUrl(`data:${prepared.mimeType};base64,${prepared.base64}`);
       onResult(
-        body.items.map(fromFmaItem),
+        body.items.map((it, i) => fromFmaItem(it, i, "barcode")),
         body.exifDate ?? undefined,
         body.meal_name ?? null,
       );
@@ -1384,11 +1629,19 @@ function ReviewList({
               copy[idx] = next;
               setItems(copy);
             }}
+            onRemove={() => setItems(items.filter((_, i) => i !== idx))}
           />
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: "var(--space-sm)", alignItems: "center" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: "var(--space-sm)",
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
         <label
           className="text-label-md"
           style={{ color: "var(--color-text-tertiary)", fontSize: 11 }}
@@ -1399,21 +1652,22 @@ function ReviewList({
           type="datetime-local"
           value={loggedAtLocal}
           onChange={(e) => setLoggedAtLocal(e.target.value)}
-          style={{ ...inputStyle, padding: "6px 8px", width: "fit-content" }}
+          style={{ ...inputStyle, padding: "6px 8px", width: "fit-content", maxWidth: "100%" }}
         />
-        <div style={{ flex: 1 }} />
-        <button type="button" onClick={onCancel} style={secondaryBtnStyle}>
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={onCommit}
-          disabled={busy || !items.some((i) => i.enabled) || hasInvalidGrams}
-          title={hasInvalidGrams ? "Set grams > 0 on every enabled item" : undefined}
-          style={primaryBtnStyle}
-        >
-          {busy ? <Loader2 size={13} className="spin" /> : "Add to log"}
-        </button>
+        <div style={{ display: "flex", gap: "var(--space-sm)", marginLeft: "auto" }}>
+          <button type="button" onClick={onCancel} style={secondaryBtnStyle}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onCommit}
+            disabled={busy || !items.some((i) => i.enabled) || hasInvalidGrams}
+            title={hasInvalidGrams ? "Set grams > 0 on every enabled item" : undefined}
+            style={primaryBtnStyle}
+          >
+            {busy ? <Loader2 size={13} className="spin" /> : "Add to log"}
+          </button>
+        </div>
       </div>
       {hasInvalidGrams && (
         <ErrorBanner message="One or more items have grams = 0. Set grams or untick the row before committing." />
@@ -1425,13 +1679,16 @@ function ReviewList({
 function ReviewRow({
   item,
   onChange,
+  onRemove,
 }: {
   item: PendingItem;
   onChange: (next: PendingItem) => void;
+  onRemove: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const lowConf = item.confidence !== null && item.confidence !== undefined && item.confidence < LOW_CONF;
   const hasWarnings = (item.warnings?.length ?? 0) > 0;
+  const serving = formatServing(item.serving);
 
   const updateGrams = (g: number) => {
     if (item.grams <= 0) {
@@ -1476,35 +1733,52 @@ function ReviewRow({
           checked={item.enabled}
           onChange={(e) => onChange({ ...item, enabled: e.target.checked })}
         />
-        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-          <span
-            style={{
-              fontSize: 13,
-              color: "var(--color-text-primary)",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {item.name}
-          </span>
-          {lowConf && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+            <SourceBadge source={item.source} />
             <span
-              title={`confidence ${Math.round((item.confidence ?? 0) * 100)}%`}
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 3,
-                padding: "2px 6px",
-                background: "rgba(255,201,74,0.14)",
-                color: "var(--color-semantic-warning)",
-                fontSize: 10,
-                fontWeight: 600,
-                borderRadius: 999,
+                fontSize: 13,
+                color: "var(--color-text-primary)",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               }}
             >
-              <AlertTriangle size={9} />
-              low
+              {item.name}
+            </span>
+            {lowConf && (
+              <span
+                title={`confidence ${Math.round((item.confidence ?? 0) * 100)}%`}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 3,
+                  padding: "2px 6px",
+                  background: "rgba(255,201,74,0.14)",
+                  color: "var(--color-semantic-warning)",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  borderRadius: 999,
+                }}
+              >
+                <AlertTriangle size={9} />
+                low
+              </span>
+            )}
+          </div>
+          {serving && (
+            <span
+              style={{
+                fontSize: 11,
+                color: "var(--color-text-tertiary)",
+                paddingLeft: 17,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {serving}
             </span>
           )}
         </div>
@@ -1522,21 +1796,38 @@ function ReviewRow({
         >
           {Math.round(item.kcal)} kcal
         </span>
-        {(hasWarnings || item.rationale) && (
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+          {(hasWarnings || item.rationale) && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              style={{
+                background: "transparent",
+                border: 0,
+                color: "var(--color-text-tertiary)",
+                cursor: "pointer",
+                padding: 4,
+              }}
+            >
+              {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => setExpanded((v) => !v)}
+            onClick={onRemove}
+            title="Remove from meal"
             style={{
               background: "transparent",
               border: 0,
               color: "var(--color-text-tertiary)",
               cursor: "pointer",
               padding: 4,
+              display: "inline-flex",
             }}
           >
-            {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            <Trash2 size={13} />
           </button>
-        )}
+        </div>
       </div>
       {expanded && (
         <div style={{ marginTop: 6, paddingLeft: 30, display: "flex", flexDirection: "column", gap: 4 }}>

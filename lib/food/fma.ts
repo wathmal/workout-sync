@@ -1,6 +1,7 @@
 import "server-only";
 import type {
   FmaAnalyzeResponse,
+  FmaOffSearchResponse,
   FmaSearchResponse,
 } from "./types";
 
@@ -66,6 +67,20 @@ export async function fmaSearch(
   });
 }
 
+/**
+ * Live Open Food Facts brand/text search. Distinct from `fmaSearch` (local PG
+ * index): hits an external service, returns per-100g macros + barcode, no
+ * serving. Upstream takes only q/limit/page — no locale.
+ */
+export async function fmaOffSearch(
+  q: string,
+  limit = 10,
+): Promise<FmaOffSearchResponse> {
+  return fma<FmaOffSearchResponse>("/v1/off/search", {
+    query: { q, limit, page: 1 },
+  });
+}
+
 export async function fmaAnalyzeText(
   text: string,
   opts?: { include?: Array<"trace" | "rationale">; locale?: string },
@@ -101,7 +116,7 @@ export async function fmaAnalyzeBarcode(
 ): Promise<FmaAnalyzeResponse> {
   return fma<FmaAnalyzeResponse>("/v1/analyze/barcode", {
     method: "POST",
-    body: { code, locale: opts?.locale },
+    body: { barcode: code, locale: opts?.locale },
   });
 }
 

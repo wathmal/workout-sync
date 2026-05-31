@@ -1,0 +1,1 @@
+ALTER TYPE "public"."food_log_source" ADD VALUE 'off';

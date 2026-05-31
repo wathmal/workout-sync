@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteBatch, getDay, insertBatch } from "@/lib/food/queries";
+import { foodLogSourceEnum } from "@/lib/food/schema";
 import type { MealBatchInput } from "@/lib/food/types";
 
 export async function GET(request: NextRequest) {
@@ -12,7 +13,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-const ALLOWED_SOURCES = new Set(["search", "text", "photo", "manual", "barcode"]);
+// Single source of truth — tracks the pgEnum so new sources never drift here.
+const ALLOWED_SOURCES = new Set<string>(foodLogSourceEnum.enumValues);
 
 function isFiniteNumber(v: unknown): v is number {
   return typeof v === "number" && Number.isFinite(v);

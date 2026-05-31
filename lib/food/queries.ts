@@ -132,7 +132,7 @@ export async function insertBatch(input: MealBatchInput): Promise<MealItem[]> {
       input.items.map((it) => ({
         batchId,
         loggedAt,
-        source: input.source,
+        source: it.source ?? input.source,
         name: it.name,
         grams: it.grams.toString(),
         kcal: it.kcal.toString(),

@@ -5,7 +5,20 @@
  * Adjust as FMA evolves.
  */
 
-export type FoodLogSource = "search" | "text" | "photo" | "manual" | "barcode";
+export type FoodLogSource =
+  | "search"
+  | "text"
+  | "photo"
+  | "manual"
+  | "barcode"
+  | "off";
+
+/** Serving descriptor from FMA (e.g. `{ label: "1 slice", amount: 30, unit: "g" }`). */
+export interface FmaServing {
+  label: string | null;
+  amount: number | null;
+  unit: "g" | "mL" | null;
+}
 
 export interface FmaMatched {
   food_id: number;
@@ -14,6 +27,7 @@ export interface FmaMatched {
   name: string;
   locale: string;
   license: string;
+  serving?: FmaServing | null;
 }
 
 export interface FmaMacros {
@@ -52,6 +66,7 @@ export interface FmaSearchHit {
   carbs_g_per_100g?: number;
   fat_g_per_100g?: number;
   density_g_per_ml?: number | null;
+  serving?: FmaServing | null;
   score?: number;
 }
 
@@ -62,6 +77,33 @@ export interface FmaSearchResponse {
   limit?: number;
   offset?: number;
   items: FmaSearchHit[];
+}
+
+/**
+ * Live Open Food Facts search hit (`GET /v1/off/search`). Identity + per-100g
+ * macros only — no serving size, no local `food_id`/`source_id`. Resolve the
+ * `barcode` via `POST /v1/analyze/barcode` to get a loggable item with serving.
+ */
+export interface FmaOffSearchHit {
+  source: "off";
+  barcode: string;
+  name: string | null;
+  brands: string[];
+  kcal_per_100g: number | null;
+  protein_g_per_100g: number | null;
+  carbs_g_per_100g: number | null;
+  fat_g_per_100g: number | null;
+  license: string;
+  score: number;
+}
+
+export interface FmaOffSearchResponse {
+  request_id?: string;
+  query?: string;
+  total?: number;
+  page?: number;
+  limit?: number;
+  items: FmaOffSearchHit[];
 }
 
 /** Application-side representation of a logged item. */
@@ -140,6 +182,8 @@ export interface MealBatchInput {
     proteinG: number;
     carbsG: number;
     fatG: number;
+    /** Per-item origin. Falls back to the batch-level `source` when omitted. */
+    source?: FoodLogSource;
     fmaFoodId?: number | null;
     fmaSource?: string | null;
     fmaSourceId?: string | null;
