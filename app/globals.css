@@ -455,6 +455,18 @@ html { scroll-behavior: smooth; }
   .food-search-row > :nth-child(2) { grid-area: grams; }
   .food-search-row > :nth-child(3) { grid-area: kcal; text-align: left !important; }
   .food-search-row > :nth-child(4) { grid-area: add; align-self: center; }
+  /* Brands rows have 3 children (name, kcal/100g, Add) — own map so Add stays
+     a compact right-aligned button instead of stretching the left column. */
+  .food-brand-row {
+    grid-template-columns: 1fr auto !important;
+    grid-template-areas:
+      "name name"
+      "kcal add" !important;
+    row-gap: 4px !important;
+  }
+  .food-brand-row > :nth-child(1) { grid-area: name; }
+  .food-brand-row > :nth-child(2) { grid-area: kcal; text-align: left !important; }
+  .food-brand-row > :nth-child(3) { grid-area: add; align-self: center; }
   .food-tabbar {
     width: 100% !important;
     display: flex !important;

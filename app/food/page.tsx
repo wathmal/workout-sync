@@ -55,6 +55,18 @@ interface PendingItem {
   proteinG: number;
   carbsG: number;
   fatG: number;
+  /**
+   * Per-gram macro basis captured at creation. Lets grams edits rescale from a
+   * fixed rate instead of multiplying current values — which breaks once grams
+   * hits 0 (clear the field) and can never recover. null when the source had no
+   * positive grams to derive a rate from.
+   */
+  basePerG?: {
+    kcal: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+  } | null;
   /** FMA serving descriptor, for display in review (not persisted). */
   serving?: FmaServing | null;
   fmaFoodId?: number | null;
@@ -89,6 +101,16 @@ function defaultLoggedAt(dateStr: string): string {
 }
 
 function fromFmaItem(it: FmaItem, idx: number, source: FoodLogSource): PendingItem {
+  const g = it.grams;
+  const basePerG =
+    g > 0
+      ? {
+          kcal: it.macros.kcal / g,
+          proteinG: it.macros.protein_g / g,
+          carbsG: it.macros.carbs_g / g,
+          fatG: it.macros.fat_g / g,
+        }
+      : null;
   return {
     key: `fma-${idx}-${it.matched.source_id}`,
     source,
@@ -98,6 +120,7 @@ function fromFmaItem(it: FmaItem, idx: number, source: FoodLogSource): PendingIt
     proteinG: it.macros.protein_g,
     carbsG: it.macros.carbs_g,
     fatG: it.macros.fat_g,
+    basePerG,
     serving: it.matched.serving ?? null,
     fmaFoodId: it.matched.food_id,
     fmaSource: it.matched.source,
@@ -125,6 +148,12 @@ function fromSearchHit(hit: FmaSearchHit, grams: number): PendingItem {
     proteinG: p100 * scale,
     carbsG: c100 * scale,
     fatG: f100 * scale,
+    basePerG: {
+      kcal: k100 / 100,
+      proteinG: p100 / 100,
+      carbsG: c100 / 100,
+      fatG: f100 / 100,
+    },
     serving: hit.serving ?? null,
     fmaFoodId: hit.food_id,
     fmaSource: hit.source,
@@ -1173,7 +1202,7 @@ function OffSearchPanel({
           return (
             <div
               key={`${h.barcode}-${i}`}
-              className="food-search-row"
+              className="food-brand-row"
               style={{
                 display: "grid",
                 gridTemplateColumns: "1fr auto auto",
@@ -1320,10 +1349,16 @@ function PhotoPanel({
       });
       const body = (await res.json()) as FmaAnalyzeResponse & {
         exifDate?: string | null;
+        convertedImageBase64?: string;
         error?: string;
       };
       if (!res.ok) throw new Error(body.error ?? `${res.status}`);
-      setPreviewUrl(`data:${prepared.mimeType};base64,${prepared.base64}`);
+      // HEIC can't render in <img>; prefer the server's transcoded JPEG.
+      setPreviewUrl(
+        body.convertedImageBase64
+          ? `data:image/jpeg;base64,${body.convertedImageBase64}`
+          : `data:${prepared.mimeType};base64,${prepared.base64}`,
+      );
       onResult(
         body.items.map((it, i) => fromFmaItem(it, i, "photo")),
         body.exifDate ?? undefined,
@@ -1428,10 +1463,16 @@ function BarcodePanel({
       });
       const body = (await res.json()) as FmaAnalyzeResponse & {
         exifDate?: string | null;
+        convertedImageBase64?: string;
         error?: string;
       };
       if (!res.ok) throw new Error(body.error ?? `${res.status}`);
-      setPreviewUrl(`data:${prepared.mimeType};base64,${prepared.base64}`);
+      // HEIC can't render in <img>; prefer the server's transcoded JPEG.
+      setPreviewUrl(
+        body.convertedImageBase64
+          ? `data:image/jpeg;base64,${body.convertedImageBase64}`
+          : `data:${prepared.mimeType};base64,${prepared.base64}`,
+      );
       onResult(
         body.items.map((it, i) => fromFmaItem(it, i, "barcode")),
         body.exifDate ?? undefined,
@@ -1699,7 +1740,22 @@ function ReviewRow({
   const hasWarnings = (item.warnings?.length ?? 0) > 0;
   const serving = formatServing(item.serving);
 
-  const updateGrams = (g: number) => {
+  const updateGrams = (raw: number) => {
+    const g = Number.isFinite(raw) && raw > 0 ? raw : 0;
+    // Prefer the fixed per-gram basis — survives clearing the field to 0.
+    const b = item.basePerG;
+    if (b) {
+      onChange({
+        ...item,
+        grams: g,
+        kcal: b.kcal * g,
+        proteinG: b.proteinG * g,
+        carbsG: b.carbsG * g,
+        fatG: b.fatG * g,
+      });
+      return;
+    }
+    // Legacy fallback (no basis): multiplicative rescale, can't recover from 0.
     if (item.grams <= 0) {
       onChange({ ...item, grams: g });
       return;
