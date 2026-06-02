@@ -40,10 +40,10 @@ export async function normalizeImage(
         : await extractImageDateFromBuffer(buffer);
     if (extractedDate) {
       workoutStartTime = calculateWorkoutStartTime(extractedDate);
-      console.log("📅 Extracted workout date/time from image EXIF:", workoutStartTime);
+      console.log("Extracted workout date/time from image EXIF:", workoutStartTime);
     }
   } catch (error) {
-    console.warn("⚠️ Could not extract date from image EXIF:", error);
+    console.warn("Could not extract date from image EXIF:", error);
   }
 
   if (!isHeic(mimeType, filename, buffer)) {

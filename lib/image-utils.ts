@@ -53,7 +53,7 @@ export async function extractImageDateFromBuffer(buffer: Buffer): Promise<Date |
     if (exifData?.DateTimeOriginal) {
       const date = new Date(exifData.DateTimeOriginal);
       if (!isNaN(date.getTime())) {
-        console.log('📅 Extracted date from EXIF DateTimeOriginal:', date);
+        console.log('Extracted date from EXIF DateTimeOriginal:', date);
         return date;
       }
     }
@@ -62,7 +62,7 @@ export async function extractImageDateFromBuffer(buffer: Buffer): Promise<Date |
     if (exifData?.CreateDate) {
       const date = new Date(exifData.CreateDate);
       if (!isNaN(date.getTime())) {
-        console.log('📅 Extracted date from EXIF CreateDate:', date);
+        console.log('Extracted date from EXIF CreateDate:', date);
         return date;
       }
     }
@@ -71,12 +71,12 @@ export async function extractImageDateFromBuffer(buffer: Buffer): Promise<Date |
     if (exifData?.ModifyDate) {
       const date = new Date(exifData.ModifyDate);
       if (!isNaN(date.getTime())) {
-        console.log('📅 Extracted date from EXIF ModifyDate:', date);
+        console.log('Extracted date from EXIF ModifyDate:', date);
         return date;
       }
     }
 
-    console.log('⚠️ No date found in image EXIF metadata');
+    console.log('No date found in image EXIF metadata');
     return parseExifWithReader(buffer);
   } catch (error) {
     // exifr v7's HEIC detector requires ftyp box length ≤50 AND `heic` in
@@ -89,7 +89,7 @@ export async function extractImageDateFromBuffer(buffer: Buffer): Promise<Date |
       const fallback = await parseExifWithReader(buffer);
       if (fallback) return fallback;
     }
-    console.warn('⚠️ Error reading EXIF data:', error);
+    console.warn('Error reading EXIF data:', error);
     return null;
   }
 }
@@ -108,13 +108,13 @@ async function parseExifWithReader(buffer: Buffer): Promise<Date | null> {
       const iso = raw.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3').replace(' ', 'T');
       const date = new Date(iso);
       if (!isNaN(date.getTime())) {
-        console.log(`📅 Extracted date via exifreader (${f}):`, date);
+        console.log(`Extracted date via exifreader (${f}):`, date);
         return date;
       }
     }
     return null;
   } catch (err) {
-    console.warn('⚠️ exifreader fallback failed:', err);
+    console.warn('exifreader fallback failed:', err);
     return null;
   }
 }
@@ -158,7 +158,7 @@ export function calculateWorkoutStartTime(imageDate: Date): { date: Date; timeSt
   const mins = workoutDate.getMinutes().toString().padStart(2, '0');
   const timeString = `${hours}:${mins}`;
   
-  console.log(`📅 Calculated workout start time: ${timeString} (45 mins before image, rounded to nearest half hour)`);
+  console.log(`Calculated workout start time: ${timeString} (45 mins before image, rounded to nearest half hour)`);
   
   return {
     date: workoutDate,
