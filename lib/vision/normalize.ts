@@ -1,12 +1,18 @@
 import "server-only";
 
 import {
-  convertHeicToJpeg,
+  convertHeicToJpegUnder,
   extractImageDateFromBuffer,
   calculateWorkoutStartTime,
   isHeic,
 } from "../image-utils";
 import { VisionError } from "./errors";
+
+// Groq rejects vision requests whose base64 image exceeds ~4MB. A full-res
+// 12MP HEIC transcodes to a 5-6MB JPEG at q0.9, so bound the conversion under
+// the cap (with headroom). Tightest of the providers normalize() feeds, so
+// safe for LM Studio / agent paths too.
+const GROQ_MAX_BASE64_LEN = 3_900_000;
 
 export interface NormalizedImage {
   imageBase64: string;
@@ -57,11 +63,11 @@ export async function normalizeImage(
   }
 
   try {
-    console.log("🔁 Converting HEIC → JPEG...");
-    const jpegBuffer = await convertHeicToJpeg(buffer);
+    console.log("Converting HEIC → JPEG...");
+    const jpegBuffer = await convertHeicToJpegUnder(buffer, GROQ_MAX_BASE64_LEN);
     const jpegBase64 = jpegBuffer.toString("base64");
     console.log(
-      `✅ HEIC converted: ${Math.round(buffer.length / 1024)}KB → ${Math.round(jpegBuffer.length / 1024)}KB`,
+      `HEIC converted: ${Math.round(buffer.length / 1024)}KB → ${Math.round(jpegBuffer.length / 1024)}KB`,
     );
     return {
       imageBase64: jpegBase64,

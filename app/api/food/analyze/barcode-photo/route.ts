@@ -26,6 +26,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ...analyze,
       exifDate: prepared.exifDateIso,
+      // HEIC is unrenderable in <img>; hand back the transcoded JPEG so the
+      // client can swap it into the preview (matches the workout flow).
+      convertedImageBase64: prepared.converted ? prepared.base64 : undefined,
     });
   } catch (err) {
     const status = (err as Error & { status?: number }).status ?? 500;

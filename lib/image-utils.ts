@@ -30,6 +30,33 @@ export async function convertHeicToJpeg(buffer: Buffer, quality = 0.9): Promise<
   return Buffer.from(output);
 }
 
+/** base64 string length for a buffer of `n` raw bytes (no newlines). */
+export function base64Length(n: number): number {
+  return Math.ceil(n / 3) * 4;
+}
+
+/**
+ * Convert HEIC → JPEG, stepping quality down until the BASE64-ENCODED output
+ * stays under `maxBase64Len` characters. FMA's cap is on the base64 string
+ * length (`image.source.base64`), not the decoded image, so a ~4MB JPEG —
+ * raw bytes well under "5MB" — still encodes to ~5.3M base64 chars and is
+ * rejected. heic-convert has no resize knob, so quality is the only lever.
+ * Returns the smallest result if even the lowest quality overshoots.
+ */
+export async function convertHeicToJpegUnder(
+  buffer: Buffer,
+  maxBase64Len: number,
+  qualitySteps: number[] = [0.8, 0.6, 0.45, 0.3],
+): Promise<Buffer> {
+  let last: Buffer | null = null;
+  for (const quality of qualitySteps) {
+    const out = Buffer.from(await convert({ buffer, format: 'JPEG', quality }));
+    if (base64Length(out.length) <= maxBase64Len) return out;
+    last = out;
+  }
+  return last as Buffer;
+}
+
 
 /**
  * Extract date from image EXIF metadata (server-side)
