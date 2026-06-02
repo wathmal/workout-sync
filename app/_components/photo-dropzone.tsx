@@ -5,13 +5,11 @@ import { Loader2 } from "lucide-react";
 import {
   prepareImageForUpload,
   type PreparedImage,
+  type PrepareOpts,
 } from "@/lib/image-resize";
 import { ACCEPT_ATTR, validateImageFile } from "@/lib/upload-utils";
 
-type PrepareFn = (
-  file: File,
-  opts?: { maxBase64Bytes?: number },
-) => Promise<PreparedImage>;
+type PrepareFn = (file: File, opts?: PrepareOpts) => Promise<PreparedImage>;
 
 interface PhotoDropzoneProps {
   icon: ReactNode;
@@ -20,7 +18,8 @@ interface PhotoDropzoneProps {
   /** Caller's async work (the API call) is in flight. */
   busy?: boolean;
   accept?: string;
-  maxBase64Bytes?: number;
+  /** Resize/encode budget passed to the prepare fn (per use-case). */
+  prepareOpts?: PrepareOpts;
   /** Taller drop target. */
   minHeight?: number;
   /** Passive window paste (Cmd/Ctrl+V). Disable on extra instances. */
@@ -42,7 +41,7 @@ export function PhotoDropzone({
   busyLabel,
   busy = false,
   accept = ACCEPT_ATTR,
-  maxBase64Bytes,
+  prepareOpts,
   minHeight,
   enablePaste = true,
   prepare = prepareImageForUpload,
@@ -65,7 +64,7 @@ export function PhotoDropzone({
     }
     setPreparing(true);
     try {
-      const prepared = await prepare(file, { maxBase64Bytes });
+      const prepared = await prepare(file, prepareOpts);
       onPrepared(prepared);
     } catch (err) {
       onError(err instanceof Error ? err.message : "Could not read image.");

@@ -1387,6 +1387,15 @@ function PhotoPanel({
         label="Tap to pick a photo · or paste"
         busyLabel="Analyzing…"
         busy={busy}
+        // Plate photos don't need OCR fidelity — shrink to ~1280px / ~400KB to
+        // cut FMA vision token cost (cost scales with pixels). Barcode photo and
+        // workout upload keep the default high-fidelity path.
+        prepareOpts={{
+          maxBase64Bytes: 550_000,
+          maxDim: 1280,
+          qualitySteps: [0.8, 0.7, 0.6, 0.5],
+          bestEffort: true,
+        }}
         onPrepared={handlePrepared}
         onError={setError}
       />

@@ -84,37 +84,87 @@ async function fileToBase64(file: File): Promise<string> {
 }
 
 /**
- * Return a base64-encoded image suitable for /api/food/analyze/photo.
- * Skips re-encode if original is already under the size budget.
+ * HEIC/HEIF detection, client-side. Non-Safari browsers can't decode HEIC in an
+ * <img>, so when canvas decode fails we use this to decide whether to send the
+ * raw file to the server (which transcodes via lib/food/photo-prep.ts) instead
+ * of surfacing an error. Mirrors the server isHeic in lib/image-utils.ts.
+ */
+async function isHeicFile(file: File): Promise<boolean> {
+  const type = (file.type || "").toLowerCase();
+  if (type === "image/heic" || type === "image/heif") return true;
+  if (/\.(heic|heif)$/i.test(file.name)) return true;
+  try {
+    const head = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+    const ascii = (a: number, b: number) =>
+      String.fromCharCode(...Array.from(head.subarray(a, b)));
+    if (ascii(4, 8) === "ftyp") {
+      const brand = ascii(8, 12).toLowerCase();
+      return ["heic", "heix", "hevc", "heim", "heis", "hevm", "hevs", "mif1", "msf1"].includes(brand);
+    }
+  } catch {
+    // slice/arrayBuffer unavailable — fall through to false.
+  }
+  return false;
+}
+
+export interface PrepareOpts {
+  /** Base64-length budget; result kept under this (string length, not bytes). */
+  maxBase64Bytes?: number;
+  /** Longest-edge pixel cap; larger images are downscaled to it. */
+  maxDim?: number;
+  /** JPEG quality steps, tried high→low until one fits the budget. */
+  qualitySteps?: number[];
+  /** When the smallest step still overshoots, send it anyway instead of throwing. */
+  bestEffort?: boolean;
+}
+
+/**
+ * Return a base64-encoded image suitable for /api/food/analyze/photo (and the
+ * workout upload). Skips re-encode if the original is already under the byte
+ * budget. Defaults preserve the original high-fidelity behavior; the food
+ * "Meal photo" dropzone passes a smaller cap to cut FMA vision token cost.
  */
 export async function prepareImageForUpload(
   file: File,
-  opts?: { maxBase64Bytes?: number },
+  opts?: PrepareOpts,
 ): Promise<PreparedImage> {
   const maxBytes = opts?.maxBase64Bytes ?? MAX_BASE64_BYTES;
+  const maxDim = opts?.maxDim ?? MAX_DIM;
+  const qualitySteps = opts?.qualitySteps ?? QUALITY_STEPS;
+  const bestEffort = opts?.bestEffort ?? false;
   // EXIF date off the raw file first — resize below would strip it.
   const capturedAt = await extractCapturedAt(file);
 
+  // Raw pass-through, also reused for the HEIC decode-fail fallback below.
+  const rawResult = async (): Promise<PreparedImage> => ({
+    base64: await fileToBase64(file),
+    mimeType: file.type || "application/octet-stream",
+    filename: file.name,
+    byteLength: file.size,
+    resized: false,
+    capturedAt,
+  });
+
   if (file.size * 1.34 < maxBytes) {
-    const base64 = await fileToBase64(file);
-    return {
-      base64,
-      mimeType: file.type || "application/octet-stream",
-      filename: file.name,
-      byteLength: file.size,
-      resized: false,
-      capturedAt,
-    };
+    return rawResult();
   }
 
   const dataUrl = await readAsDataUrl(file);
-  const img = await loadImage(dataUrl);
+  let img: HTMLImageElement;
+  try {
+    img = await loadImage(dataUrl);
+  } catch (err) {
+    // HEIC the browser can't decode in <img> (non-Safari) → send raw; the
+    // server transcodes it. A genuinely corrupt non-HEIC image rethrows.
+    if (await isHeicFile(file)) return rawResult();
+    throw err;
+  }
 
   let w = img.naturalWidth;
   let h = img.naturalHeight;
   const longest = Math.max(w, h);
-  if (longest > MAX_DIM) {
-    const scale = MAX_DIM / longest;
+  if (longest > maxDim) {
+    const scale = maxDim / longest;
     w = Math.round(w * scale);
     h = Math.round(h * scale);
   }
@@ -126,16 +176,16 @@ export async function prepareImageForUpload(
   if (!ctx) throw new Error("canvas 2d context unavailable");
   ctx.drawImage(img, 0, 0, w, h);
 
-  for (const q of QUALITY_STEPS) {
+  const baseName = file.name.replace(/\.[^.]+$/, "");
+  let smallest: Blob | null = null;
+  for (const q of qualitySteps) {
     const blob: Blob | null = await new Promise((resolve) =>
       canvas.toBlob((b) => resolve(b), "image/jpeg", q),
     );
     if (!blob) continue;
     if (blob.size * 1.34 < maxBytes) {
-      const base64 = await blobToBase64(blob);
-      const baseName = file.name.replace(/\.[^.]+$/, "");
       return {
-        base64,
+        base64: await blobToBase64(blob),
         mimeType: "image/jpeg",
         filename: `${baseName}.jpg`,
         byteLength: blob.size,
@@ -143,6 +193,19 @@ export async function prepareImageForUpload(
         capturedAt,
       };
     }
+    if (!smallest || blob.size < smallest.size) smallest = blob;
+  }
+
+  // Soft target: when nothing fit, send the smallest re-encode rather than fail.
+  if (bestEffort && smallest) {
+    return {
+      base64: await blobToBase64(smallest),
+      mimeType: "image/jpeg",
+      filename: `${baseName}.jpg`,
+      byteLength: smallest.size,
+      resized: true,
+      capturedAt,
+    };
   }
 
   throw new Error(
