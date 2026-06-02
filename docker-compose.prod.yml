@@ -1,0 +1,47 @@
+# Production stack: prebuilt app image (GHCR) + Postgres. The app image runs
+# pending Drizzle migrations on start (see scripts/migrate-runtime.mjs), so the
+# DB on the bind-mounted volume self-migrates on every image update.
+#
+# Usage (CLI host):
+#   cp env.deploy.example .env   # fill it in (.env is gitignored)
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# TrueNAS SCALE: paste this into Apps -> Discover -> (3-dot) Install via YAML and
+# fill the values inline (or via the panel). See docs/deploy-truenas.md.
+name: workout-sync
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: workout
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: workout
+    volumes:
+      # Persistent across image updates. On TrueNAS, point at a dataset host path.
+      - ${PGDATA_PATH:?set PGDATA_PATH}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workout -d workout"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: ghcr.io/wathmal/workout-sync:${IMAGE_TAG:-main}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: postgres://workout:${POSTGRES_PASSWORD}@db:5432/workout
+      USER_TZ: ${USER_TZ:-UTC}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      HEVY_API_KEY: ${HEVY_API_KEY:-}
+      FMA_BASE_URL: ${FMA_BASE_URL:-}
+      FMA_API_KEY: ${FMA_API_KEY:-}
+      GARMIN_TOKEN_B64: ${GARMIN_TOKEN_B64:-}
+      GOOGLE_SA_KEY: ${GOOGLE_SA_KEY:-}
+      GCAL_ID: ${GCAL_ID:-}
+      AGENDA_SYNC_SECRET: ${AGENDA_SYNC_SECRET:-}
