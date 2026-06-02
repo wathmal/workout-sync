@@ -37,9 +37,24 @@ export interface FmaMacros {
   fat_g: number;
 }
 
+/** One ingredient inside a composite dish. `matched` is null when no DB match. */
+export interface FmaComponent {
+  input_name: string;
+  matched: FmaMatched | null;
+  grams: number;
+  ratio: number;
+  macros: FmaMacros;
+  warnings: string[];
+}
+
 export interface FmaItem {
   input_name?: string;
-  matched: FmaMatched;
+  /** "single" = one matched food; "composite" = decomposed dish (matched null, components set). */
+  kind?: "single" | "composite";
+  matched: FmaMatched | null;
+  components?: FmaComponent[];
+  amount?: number;
+  unit?: "g" | "mL";
   grams: number;
   macros: FmaMacros;
   confidence: number;
@@ -52,6 +67,10 @@ export interface FmaAnalyzeResponse {
   meal_name?: string;
   items: FmaItem[];
   totals: FmaMacros;
+  /** Top-level warnings (additive). */
+  warnings?: string[];
+  /** Pipeline timing/cost when include: ["trace"]. Ignored by the app. */
+  model_trace?: unknown;
 }
 
 export interface FmaSearchHit {
@@ -106,6 +125,20 @@ export interface FmaOffSearchResponse {
   items: FmaOffSearchHit[];
 }
 
+/** One ingredient of a logged/pending composite dish (camelCase, for display). */
+export interface MealComponent {
+  inputName: string;
+  /** matched food name, or the input name when unmatched. */
+  name: string;
+  grams: number;
+  kcal: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  warnings: string[];
+  matched: { source: string; name: string } | null;
+}
+
 /** Application-side representation of a logged item. */
 export interface MealItem {
   id: string;
@@ -129,6 +162,55 @@ export interface MealItem {
   confidence: number | null;
   warnings: string[] | null;
   note: string | null;
+  /** Set for composite dishes (read from raw_response). */
+  kind?: "single" | "composite";
+  /** Ingredient breakdown for composites; null/undefined for singles. */
+  components?: MealComponent[] | null;
+}
+
+/**
+ * In-flight review item (pre-commit). Lives here (not in the page) so the pure
+ * converter in lib/food/convert.ts can build + test it without the client page.
+ */
+export interface PendingItem {
+  /** stable local key */
+  key: string;
+  /** origin tab this item came from */
+  source: FoodLogSource;
+  name: string;
+  grams: number;
+  kcal: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  /**
+   * Per-gram macro basis captured at creation. Lets grams edits rescale from a
+   * fixed rate instead of multiplying current values — which breaks once grams
+   * hits 0 (clear the field) and can never recover. null when the source had no
+   * positive grams to derive a rate from.
+   */
+  basePerG?: {
+    kcal: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+  } | null;
+  /** FMA serving descriptor, for display in review (not persisted). */
+  serving?: FmaServing | null;
+  fmaFoodId?: number | null;
+  fmaSource?: string | null;
+  fmaSourceId?: string | null;
+  confidence?: number | null;
+  warnings?: string[];
+  rationale?: string;
+  rawResponse?: unknown;
+  enabled: boolean;
+  /** "composite" dishes carry a component breakdown. */
+  kind?: "single" | "composite";
+  /** Original (base) component breakdown at `baseGrams`; rescaled for display/commit. */
+  components?: MealComponent[];
+  /** Dish grams the base components were computed at — the rescale denominator. */
+  baseGrams?: number;
 }
 
 /** Per-day aggregate for the dashboard week stack. */

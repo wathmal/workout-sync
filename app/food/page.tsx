@@ -29,11 +29,12 @@ import type {
   FmaAnalyzeResponse,
   FmaSearchHit,
   FmaOffSearchHit,
-  FmaItem,
   FmaServing,
   FoodLogSource,
   MealItem,
+  PendingItem,
 } from "@/lib/food/types";
+import { fromFmaItem, displayComponents, pendingRawResponse } from "@/lib/food/convert";
 import { PhotoDropzone } from "@/app/_components/photo-dropzone";
 import type { PreparedImage } from "@/lib/image-resize";
 import {
@@ -43,41 +44,6 @@ import {
 } from "@/lib/food/local-date";
 
 type Mode = "search" | "off" | "text" | "snap" | "barcode";
-
-interface PendingItem {
-  /** stable local key */
-  key: string;
-  /** origin tab this item came from */
-  source: FoodLogSource;
-  name: string;
-  grams: number;
-  kcal: number;
-  proteinG: number;
-  carbsG: number;
-  fatG: number;
-  /**
-   * Per-gram macro basis captured at creation. Lets grams edits rescale from a
-   * fixed rate instead of multiplying current values — which breaks once grams
-   * hits 0 (clear the field) and can never recover. null when the source had no
-   * positive grams to derive a rate from.
-   */
-  basePerG?: {
-    kcal: number;
-    proteinG: number;
-    carbsG: number;
-    fatG: number;
-  } | null;
-  /** FMA serving descriptor, for display in review (not persisted). */
-  serving?: FmaServing | null;
-  fmaFoodId?: number | null;
-  fmaSource?: string | null;
-  fmaSourceId?: string | null;
-  confidence?: number | null;
-  warnings?: string[];
-  rationale?: string;
-  rawResponse?: unknown;
-  enabled: boolean;
-}
 
 const LOW_CONF = 0.7;
 
@@ -100,38 +66,6 @@ function defaultLoggedAt(dateStr: string): string {
   return dateStr === todayLocalStr() ? isoLocalNow() : `${dateStr}T12:00`;
 }
 
-function fromFmaItem(it: FmaItem, idx: number, source: FoodLogSource): PendingItem {
-  const g = it.grams;
-  const basePerG =
-    g > 0
-      ? {
-          kcal: it.macros.kcal / g,
-          proteinG: it.macros.protein_g / g,
-          carbsG: it.macros.carbs_g / g,
-          fatG: it.macros.fat_g / g,
-        }
-      : null;
-  return {
-    key: `fma-${idx}-${it.matched.source_id}`,
-    source,
-    name: it.matched.name,
-    grams: it.grams,
-    kcal: it.macros.kcal,
-    proteinG: it.macros.protein_g,
-    carbsG: it.macros.carbs_g,
-    fatG: it.macros.fat_g,
-    basePerG,
-    serving: it.matched.serving ?? null,
-    fmaFoodId: it.matched.food_id,
-    fmaSource: it.matched.source,
-    fmaSourceId: it.matched.source_id,
-    confidence: it.confidence,
-    warnings: it.warnings,
-    rationale: it.rationale,
-    rawResponse: it,
-    enabled: true,
-  };
-}
 
 function fromSearchHit(hit: FmaSearchHit, grams: number): PendingItem {
   const k100 = hit.kcal_per_100g ?? 0;
@@ -298,7 +232,8 @@ function FoodPageInner() {
           fmaSourceId: it.fmaSourceId ?? null,
           confidence: it.confidence ?? null,
           warnings: it.warnings ?? null,
-          rawResponse: it.rawResponse,
+          // For a grams-edited composite, rescale the stored breakdown to match.
+          rawResponse: pendingRawResponse(it),
         })),
       });
       resetPending();
@@ -677,6 +612,8 @@ function EditableItemRow({
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(item.grams.toString());
   const [busy, setBusy] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const isComposite = item.kind === "composite" && (item.components?.length ?? 0) > 0;
 
   const save = async () => {
     const g = Number(value);
@@ -695,64 +632,108 @@ function EditableItemRow({
   };
 
   return (
-    <div
-      className="food-item-grid"
-      style={{
-        display: "grid",
-        gridTemplateColumns: "14px 1fr 56px 140px 86px 28px",
-        gap: 8,
-        alignItems: "center",
-        fontSize: 12,
-        color: "var(--color-text-secondary)",
-      }}
-    >
-      <CornerDownRight size={12} color="var(--color-text-tertiary)" />
-      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
-        {item.name}
-      </span>
-      {editing ? (
-        <input
-          type="number"
-          value={value}
-          min={0}
-          step={1}
-          onChange={(e) => setValue(e.target.value)}
-          onBlur={save}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") void save();
-            if (e.key === "Escape") setEditing(false);
-          }}
-          autoFocus
-          style={{
-            width: 56,
-            background: "var(--color-surface-elevated)",
-            color: "var(--color-text-primary)",
-            border: "1px solid var(--color-outline)",
-            borderRadius: 4,
-            padding: "2px 4px",
-            fontSize: 12,
-            textAlign: "right",
-            fontFamily: "var(--font-mono)",
-          }}
-        />
-      ) : (
-        <span
-          className="font-mono-sm"
-          style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}
-        >
-          {Math.round(item.grams)}g
-        </span>
-      )}
-      <MacroChips p={item.proteinG} c={item.carbsG} f={item.fatG} />
-      <KcalCell kcal={item.kcal} size={12} />
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => (editing ? void save() : setEditing(true))}
-        style={iconBtnStyle}
+    <div>
+      <div
+        className="food-item-grid"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "14px 1fr 56px 140px 86px 28px",
+          gap: 8,
+          alignItems: "center",
+          fontSize: 12,
+          color: "var(--color-text-secondary)",
+        }}
       >
-        {busy ? <Loader2 size={12} className="spin" /> : <Pencil size={12} />}
-      </button>
+        <CornerDownRight size={12} color="var(--color-text-tertiary)" />
+        {isComposite ? (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            title="Show ingredients"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 3,
+              minWidth: 0,
+              background: "transparent",
+              border: 0,
+              padding: 0,
+              cursor: "pointer",
+              color: "var(--color-text-secondary)",
+              font: "inherit",
+              textAlign: "left",
+            }}
+          >
+            {expanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {item.name}
+            </span>
+          </button>
+        ) : (
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+            {item.name}
+          </span>
+        )}
+        {editing ? (
+          <input
+            type="number"
+            value={value}
+            min={0}
+            step={1}
+            onChange={(e) => setValue(e.target.value)}
+            onBlur={save}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void save();
+              if (e.key === "Escape") setEditing(false);
+            }}
+            autoFocus
+            style={{
+              width: 56,
+              background: "var(--color-surface-elevated)",
+              color: "var(--color-text-primary)",
+              border: "1px solid var(--color-outline)",
+              borderRadius: 4,
+              padding: "2px 4px",
+              fontSize: 12,
+              textAlign: "right",
+              fontFamily: "var(--font-mono)",
+            }}
+          />
+        ) : (
+          <span
+            className="font-mono-sm"
+            style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}
+          >
+            {Math.round(item.grams)}g
+          </span>
+        )}
+        <MacroChips p={item.proteinG} c={item.carbsG} f={item.fatG} />
+        <KcalCell kcal={item.kcal} size={12} />
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => (editing ? void save() : setEditing(true))}
+          style={iconBtnStyle}
+        >
+          {busy ? <Loader2 size={12} className="spin" /> : <Pencil size={12} />}
+        </button>
+      </div>
+      {isComposite && expanded && (
+        <div style={{ paddingLeft: 22, display: "flex", flexDirection: "column", gap: 2, margin: "2px 0 4px" }}>
+          {(item.components ?? []).map((c, i) => (
+            <div
+              key={i}
+              style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--color-text-tertiary)" }}
+            >
+              <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {c.matched ? `${c.inputName} → ${c.name}` : `${c.inputName} → (no match)`}
+              </span>
+              <span className="font-mono-sm" style={{ flexShrink: 0 }}>{Math.round(c.grams)}g</span>
+              <span className="font-mono-sm" style={{ flexShrink: 0 }}>{Math.round(c.kcal)} kcal</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1748,6 +1729,10 @@ function ReviewRow({
   const lowConf = item.confidence !== null && item.confidence !== undefined && item.confidence < LOW_CONF;
   const hasWarnings = (item.warnings?.length ?? 0) > 0;
   const serving = formatServing(item.serving);
+  const isComposite = item.kind === "composite";
+  // Components are derived from the immutable base by current grams, so editing
+  // grams (below) needs no special handling — the breakdown rescales live.
+  const components = isComposite ? displayComponents(item) : [];
 
   const updateGrams = (raw: number) => {
     const g = Number.isFinite(raw) && raw > 0 ? raw : 0;
@@ -1840,6 +1825,22 @@ function ReviewRow({
                 low
               </span>
             )}
+            {isComposite && (
+              <span
+                title="decomposed estimate from ingredients"
+                style={{
+                  flexShrink: 0,
+                  padding: "2px 6px",
+                  background: "rgba(91,163,245,0.14)",
+                  color: "var(--color-text-secondary)",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  borderRadius: 999,
+                }}
+              >
+                est
+              </span>
+            )}
           </div>
           {serving && (
             <span
@@ -1871,7 +1872,7 @@ function ReviewRow({
           {Math.round(item.kcal)} kcal
         </span>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
-          {(hasWarnings || item.rationale) && (
+          {(hasWarnings || item.rationale || isComposite) && (
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
@@ -1905,6 +1906,26 @@ function ReviewRow({
       </div>
       {expanded && (
         <div style={{ marginTop: 6, paddingLeft: 30, display: "flex", flexDirection: "column", gap: 4 }}>
+          {isComposite &&
+            components.map((c, i) => (
+              <div
+                key={`c-${i}`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 11,
+                  color: "var(--color-text-tertiary)",
+                }}
+              >
+                <CornerDownRight size={10} style={{ flexShrink: 0 }} />
+                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {c.matched ? `${c.inputName} → ${c.name}` : `${c.inputName} → (no match)`}
+                </span>
+                <span className="font-mono-sm" style={{ flexShrink: 0 }}>{Math.round(c.grams)}g</span>
+                <span className="font-mono-sm" style={{ flexShrink: 0 }}>{Math.round(c.kcal)} kcal</span>
+              </div>
+            ))}
           {item.warnings?.map((w, i) => (
             <div
               key={i}
