@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getWorkoutsSince } from "@/lib/hevy/workouts-since";
 
 /**
- * GET /api/hevy-workouts?since=<ISO>
+ * GET /api/hevy-workouts?since=<ISO>&until=<ISO>
  * Returns JoinedWorkout[] (Hevy raw exercises + matched catalog template).
+ *
+ * `until` (optional) bounds the upper edge — the dashboard week slider needs a
+ * closed [since, until) window so muscle coverage for a past week excludes later
+ * workouts. getWorkoutsSince is since-only, so the upper bound is filtered here.
  *
  * Client-driven endpoint — always fetches fresh from Hevy (no Next data cache)
  * so manual refresh and post-sync refresh see new workouts immediately.
@@ -17,6 +21,15 @@ export async function GET(request: NextRequest) {
   if (!Number.isFinite(sinceMs)) {
     return NextResponse.json(
       { error: "since must be a valid ISO timestamp", code: "bad-request" },
+      { status: 400 },
+    );
+  }
+
+  const untilParam = request.nextUrl.searchParams.get("until");
+  const untilMs = untilParam ? Date.parse(untilParam) : null;
+  if (untilParam && !Number.isFinite(untilMs)) {
+    return NextResponse.json(
+      { error: "until must be a valid ISO timestamp", code: "bad-request" },
       { status: 400 },
     );
   }
@@ -41,5 +54,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ workouts: result.workouts });
+  const workouts =
+    untilMs != null
+      ? result.workouts.filter((w) => Date.parse(w.start_time) < untilMs)
+      : result.workouts;
+
+  return NextResponse.json({ workouts });
 }

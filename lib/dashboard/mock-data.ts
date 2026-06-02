@@ -99,19 +99,19 @@ export interface OverviewMock {
 // ── 90 days of BF% + weight, gentle downward trend ─────────────────
 function buildTrend(): TrendPoint[] {
   const pts: TrendPoint[] = [];
-  const end = new Date("2026-05-23");
+  const end = new Date("2026-05-30"); // last Saturday (measured weekly, sat 7am)
   const start = new Date(end);
   start.setDate(end.getDate() - 89);
-  // start: BF 18.6, weight 85.1
-  // end:   BF 17.4, weight 83.2
+  // start: BF 29.0, weight 72.5  →  end: BF 27.0, weight 68.0 (current)
+  // Kept inside the chart axes (BF 15–35%, weight 60–75kg).
   for (let i = 0; i < 90; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
     const progress = i / 89;
     // base linear with tiny periodic noise so the line isn't dead-straight
     const noise = Math.sin(i * 0.55) * 0.06;
-    const bf = 18.6 + (17.4 - 18.6) * progress + noise;
-    const wkg = 85.1 + (83.2 - 85.1) * progress + noise * 0.4;
+    const bf = 29.0 + (27.0 - 29.0) * progress + noise;
+    const wkg = 72.5 + (68.0 - 72.5) * progress + noise * 0.4;
     pts.push({
       date: d.toISOString().slice(0, 10),
       bodyFatPct: Math.round(bf * 100) / 100,
@@ -128,8 +128,8 @@ export const overviewMock: OverviewMock = {
     fullDate: "May 23 · 2026",
     streak: 12,
     weeklyLoad: 23420,
-    bodyFat: 17.4,
-    bodyFatDelta: -0.8,
+    bodyFat: 27.0,
+    bodyFatDelta: -0.5,
     raceInDays: 22,
     title: "Push day.",
     subtitle: "8 km easy after.",
@@ -194,7 +194,7 @@ export const overviewMock: OverviewMock = {
 
   log: [
     { kind: "workout", label: "Pull — 58m · 6.2t", time: "Tue 18:24" },
-    { kind: "measurement", label: "Body comp · 17.4% / 83.2kg", time: "Sat 07:10" },
+    { kind: "measurement", label: "Body comp · 27.0% / 68.0kg", time: "Sat 07:10" },
     { kind: "food", label: "Chicken bowl · 880 kcal", time: "Fri 12:45" },
     { kind: "workout", label: "Hyrox sim — 48:32 PR", time: "Thu 17:55" },
     { kind: "measurement", label: "Waist 82.0 cm", time: "Sat 07:08" },

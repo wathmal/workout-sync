@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAgenda } from "@/app/_providers/agenda-provider";
+import { useDashboardWeek } from "@/app/_providers/dashboard-week-provider";
 import type { DayAgenda, DayName } from "@/lib/dashboard/mock-data";
 import { WeeklyAgenda } from "./WeeklyAgenda";
 
@@ -37,7 +37,8 @@ function emptyWeek(): DayAgenda[] {
  * a blank week while loading or if the fetch fails — never fabricated data.
  */
 export function WeeklyAgendaLive() {
-  const { days, rangeLabel, loading } = useAgenda();
+  const { agendaDays: days, agendaRangeLabel: rangeLabel, agendaLoading: loading } =
+    useDashboardWeek();
   const placeholder = useMemo(() => emptyWeek(), []);
   const ready = days.length > 0;
   return (

@@ -91,11 +91,24 @@ describe("buildAgenda", () => {
     expect(dayOf(r, "Mon").sessions.map((s) => s.name)).toEqual(["Push", "Post Run"]);
   });
 
-  it("today before 21:00 shows planned calendar items, hides already-logged actuals", () => {
+  it("today before 21:00 shows actuals as soon as anything is logged (hybrid), ignoring the plan", () => {
     const r = buildAgenda(
       base({
         now: new Date("2026-05-20T14:00:00+10:00"),
         hevy: [hevy({ title: "Morning Push", start_time: "2026-05-20T07:00:00+10:00", end_time: "2026-05-20T08:00:00+10:00" })],
+        calendar: [cal({ title: "Move Total", start: "2026-05-20T07:00:00+10:00" })],
+      }),
+    );
+    const wed = dayOf(r, "Wed");
+    expect(wed.sessions).toEqual([
+      { name: "Morning Push", source: "hevy", time: "07:00", meta: "60m", status: "done" },
+    ]);
+  });
+
+  it("today before 21:00 falls back to planned calendar when nothing is logged yet", () => {
+    const r = buildAgenda(
+      base({
+        now: new Date("2026-05-20T14:00:00+10:00"),
         calendar: [cal({ title: "Move Total", start: "2026-05-20T07:00:00+10:00" })],
       }),
     );
@@ -158,5 +171,30 @@ describe("buildAgenda", () => {
     );
     expect(dayOf(r, "Tue").sessions).toEqual([]);
     expect(dayOf(r, "Wed").sessions.map((s) => s.name)).toEqual(["Dawn Run"]);
+  });
+
+  it("anchor selects a past week — every day renders as actuals, calendar ignored, none flagged today", () => {
+    const r = buildAgenda(
+      base({
+        now: new Date("2026-05-20T14:00:00+10:00"), // real today: current week
+        anchor: new Date("2026-05-13T12:00:00Z"), // Wed of the previous week
+        hevy: [hevy({ title: "Last Pull", start_time: "2026-05-11T07:00:00+10:00", end_time: "2026-05-11T07:45:00+10:00" })],
+        calendar: [cal({ title: "Perform Push", start: "2026-05-15T06:00:00+10:00" })],
+      }),
+    );
+    expect(r.days.map((d) => d.date)).toEqual([11, 12, 13, 14, 15, 16, 17]);
+    expect(r.rangeLabel).toBe("May 11 – 17");
+    expect(dayOf(r, "Mon").sessions).toEqual([
+      { name: "Last Pull", source: "hevy", time: "07:00", meta: "45m", status: "done" },
+    ]);
+    // Past week uses actuals for every day, so calendar planned items never show.
+    expect(dayOf(r, "Fri").sessions).toEqual([]);
+    expect(r.days.every((d) => !d.isToday)).toBe(true);
+  });
+
+  it("anchor === now is identical to the no-anchor current week", () => {
+    const withAnchor = buildAgenda(base({ anchor: new Date("2026-05-20T14:00:00+10:00") }));
+    const without = buildAgenda(base());
+    expect(withAnchor).toEqual(without);
   });
 });

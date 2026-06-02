@@ -39,9 +39,9 @@ export interface BodyMeasurementsInput {
 }
 
 export const SAMPLE_BASELINE_INPUT: BodyMeasurementsInput = {
-  weightKg: 80.5,
-  leanMassKg: 65,
-  fatPercent: 18.5,
+  weightKg: 68.0,
+  leanMassKg: 49.6,
+  fatPercent: 27.0,
   neckCm: 38,
   shoulderCm: 115,
   chestCm: 95,

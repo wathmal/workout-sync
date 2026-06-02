@@ -4,8 +4,9 @@
  *
  * Design + decisions: docs/agenda-integration.md. Key rules:
  *  - Per-day whole-day source switch at 21:00 in USER_TZ:
- *      future day OR today<21:00  -> calendar (PLANNED)
+ *      future day                 -> calendar (PLANNED)
  *      today>=21:00 OR past day   -> Hevy + Garmin (DONE)
+ *      today<21:00                -> DONE if anything logged yet, else PLANNED
  *      neither                    -> REST
  *  - De-dup: a Garmin activity whose time interval overlaps a Hevy workout's
  *    interval is the same session -> dropped (Hevy is SOT). Any type — a Hyrox sim
@@ -42,6 +43,12 @@ export interface BuildAgendaInput {
   calendar: CalendarItem[];
   now: Date;
   tz: string;
+  /**
+   * Which week to render (any instant inside it). Defaults to `now`. The dashboard
+   * week slider passes a past anchor; done/planned (the 21:00 flip) stays keyed off
+   * the real `now`, so a past week renders entirely as actuals.
+   */
+  anchor?: Date;
 }
 
 // --- timezone-aware date parts (no Date-construction quirks) ---
@@ -154,11 +161,12 @@ export function buildAgenda({
   calendar,
   now,
   tz,
+  anchor,
 }: BuildAgendaInput): AgendaResult {
   const { dateKey: todayKey, hour: nowHour } = localParts(now, tz);
 
-  // 7 local day keys, Monday → Sunday, for the week containing `now`.
-  const weekKeys = weekKeysFor(now, tz);
+  // 7 local day keys, Monday → Sunday, for the week containing `anchor` (now by default).
+  const weekKeys = weekKeysFor(anchor ?? now, tz);
 
   // Bucket each source by local day key.
   const hevyByDay = bucket(hevy, (w) => localDateKey(w.start_time, tz));
@@ -171,11 +179,22 @@ export function buildAgenda({
     const dayUTC = keyToUTC(key);
     const isToday = key === todayKey;
     const isPast = dayUTC < todayUTC;
-    const useActuals = isPast || (isToday && nowHour >= FLIP_HOUR);
+    const done = () => doneSessions(hevyByDay.get(key) ?? [], garminByDay.get(key) ?? [], tz);
+    const planned = () => plannedSessions(calByDay.get(key) ?? [], tz);
 
-    const sessions: Session[] = useActuals
-      ? doneSessions(hevyByDay.get(key) ?? [], garminByDay.get(key) ?? [], tz)
-      : plannedSessions(calByDay.get(key) ?? [], tz);
+    let sessions: Session[];
+    if (isPast || (isToday && nowHour >= FLIP_HOUR)) {
+      // Past days, and today after the flip → actuals.
+      sessions = done();
+    } else if (isToday) {
+      // Today before the flip → show actuals as soon as any are logged
+      // (a morning run shouldn't wait until 21:00); otherwise show the plan.
+      const d = done();
+      sessions = d.length > 0 ? d : planned();
+    } else {
+      // Future days → planned.
+      sessions = planned();
+    }
 
     return {
       day: DAY_NAMES[idx],

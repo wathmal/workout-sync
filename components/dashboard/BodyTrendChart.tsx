@@ -21,6 +21,12 @@ const RANGES = [
 ] as const;
 type RangeKey = (typeof RANGES)[number]["key"];
 
+// Fixed axis ranges (4 intervals each, so the gridlines align cleanly).
+const KG_DOMAIN: [number, number] = [60, 75];
+const KG_TICKS = [60, 65, 70, 75];
+const BF_DOMAIN: [number, number] = [15, 35];
+const BF_TICKS = [15, 20, 25, 30, 35];
+
 export function BodyTrendChart({ series }: { series: TrendPoint[] }) {
   const [range, setRange] = useState<RangeKey>("90d");
 
@@ -50,12 +56,6 @@ export function BodyTrendChart({ series }: { series: TrendPoint[] }) {
   const bfDelta = latest && earliest ? latest.bodyFatPct - earliest.bodyFatPct : 0;
   const kgDelta = latest && earliest ? latest.weightKg - earliest.weightKg : 0;
 
-  // Derive paired Y-axis domains so 4 gridlines line up cleanly.
-  const bfMin = Math.floor(Math.min(...visible.map((p) => p.bodyFatPct)) * 2) / 2;
-  const bfMax = Math.ceil(Math.max(...visible.map((p) => p.bodyFatPct)) * 2) / 2;
-  const kgMin = Math.floor(Math.min(...visible.map((p) => p.weightKg)));
-  const kgMax = Math.ceil(Math.max(...visible.map((p) => p.weightKg)));
-
   return (
     <div
       style={{
@@ -65,6 +65,7 @@ export function BodyTrendChart({ series }: { series: TrendPoint[] }) {
         display: "flex",
         flexDirection: "column",
         minHeight: 0,
+        height: "100%",
       }}
     >
       <SectionHead
@@ -134,7 +135,7 @@ export function BodyTrendChart({ series }: { series: TrendPoint[] }) {
         <span style={{ marginLeft: "auto" }}>measured weekly · sat 7am</span>
       </div>
 
-      <div style={{ height: 260, width: "100%" }}>
+      <div style={{ flex: 1, minHeight: 200, width: "100%" }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={visible} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
@@ -151,7 +152,9 @@ export function BodyTrendChart({ series }: { series: TrendPoint[] }) {
             <YAxis
               yAxisId="bf"
               orientation="left"
-              domain={[bfMin, bfMax]}
+              domain={BF_DOMAIN}
+              ticks={BF_TICKS}
+              allowDataOverflow
               tickLine={false}
               axisLine={false}
               tick={{ fill: "var(--color-text-tertiary)", fontSize: 10, fontFamily: "var(--font-mono)" }}
@@ -161,7 +164,9 @@ export function BodyTrendChart({ series }: { series: TrendPoint[] }) {
             <YAxis
               yAxisId="kg"
               orientation="right"
-              domain={[kgMin, kgMax]}
+              domain={KG_DOMAIN}
+              ticks={KG_TICKS}
+              allowDataOverflow
               tickLine={false}
               axisLine={false}
               tick={{ fill: "var(--color-text-tertiary)", fontSize: 10, fontFamily: "var(--font-mono)" }}

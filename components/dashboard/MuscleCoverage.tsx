@@ -7,7 +7,7 @@ import type {
   TrackedMuscle,
 } from "@/lib/dashboard/muscle-coverage";
 import { SectionHead } from "./SectionHead";
-import { useHevy } from "@/app/_providers/hevy-provider";
+import { useDashboardWeek } from "@/app/_providers/dashboard-week-provider";
 
 const BUCKET_COLOR: Record<MuscleBucket, string> = {
   met: "var(--color-semantic-success)",
@@ -70,7 +70,13 @@ function buildColorStyle(entries: MuscleCoverageEntry[]): string {
 }
 
 export function MuscleCoverage({ svgs }: { svgs: { front: string; back: string } }) {
-  const { coverage, error, errorCode, loading, lastFetched } = useHevy();
+  const {
+    coverage,
+    coverageError: error,
+    coverageErrorCode: errorCode,
+    coverageLoading: loading,
+    coverageLastFetched: lastFetched,
+  } = useDashboardWeek();
   const entries = coverage.entries;
   const attention = coverage.attention;
   const css = buildColorStyle(entries);

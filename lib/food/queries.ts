@@ -5,14 +5,25 @@ import { db } from "./db";
 import { foodLogEntry } from "./schema";
 import type {
   DayAggregate,
+  FmaItem,
   MealBatchInput,
   MealItem,
   QuickAddSuggestion,
 } from "./types";
+import { fmaComponentToMeal, scaleFmaItem } from "./convert";
 import { todayInUserTz } from "./targets";
 
 function userTz(): string {
   return process.env.USER_TZ ?? "UTC";
+}
+
+/** Pull kind + ingredient breakdown out of the stored FMA item (composites only). */
+function compositeFromRaw(raw: unknown): Pick<MealItem, "kind" | "components"> {
+  const it = raw as FmaItem | null;
+  if (it && it.kind === "composite" && Array.isArray(it.components)) {
+    return { kind: "composite", components: it.components.map(fmaComponentToMeal) };
+  }
+  return {};
 }
 
 function toMealItem(r: typeof foodLogEntry.$inferSelect): MealItem {
@@ -38,6 +49,7 @@ function toMealItem(r: typeof foodLogEntry.$inferSelect): MealItem {
     confidence: r.confidence !== null ? Number(r.confidence) : null,
     warnings: (r.warnings as string[] | null) ?? null,
     note: r.note,
+    ...compositeFromRaw(r.rawResponse),
   };
 }
 
@@ -61,17 +73,21 @@ export async function getDay(dateStr: string = todayInUserTz()): Promise<MealIte
 }
 
 /**
- * Mon..Sun aggregates covering the week that contains `today` in USER_TZ.
- * Future days render with zero macros but `isPlanned: true`.
+ * Mon..Sun aggregates covering the week that contains `anchorStr` in USER_TZ
+ * (defaults to today — the dashboard week slider passes a past anchor date).
+ * `isToday`/`isPlanned` are always relative to the real current day, so a past
+ * week has no day flagged today/planned. Future days render zero but planned.
  */
-export async function getCurrentWeek(): Promise<DayAggregate[]> {
-  const today = todayInUserTz(); // YYYY-MM-DD
-  const todayDate = new Date(`${today}T00:00:00Z`); // treated as a civil date
+export async function getWeek(
+  anchorStr: string = todayInUserTz(),
+): Promise<DayAggregate[]> {
+  const today = todayInUserTz(); // YYYY-MM-DD — real current day, for flags
+  const anchorDate = new Date(`${anchorStr}T00:00:00Z`); // civil date in the target week
   // Mon = 1 in ISO; getUTCDay: Sun=0, Mon=1, ... Sat=6
-  const dow = todayDate.getUTCDay(); // 0..6
+  const dow = anchorDate.getUTCDay(); // 0..6
   const daysSinceMonday = (dow + 6) % 7;
-  const monday = new Date(todayDate);
-  monday.setUTCDate(todayDate.getUTCDate() - daysSinceMonday);
+  const monday = new Date(anchorDate);
+  monday.setUTCDate(anchorDate.getUTCDate() - daysSinceMonday);
 
   const days: string[] = [];
   for (let i = 0; i < 7; i++) {
@@ -178,6 +194,14 @@ export async function editGrams(itemId: string, newGrams: number): Promise<MealI
   const carbsPerG = Number(existing.carbsPerG);
   const fatPerG = Number(existing.fatPerG);
 
+  // Keep a composite's stored ingredient breakdown consistent with the new grams.
+  const oldGrams = Number(existing.grams);
+  const rawItem = existing.rawResponse as FmaItem | null;
+  const rescaledRaw =
+    rawItem && rawItem.kind === "composite" && oldGrams > 0
+      ? scaleFmaItem(rawItem, newGrams / oldGrams)
+      : undefined;
+
   const [updated] = await db
     .update(foodLogEntry)
     .set({
@@ -186,6 +210,7 @@ export async function editGrams(itemId: string, newGrams: number): Promise<MealI
       proteinG: (proteinPerG * newGrams).toString(),
       carbsG: (carbsPerG * newGrams).toString(),
       fatG: (fatPerG * newGrams).toString(),
+      ...(rescaledRaw ? { rawResponse: rescaledRaw } : {}),
     })
     .where(eq(foodLogEntry.id, itemId))
     .returning();

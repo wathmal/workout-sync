@@ -1,4 +1,6 @@
 import type { OverviewMock } from "@/lib/dashboard/mock-data";
+import { WeekStrip } from "./WeekStrip";
+import { WeekSummary } from "./WeekSummary";
 
 type Heading = OverviewMock["heading"];
 
@@ -14,16 +16,7 @@ export function OverviewHeading({ data }: { data: Heading }) {
       }}
     >
       <div>
-        <div
-          className="text-label-md"
-          style={{ color: "var(--color-text-tertiary)" }}
-        >
-          {data.date}
-          <span style={dotStyle} />
-          Week {data.week}
-          <span style={dotStyle} />
-          {data.fullDate}
-        </div>
+        <WeekStrip />
         <h1
           className="text-display-sm"
           style={{
@@ -33,10 +26,7 @@ export function OverviewHeading({ data }: { data: Heading }) {
             lineHeight: 1.02,
           }}
         >
-          {data.title}{" "}
-          <span style={{ color: "var(--color-text-tertiary)", fontWeight: 400 }}>
-            {data.subtitle}
-          </span>
+          <WeekSummary />
         </h1>
       </div>
 
@@ -104,13 +94,3 @@ function Stat({
     </div>
   );
 }
-
-const dotStyle: React.CSSProperties = {
-  display: "inline-block",
-  width: 3,
-  height: 3,
-  borderRadius: 999,
-  background: "var(--color-text-muted)",
-  margin: "0 8px",
-  verticalAlign: "middle",
-};

@@ -12,12 +12,19 @@ import {
   Cell,
 } from "recharts";
 import { AlertTriangle } from "lucide-react";
-import { useFoodLog } from "@/app/_providers/food-log-provider";
+import { useDashboardWeek } from "@/app/_providers/dashboard-week-provider";
 
 const DOW_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
 export function CalorieSummary() {
-  const { week, today, target, loading } = useFoodLog();
+  const {
+    foodWeek: week,
+    today,
+    target,
+    foodLoading: loading,
+    isCurrent,
+    rangeLabel,
+  } = useDashboardWeek();
 
   // Targets as kcal contributions (P×4, C×4, F×9). Falls back to a neutral
   // 2500 kcal target when no row exists yet so the chart still renders.
@@ -56,7 +63,7 @@ export function CalorieSummary() {
   }));
 
   // Today's macros in grams from logged items (more accurate than kcal-back-derivation).
-  const macros = today.reduce(
+  const todayMacros = today.reduce(
     (acc, m) => ({
       protein: acc.protein + m.proteinG,
       carbs: acc.carbs + m.carbsG,
@@ -64,6 +71,14 @@ export function CalorieSummary() {
     }),
     { protein: 0, carbs: 0, fat: 0 },
   );
+  // Past weeks have no "today" — show the week's daily-average instead (Mon..Sun / 7).
+  const weekAvgMacros = {
+    protein: safeWeek.reduce((s, d) => s + d.proteinG, 0) / 7,
+    carbs: safeWeek.reduce((s, d) => s + d.carbsG, 0) / 7,
+    fat: safeWeek.reduce((s, d) => s + d.fatG, 0) / 7,
+  };
+  const weekAvgKcal = Math.round(safeWeek.reduce((s, d) => s + d.totalKcal, 0) / 7);
+  const macros = isCurrent ? todayMacros : weekAvgMacros;
   const macroTargets = {
     protein: t.proteinG,
     carbs: t.carbsG,
@@ -134,7 +149,7 @@ export function CalorieSummary() {
     <Card>
       <SectionHead
         size="md"
-        overline={<>Nutrition <Sep /> This week</>}
+        overline={<>Nutrition <Sep /> {isCurrent ? "This week" : rangeLabel}</>}
         title="Calories vs target."
         right={
           avgDelta !== 0 ? (
@@ -340,17 +355,21 @@ export function CalorieSummary() {
             className="text-label-md"
             style={{ color: "var(--color-text-tertiary)" }}
           >
-            Today <Sep /> {todayGroups.length} {todayGroups.length === 1 ? "meal" : "meals"}
+            {isCurrent ? (
+              <>Today <Sep /> {todayGroups.length} {todayGroups.length === 1 ? "meal" : "meals"}</>
+            ) : (
+              "Daily average"
+            )}
           </span>
           <span
             className="font-mono-sm"
             style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}
           >
-            {Math.round(todayTotalKcal).toLocaleString()} /{" "}
-            {targetTotal.toLocaleString()} kcal
+            {(isCurrent ? Math.round(todayTotalKcal) : weekAvgKcal).toLocaleString()} /{" "}
+            {targetTotal.toLocaleString()} kcal{isCurrent ? "" : " avg/day"}
           </span>
         </div>
-        {loading && todayGroups.length === 0 && (
+        {isCurrent && loading && todayGroups.length === 0 && (
           <div
             style={{
               padding: "var(--space-sm)",
@@ -361,7 +380,7 @@ export function CalorieSummary() {
             Loading…
           </div>
         )}
-        {!loading && todayGroups.length === 0 && (
+        {isCurrent && !loading && todayGroups.length === 0 && (
           <div
             style={{
               padding: "var(--space-sm)",
@@ -372,7 +391,7 @@ export function CalorieSummary() {
             Nothing logged yet today.
           </div>
         )}
-        {todayGroups.map((m, i) => (
+        {isCurrent && todayGroups.map((m, i) => (
           <div
             key={i}
             style={{
