@@ -81,6 +81,16 @@ COPY --from=builder --chown=nextjs:nodejs /app/scripts/garmin ./scripts/garmin
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# --- Migrate-on-start ---
+# The standalone trace omits the migrator submodule + drizzle-kit (devDep), so
+# ship the migration SQL, the runtime migrator, and the full drizzle-orm package
+# (overlays the pruned copy with the migrator subpath). migrate-runtime.mjs runs
+# before server.js on every boot — idempotent, applies pending migrations to the
+# persistent DB volume. See docs / docker-compose for the deploy.
+COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/migrate-runtime.mjs ./scripts/migrate-runtime.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
+
 USER nextjs
 
 EXPOSE 3000
@@ -90,5 +100,6 @@ ENV PORT=3000
 # server.js is created by next build from the standalone output
 # https://nextjs.org/docs/pages/api-reference/config/next-config-js/output
 ENV HOSTNAME="0.0.0.0"
-CMD ["node", "server.js"]
+# Apply pending migrations, then hand off to the server (exec → clean signals).
+CMD ["sh", "-c", "node scripts/migrate-runtime.mjs && exec node server.js"]
 
