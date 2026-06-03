@@ -1308,11 +1308,20 @@ function PhotoPanel({
 }) {
   const [busy, setBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [staged, setStaged] = useState<PreparedImage | null>(null);
   const [context, setContext] = useState("");
-  const contextRef = useRef(context);
-  contextRef.current = context;
 
-  const handlePrepared = async (prepared: PreparedImage) => {
+  // Stage the prepared image and show a thumbnail; defer the FMA call until the
+  // user clicks Analyze so they can add context first. Upload/paste no longer
+  // auto-analyzes (parity with the Type tab's explicit submit).
+  const handleStaged = (prepared: PreparedImage) => {
+    setError(null);
+    setStaged(prepared);
+    setPreviewUrl(`data:${prepared.mimeType};base64,${prepared.base64}`);
+  };
+
+  const analyze = async () => {
+    if (!staged || busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -1320,12 +1329,12 @@ function PhotoPanel({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageBase64: prepared.base64,
-          filename: prepared.filename,
-          mimeType: prepared.mimeType,
-          capturedAt: prepared.capturedAt ? prepared.capturedAt.toISOString() : null,
+          imageBase64: staged.base64,
+          filename: staged.filename,
+          mimeType: staged.mimeType,
+          capturedAt: staged.capturedAt ? staged.capturedAt.toISOString() : null,
           locale: locale === "en" ? undefined : locale,
-          context: contextRef.current.trim() || undefined,
+          context: context.trim() || undefined,
         }),
       });
       const body = (await res.json()) as FmaAnalyzeResponse & {
@@ -1334,12 +1343,10 @@ function PhotoPanel({
         error?: string;
       };
       if (!res.ok) throw new Error(body.error ?? `${res.status}`);
-      // HEIC can't render in <img>; prefer the server's transcoded JPEG.
-      setPreviewUrl(
-        body.convertedImageBase64
-          ? `data:image/jpeg;base64,${body.convertedImageBase64}`
-          : `data:${prepared.mimeType};base64,${prepared.base64}`,
-      );
+      // HEIC can't render in <img>; swap to the server's transcoded JPEG.
+      if (body.convertedImageBase64) {
+        setPreviewUrl(`data:image/jpeg;base64,${body.convertedImageBase64}`);
+      }
       onResult(
         body.items.map((it, i) => fromFmaItem(it, i, "photo")),
         body.exifDate ?? undefined,
@@ -1365,7 +1372,7 @@ function PhotoPanel({
       <PanelLabel>Meal photo</PanelLabel>
       <PhotoDropzone
         icon={<Camera size={14} />}
-        label="Tap to pick a photo · or paste"
+        label={staged ? "Tap to replace · or paste" : "Tap to pick a photo · or paste"}
         busyLabel="Analyzing…"
         busy={busy}
         // Plate photos don't need OCR fidelity — shrink to ~1280px / ~400KB to
@@ -1377,13 +1384,14 @@ function PhotoPanel({
           qualitySteps: [0.8, 0.7, 0.6, 0.5],
           bestEffort: true,
         }}
-        onPrepared={handlePrepared}
+        onPrepared={handleStaged}
         onError={setError}
       />
       {previewUrl && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={previewUrl} alt="meal" style={previewImgStyle} />
       )}
+      <ActionRow busy={busy} disabled={!staged} onClick={analyze} />
     </div>
   );
 }
