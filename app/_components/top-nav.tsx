@@ -15,7 +15,16 @@ const TABS = [
   { href: "/races", label: "Races", shortLabel: "Races" },
 ] as const;
 
-const ENV_LABEL = "DEV";
+// Prod build (TrueNAS / `next start`) reads NODE_ENV=production → "PROD".
+// `npm run dev` → "DEV". NEXT_PUBLIC_APP_ENV overrides for staging/custom.
+const ENV_LABEL =
+  process.env.NEXT_PUBLIC_APP_ENV ??
+  (process.env.NODE_ENV === "production" ? "PROD" : "DEV");
+// PROD reads green ("healthy"); anything else (DEV/staging) amber ("caution").
+const ENV_COLOR =
+  ENV_LABEL === "PROD"
+    ? "var(--color-semantic-success)"
+    : "var(--color-semantic-warning)";
 
 function WordmarkGlyph() {
   return (
@@ -162,8 +171,8 @@ export function TopNav() {
               fontSize: 10,
               letterSpacing: "0.08em",
               textTransform: "uppercase",
-              background: "color-mix(in srgb, var(--color-semantic-success) 18%, transparent)",
-              color: "var(--color-semantic-success)",
+              background: `color-mix(in srgb, ${ENV_COLOR} 18%, transparent)`,
+              color: ENV_COLOR,
             }}
           >
             {ENV_LABEL}
