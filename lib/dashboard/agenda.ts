@@ -18,7 +18,7 @@
  * Everything is computed from the injected `now` + `tz`, so the module is pure
  * and unit-testable with no clock/DB/network.
  */
-import type { DayAgenda, DayName, Session } from "./mock-data";
+import type { DayAgenda, DayName, Session, SessionDiscipline } from "./mock-data";
 import type { JoinedWorkout } from "@/lib/hevy/workouts-since";
 import type { GarminActivity, CalendarItem } from "@/lib/agenda/types";
 
@@ -153,6 +153,23 @@ function humanizeType(activityType: string): string {
     .join(" ");
 }
 
+/**
+ * Discipline bucket for the weekly agenda's colour + grouping. Heuristic by
+ * design — the sources don't carry a clean discipline field:
+ *  - Garmin: keyword on the activity typeKey (walking/running/strength_training…),
+ *    unknown cardio falls back to "run" so it stays visible (walk is the quiet one).
+ *  - Hevy: keyword on the workout title (a "Hyrox Sim" or "Sprints" logged in Hevy
+ *    isn't strength), default "strength".
+ */
+function disciplineFrom(text: string, fallback: SessionDiscipline): SessionDiscipline {
+  const t = text.toLowerCase();
+  if (t.includes("hyrox")) return "hyrox";
+  if (t.includes("run") || t.includes("sprint")) return "run";
+  if (t.includes("walk") || t.includes("hik")) return "walk";
+  if (t.includes("strength") || t.includes("weight")) return "strength";
+  return fallback;
+}
+
 // --- merge ---
 
 export function buildAgenda({
@@ -270,26 +287,33 @@ function doneSessions(hevy: JoinedWorkout[], garmin: GarminActivity[], tz: strin
   const cards: { start: number; session: Session }[] = [];
 
   for (const w of hevy) {
+    const mins = minutesBetween(w.start_time, w.end_time);
+    const name = w.title || "Workout";
     cards.push({
       start: Date.parse(w.start_time),
       session: {
-        name: w.title || "Workout",
+        name,
         source: "hevy",
         time: localTimeLabel(w.start_time, tz),
-        meta: durationMeta(minutesBetween(w.start_time, w.end_time)),
+        meta: durationMeta(mins),
+        type: disciplineFrom(name, "strength"),
+        durationMin: mins ?? undefined,
         status: "done",
       },
     });
   }
 
   for (const a of keptGarmin) {
+    const mins = a.durationS ? Math.round(a.durationS / 60) : null;
     cards.push({
       start: Date.parse(a.startTime),
       session: {
         name: a.name || humanizeType(a.activityType),
         source: "garmin",
         time: localTimeLabel(a.startTime, tz),
-        meta: durationMeta(a.durationS ? Math.round(a.durationS / 60) : null),
+        meta: durationMeta(mins),
+        type: disciplineFrom(`${a.activityType} ${a.name ?? ""}`, "run"),
+        durationMin: mins ?? undefined,
         status: "done",
       },
     });
@@ -306,6 +330,7 @@ function plannedSessions(calendar: CalendarItem[], tz: string): Session[] {
       name: c.title.trim(),
       source: "calendar" as const,
       time: localTimeLabel(c.start, tz),
+      type: disciplineFrom(c.title, "strength"),
       status: "planned" as const,
     }));
 }

@@ -43,6 +43,9 @@
   --color-data-5: #A484C7;
   --color-data-6: #A3A09A;
 
+  /* Quiet neutral for low-signal agenda entries (walking) — recedes vs disciplines */
+  --color-discipline-walk: #8C8A85;
+
   /* Gradient (sacred — one per page) */
   --gradient-primary: linear-gradient(135deg, #9100D0 0%, #AE33ED 100%);
 
@@ -146,6 +149,7 @@
   --color-data-4: #8C6500;
   --color-data-5: #7C5295;
   --color-data-6: #5F5E5A;
+  --color-discipline-walk: #9A988F;
 
   --color-outline: rgba(28, 27, 27, 0.08);
   --color-glass: rgba(255, 255, 255, 0.85);

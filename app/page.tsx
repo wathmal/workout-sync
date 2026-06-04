@@ -22,7 +22,7 @@ export default function OverviewPage() {
           gap: "var(--space-2xl)",
         }}
       >
-        <OverviewHeading data={overviewMock.heading} />
+        <OverviewHeading />
 
         <WeeklyAgendaLive />
 

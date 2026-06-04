@@ -54,7 +54,7 @@ describe("buildAgenda", () => {
     const mon = dayOf(r, "Mon");
     expect(mon.isRest).toBeUndefined();
     expect(mon.sessions).toEqual([
-      { name: "Pull", source: "hevy", time: "07:00", meta: "52m", status: "done" },
+      { name: "Pull", source: "hevy", time: "07:00", meta: "52m", type: "strength", durationMin: 52, status: "done" },
     ]);
   });
 
@@ -101,7 +101,7 @@ describe("buildAgenda", () => {
     );
     const wed = dayOf(r, "Wed");
     expect(wed.sessions).toEqual([
-      { name: "Morning Push", source: "hevy", time: "07:00", meta: "60m", status: "done" },
+      { name: "Morning Push", source: "hevy", time: "07:00", meta: "60m", type: "strength", durationMin: 60, status: "done" },
     ]);
   });
 
@@ -114,7 +114,7 @@ describe("buildAgenda", () => {
     );
     const wed = dayOf(r, "Wed");
     expect(wed.sessions).toEqual([
-      { name: "Move Total", source: "calendar", time: "07:00", status: "planned" },
+      { name: "Move Total", source: "calendar", time: "07:00", type: "strength", status: "planned" },
     ]);
   });
 
@@ -128,7 +128,7 @@ describe("buildAgenda", () => {
     );
     const wed = dayOf(r, "Wed");
     expect(wed.sessions).toEqual([
-      { name: "Morning Push", source: "hevy", time: "07:00", meta: "60m", status: "done" },
+      { name: "Morning Push", source: "hevy", time: "07:00", meta: "60m", type: "strength", durationMin: 60, status: "done" },
     ]);
   });
 
@@ -185,11 +185,32 @@ describe("buildAgenda", () => {
     expect(r.days.map((d) => d.date)).toEqual([11, 12, 13, 14, 15, 16, 17]);
     expect(r.rangeLabel).toBe("May 11 – 17");
     expect(dayOf(r, "Mon").sessions).toEqual([
-      { name: "Last Pull", source: "hevy", time: "07:00", meta: "45m", status: "done" },
+      { name: "Last Pull", source: "hevy", time: "07:00", meta: "45m", type: "strength", durationMin: 45, status: "done" },
     ]);
     // Past week uses actuals for every day, so calendar planned items never show.
     expect(dayOf(r, "Fri").sessions).toEqual([]);
     expect(r.days.every((d) => !d.isToday)).toBe(true);
+  });
+
+  it("infers discipline + numeric duration: Garmin by activityType, Hevy by title", () => {
+    const r = buildAgenda(
+      base({
+        now: new Date("2026-05-20T22:00:00+10:00"), // Wed actuals
+        hevy: [
+          hevy({ title: "REVL Upper", start_time: "2026-05-20T07:00:00+10:00", end_time: "2026-05-20T07:45:00+10:00" }),
+          hevy({ title: "Hyrox Sim Solo", start_time: "2026-05-20T12:00:00+10:00", end_time: "2026-05-20T13:30:00+10:00" }),
+          hevy({ title: "Sprints", start_time: "2026-05-20T19:00:00+10:00", end_time: "2026-05-20T19:25:00+10:00" }),
+        ],
+        garmin: [garmin({ garminId: "w", activityType: "walking", name: "Central Coast Walking", durationS: 1380, startTime: "2026-05-20T16:00:00+10:00" })],
+      }),
+    );
+    const wed = dayOf(r, "Wed").sessions;
+    expect(wed.map((s) => [s.name, s.type, s.durationMin])).toEqual([
+      ["REVL Upper", "strength", 45],
+      ["Hyrox Sim Solo", "hyrox", 90],
+      ["Central Coast Walking", "walk", 23],
+      ["Sprints", "run", 25],
+    ]);
   });
 
   it("anchor === now is identical to the no-anchor current week", () => {

@@ -9,6 +9,9 @@
 export type SessionStatus = "done" | "planned" | "rest";
 export type SessionSource = "hevy" | "garmin" | "calendar";
 
+/** Activity discipline — drives the colour + grouping in the weekly agenda. */
+export type SessionDiscipline = "walk" | "run" | "strength" | "hyrox";
+
 export interface Session {
   name: string;
   /** Where the card came from — shown as a small source label. */
@@ -17,6 +20,10 @@ export interface Session {
   time?: string;
   /** Sub-line, e.g. "52m". Omitted for planned (calendar) cards. */
   meta?: string;
+  /** Discipline bucket — colour + grouping key. Walking is kept visually quiet. */
+  type?: SessionDiscipline;
+  /** Numeric duration in minutes — totals, stacked bars. Omitted when unknown. */
+  durationMin?: number;
   status: SessionStatus;
 }
 
@@ -63,18 +70,6 @@ export interface LogEntry {
 }
 
 export interface OverviewMock {
-  heading: {
-    date: string;       // "Saturday"
-    week: number;
-    fullDate: string;   // "May 23 · 2026"
-    streak: number;
-    weeklyLoad: number; // kg
-    bodyFat: number;
-    bodyFatDelta: number;
-    raceInDays: number;
-    title: string;
-    subtitle: string;
-  };
   calories: {
     week: CalorieDay[];
     targetTotal: number;
@@ -122,19 +117,6 @@ function buildTrend(): TrendPoint[] {
 }
 
 export const overviewMock: OverviewMock = {
-  heading: {
-    date: "Saturday",
-    week: 21,
-    fullDate: "May 23 · 2026",
-    streak: 12,
-    weeklyLoad: 23420,
-    bodyFat: 27.0,
-    bodyFatDelta: -0.5,
-    raceInDays: 22,
-    title: "Push day.",
-    subtitle: "8 km easy after.",
-  },
-
   calories: {
     week: [
       { day: "MON", protein: 680, carbs: 1280, fat: 792, total: 2752 },
