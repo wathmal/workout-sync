@@ -110,6 +110,7 @@ All server-side only — API keys never reach client.
 
 ## Conventions
 
+- **Git workflow.** Solo side project, self-hosted locally. Direct commit + push to `main` is fine — no need to branch or open a PR unless explicitly asked.
 - **No emoji in logs.** Keep `console.log/warn/error` (and any script output) plain ASCII — no 📅✅❌🔄 etc. Use word tags (`PASS`/`FAIL`/`WARNING`) when a status marker is needed. Typographic glyphs like `→` and box-drawing dividers are fine.
 
 ## Gotchas
