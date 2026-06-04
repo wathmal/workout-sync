@@ -43,9 +43,6 @@
   --color-data-5: #A484C7;
   --color-data-6: #A3A09A;
 
-  /* Quiet neutral for low-signal agenda entries (walking) — recedes vs disciplines */
-  --color-discipline-walk: #8C8A85;
-
   /* Gradient (sacred — one per page) */
   --gradient-primary: linear-gradient(135deg, #9100D0 0%, #AE33ED 100%);
 
@@ -120,6 +117,13 @@
   --font-body: "Inter", "Inter Fallback", -apple-system, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "JetBrains Mono Fallback", ui-monospace, "SF Mono", monospace;
   --font-sans: var(--font-body);
+}
+
+/* Plain :root (not @theme) so Tailwind doesn't tree-shake it — only referenced
+   via var() in JS inline styles, which the Tailwind scanner can't see.
+   Quiet neutral for low-signal agenda entries (walking) — recedes vs disciplines. */
+:root {
+  --color-discipline-walk: #8C8A85;
 }
 
 /* ────────────────────────────────────────────────────────────────

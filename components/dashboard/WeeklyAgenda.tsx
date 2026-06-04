@@ -37,14 +37,14 @@ function Day({ day, maxDay }: { day: DayAgenda; maxDay: number }) {
   return (
     <article
       style={{
-        background: isToday ? "rgba(174,51,237,0.07)" : "var(--color-surface-card)",
+        background: "var(--color-surface-card)",
         borderRadius: "var(--radius-card)",
         padding: 14,
         display: "flex",
         flexDirection: "column",
         gap: 10,
         minHeight: 220,
-        boxShadow: isToday ? "inset 0 0 0 1px rgba(174,51,237,0.4)" : "none",
+        boxShadow: isToday ? "inset 0 0 0 1.5px var(--color-brand-accent)" : "none",
       }}
     >
       {/* day header */}
