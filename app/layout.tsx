@@ -13,7 +13,7 @@ import { ShellProvider } from "@/app/_providers/shell-provider";
 import { TopNav } from "@/app/_components/top-nav";
 import { Footer } from "@/app/_components/footer";
 import { MobileBottomNav } from "@/app/_components/mobile-bottom-nav";
-import { MobileMain } from "@/app/_components/mobile-main";
+import { MobileTopBar } from "@/app/_components/mobile-top-bar";
 import { SwRegister } from "@/app/_components/sw-register";
 
 const spaceGrotesk = Space_Grotesk({
@@ -104,7 +104,16 @@ export default async function RootLayout({
                               boxShadow: "0 0 0 1px var(--color-outline)",
                             }}
                           >
-                            <MobileMain>{children}</MobileMain>
+                            <MobileTopBar />
+                            <main
+                              style={{
+                                minWidth: 0,
+                                paddingBottom:
+                                  "calc(56px + env(safe-area-inset-bottom, 0px))",
+                              }}
+                            >
+                              {children}
+                            </main>
                             <MobileBottomNav />
                           </div>
                         ) : (

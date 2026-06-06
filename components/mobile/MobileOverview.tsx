@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { useDashboardWeek } from "@/app/_providers/dashboard-week-provider";
 import { useRaces } from "@/app/_providers/race-provider";
-import { MobileTopBar } from "@/app/_components/mobile-top-bar";
 import { CalorieSummary } from "@/components/dashboard/CalorieSummary";
 import { MuscleCoverage } from "@/components/dashboard/MuscleCoverage";
 import {
@@ -50,7 +49,6 @@ export function MobileOverview({
 
   return (
     <div>
-      <MobileTopBar />
       <Hero days={agendaDays} rangeLabel={agendaRangeLabel} raceInDays={nextRace?.daysUntil ?? null} />
       <Agenda days={agendaDays} rangeLabel={agendaRangeLabel} />
       <div style={{ padding: SECTION_PAD }}>
