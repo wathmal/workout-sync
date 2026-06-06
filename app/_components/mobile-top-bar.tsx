@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { usePathname } from "next/navigation";
 import { AlertTriangle, RefreshCw, Sun, Moon } from "lucide-react";
 import { useHevy } from "@/app/_providers/hevy-provider";
 import { useFoodLog } from "@/app/_providers/food-log-provider";
@@ -9,6 +10,9 @@ import { useAgenda } from "@/app/_providers/agenda-provider";
 // Overview-only top chrome (per plan, off-dashboard pages keep their own
 // header). Mock visual + the real TopNav refresh/sync/theme wiring.
 export function MobileTopBar() {
+  // Refresh + last-updated are data-freshness controls — only meaningful on the
+  // Overview. Other pages get just the logo + theme toggle.
+  const isOverview = usePathname() === "/";
   const { refresh: refreshHevy, lastFetched: hevyLastFetched } = useHevy();
   const { refresh: refreshFood, lastFetched: foodLastFetched } = useFoodLog();
   const { sync: syncAgenda, syncError } = useAgenda();
@@ -118,6 +122,8 @@ export function MobileTopBar() {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {isOverview && (
+          <>
         {syncError && !refreshing && (
           <span
             title={syncError}
@@ -163,6 +169,8 @@ export function MobileTopBar() {
           <RefreshCw size={12} className={refreshing ? "animate-tl-spin" : ""} />
           Refresh
         </button>
+          </>
+        )}
         <button
           type="button"
           onClick={toggleTheme}
