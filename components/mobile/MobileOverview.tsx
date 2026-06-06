@@ -315,17 +315,33 @@ function SpineRow({ race, isNext }: { race: RaceView; isNext?: boolean }) {
     const cd = raceCountdown(race);
     const result = race.resultTime ?? race.resultPlacement ?? null;
     return (
-      <div style={{ display: "flex", marginBottom: isNext ? 4 : 16 }}>
+      <div
+        style={
+          isNext
+            ? {
+                // Full-width highlight band: negative margins cancel the card's
+                // 14px padding so the tint bleeds edge to edge, while the inner
+                // padding keeps the dot + name aligned with the other rows.
+                display: "flex",
+                marginTop: 4,
+                marginBottom: 14,
+                marginLeft: -14,
+                marginRight: -14,
+                padding: "10px 14px",
+                background: "color-mix(in srgb, var(--color-brand-accent) 12%, transparent)",
+              }
+            : { display: "flex", marginBottom: 16 }
+        }
+      >
         <div style={{ width: 28, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 3 }}>
           <div
             style={{
-              width: isNext ? 13 : 9,
-              height: isNext ? 13 : 9,
+              width: 9,
+              height: 9,
               borderRadius: 999,
               background: dot,
               zIndex: 2,
               border: "2px solid var(--color-surface-card)",
-              boxShadow: isNext ? "0 0 0 3px color-mix(in srgb, var(--color-brand-accent) 22%, transparent)" : "none",
               opacity: isPast ? 0.65 : 1,
             }}
           />
@@ -334,9 +350,7 @@ function SpineRow({ race, isNext }: { race: RaceView; isNext?: boolean }) {
           style={{
             flex: 1,
             minWidth: 0,
-            border: isNext ? "1px solid var(--color-brand-accent)" : "none",
-            borderRadius: isNext ? "var(--radius-md)" : 0,
-            padding: isNext ? "10px 12px" : "0 0 0 2px",
+            padding: "0 0 0 2px",
             opacity: isPast ? 0.65 : 1,
           }}
         >
