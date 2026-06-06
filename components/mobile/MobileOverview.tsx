@@ -163,11 +163,15 @@ function Agenda({ days, loading }: { days: DayAgenda[]; loading: boolean }) {
   return (
     <div style={{ padding: "16px 16px 0" }}>
       <div style={{ background: "var(--color-surface-card)", borderRadius: "var(--radius-lg)", padding: 14 }}>
-        {/* day title — same font/size as other card titles; tap the week strip to navigate */}
+        {/* overline (workout count) + day title — same pattern as other cards */}
         <div style={{ marginBottom: isRest ? 4 : 14 }}>
+          <div className="text-label-md" style={{ color: "var(--color-text-tertiary)", marginBottom: 2 }}>
+            {isRest ? "Rest day" : `${groups.length} workout${groups.length === 1 ? "" : "s"}`}
+          </div>
           <span
             className="text-headline-md"
             style={{
+              display: "block",
               color: day.isToday ? "var(--color-brand-accent)" : "var(--color-text-primary)",
             }}
           >
