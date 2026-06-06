@@ -16,6 +16,8 @@ interface AgendaContextType {
   rangeLabel: string;
   loading: boolean;
   error: string | null;
+  /** Per-source failures from the last sync (Garmin/Calendar), e.g. a dead token. */
+  syncError: string | null;
   lastFetched: number | null;
   /** Re-read the assembled agenda from Postgres + Hevy (fast). */
   refresh: () => Promise<void>;
@@ -30,6 +32,7 @@ export function AgendaProvider({ children }: { children: React.ReactNode }) {
   const [rangeLabel, setRangeLabel] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
@@ -51,9 +54,12 @@ export function AgendaProvider({ children }: { children: React.ReactNode }) {
 
   const sync = useCallback(async () => {
     try {
-      await syncAgendaAction();
+      const summary = await syncAgendaAction();
+      setSyncError(summary.errors.length ? summary.errors.join("; ") : null);
     } catch (e) {
-      setError((e as Error).message);
+      // The action itself threw (unexpected — per-source failures are caught
+      // inside runAgendaSync and returned in summary.errors instead).
+      setSyncError((e as Error).message);
     }
     await refresh();
   }, [refresh]);
@@ -63,8 +69,8 @@ export function AgendaProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const value = useMemo(
-    () => ({ days, rangeLabel, loading, error, lastFetched, refresh, sync }),
-    [days, rangeLabel, loading, error, lastFetched, refresh, sync],
+    () => ({ days, rangeLabel, loading, error, syncError, lastFetched, refresh, sync }),
+    [days, rangeLabel, loading, error, syncError, lastFetched, refresh, sync],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

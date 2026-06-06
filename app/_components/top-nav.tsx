@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { CircleUser, Moon, RefreshCw, Sun } from "lucide-react";
+import { AlertTriangle, CircleUser, Moon, RefreshCw, Sun } from "lucide-react";
 import { useHevy } from "@/app/_providers/hevy-provider";
 import { useFoodLog } from "@/app/_providers/food-log-provider";
 import { useAgenda } from "@/app/_providers/agenda-provider";
@@ -52,7 +52,7 @@ export function TopNav() {
   const pathname = usePathname();
   const { refresh: refreshHevy, lastFetched: hevyLastFetched } = useHevy();
   const { refresh: refreshFood, lastFetched: foodLastFetched } = useFoodLog();
-  const { sync: syncAgenda } = useAgenda();
+  const { sync: syncAgenda, syncError } = useAgenda();
 
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [mounted, setMounted] = useState(false);
@@ -249,6 +249,25 @@ export function TopNav() {
         >
           {mounted ? updated : ""}
         </span>
+
+        {syncError && !refreshing && (
+          <span
+            title={syncError}
+            aria-label={`Sync error: ${syncError}`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              color: "var(--color-warning)",
+              fontFamily: "var(--font-body)",
+              fontSize: 12,
+              cursor: "help",
+            }}
+          >
+            <AlertTriangle size={14} />
+            <span className="topnav-syncerr-label">Sync issue</span>
+          </span>
+        )}
 
         <button
           type="button"

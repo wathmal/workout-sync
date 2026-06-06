@@ -50,5 +50,9 @@ export async function runAgendaSync(now: Date = new Date()): Promise<SyncSummary
     })(),
   ]);
 
+  if (summary.errors.length) {
+    console.warn("[agenda-sync] errors:", summary.errors.join("; "));
+  }
+
   return summary;
 }
