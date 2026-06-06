@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { WorkoutProvider } from "@/app/_providers/workout-provider";
@@ -8,8 +9,11 @@ import { RaceProvider } from "@/app/_providers/race-provider";
 import { HevyProvider } from "@/app/_providers/hevy-provider";
 import { AgendaProvider } from "@/app/_providers/agenda-provider";
 import { DashboardWeekProvider } from "@/app/_providers/dashboard-week-provider";
+import { ShellProvider } from "@/app/_providers/shell-provider";
 import { TopNav } from "@/app/_components/top-nav";
 import { Footer } from "@/app/_components/footer";
+import { MobileBottomNav } from "@/app/_components/mobile-bottom-nav";
+import { SwRegister } from "@/app/_components/sw-register";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -34,7 +38,21 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "Fit Sync",
-  description: "From the gym board to Hevy in one shot.",
+  description:
+    "All in one personal training dashboard. Log workouts, track macros, body composition and races.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Fit Sync",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0D0D0D",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 // Runs before React hydrates → no flash of wrong theme.
@@ -49,11 +67,14 @@ const themeBootstrap = `
 })();
 `;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Shell decided server-side in middleware.ts — one tree, no client flash.
+  const isMobile = (await headers()).get("x-shell") === "m";
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -69,11 +90,42 @@ export default function RootLayout({
                 <RaceProvider>
                   <AgendaProvider>
                     <DashboardWeekProvider>
-                      <div className="app-shell" style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-                        <TopNav />
-                        <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
-                        <Footer />
-                      </div>
+                      <ShellProvider isMobile={isMobile}>
+                        {isMobile ? (
+                          <div
+                            className="app-shell app-shell--mobile"
+                            style={{
+                              position: "relative",
+                              maxWidth: 480,
+                              margin: "0 auto",
+                              minHeight: "100dvh",
+                              background: "var(--color-surface-base)",
+                              boxShadow: "0 0 0 1px var(--color-outline)",
+                            }}
+                          >
+                            <main
+                              style={{
+                                minWidth: 0,
+                                paddingBottom:
+                                  "calc(56px + env(safe-area-inset-bottom, 0px))",
+                              }}
+                            >
+                              {children}
+                            </main>
+                            <MobileBottomNav />
+                          </div>
+                        ) : (
+                          <div
+                            className="app-shell"
+                            style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}
+                          >
+                            <TopNav />
+                            <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
+                            <Footer />
+                          </div>
+                        )}
+                        <SwRegister />
+                      </ShellProvider>
                     </DashboardWeekProvider>
                   </AgendaProvider>
                 </RaceProvider>

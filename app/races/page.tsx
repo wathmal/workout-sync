@@ -12,7 +12,6 @@ import {
   Trash2,
   Trophy,
 } from "lucide-react";
-import { ViewportGuard } from "@/app/_components/viewport-guard";
 import { Overline } from "@/app/_components/overline";
 import { useRaces } from "@/app/_providers/race-provider";
 import { categoryColor, categoryLabel, type RaceView } from "@/lib/race/types";
@@ -45,14 +44,14 @@ export default function RacesPage() {
   const past = [...yearViews.filter((v) => v.status === "past")].reverse();
 
   return (
-    <ViewportGuard>
+    <>
       <div
-        style={{
-          maxWidth: 920,
-          margin: "0 auto",
-          padding: "var(--space-xl) var(--space-2xl) var(--space-3xl)",
-          display: "flex",
-          flexDirection: "column",
+      style={{
+        maxWidth: 920,
+        margin: "0 auto",
+        padding: "var(--space-xl) clamp(var(--space-md), 4vw, var(--space-2xl)) var(--space-3xl)",
+        display: "flex",
+        flexDirection: "column",
           gap: "var(--space-xl)",
         }}
       >
@@ -149,7 +148,7 @@ export default function RacesPage() {
           onSubmit={(result) => setResult(dialog.race.id, result)}
         />
       )}
-    </ViewportGuard>
+    </>
   );
 }
 
