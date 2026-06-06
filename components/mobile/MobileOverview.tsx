@@ -313,7 +313,7 @@ function Agenda({
               style={{
                 fontFamily: "var(--font-body)",
                 fontWeight: 500,
-                fontSize: 14,
+                fontSize: 18,
                 color: day.isToday ? "var(--color-brand-accent)" : "var(--color-text-secondary)",
               }}
             >
@@ -322,7 +322,7 @@ function Agenda({
             <span
               style={{
                 fontFamily: "var(--font-mono)",
-                fontSize: 22,
+                fontSize: 18,
                 fontWeight: 500,
                 color: isRest ? "var(--color-text-tertiary)" : "var(--color-text-primary)",
                 fontVariantNumeric: "tabular-nums",
