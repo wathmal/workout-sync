@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { AlertTriangle } from "lucide-react";
 import { useDashboardWeek } from "@/app/_providers/dashboard-week-provider";
+import { useShell } from "@/app/_providers/shell-provider";
 
 const DOW_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
@@ -25,6 +26,9 @@ export function CalorieSummary() {
     isCurrent,
     rangeLabel,
   } = useDashboardWeek();
+  // On mobile the reference-line labels (P / P+C / target) eat a 96px right
+  // margin and squeeze the bars — drop them there; the legend below covers it.
+  const { isMobile } = useShell();
 
   // Targets as kcal contributions (P×4, C×4, F×9). Falls back to a neutral
   // 2500 kcal target when no row exists yet so the chart still renders.
@@ -178,7 +182,7 @@ export function CalorieSummary() {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}
-            margin={{ top: 16, right: 96, left: 0, bottom: 24 }}
+            margin={{ top: 16, right: isMobile ? 10 : 96, left: 0, bottom: 24 }}
             barCategoryGap="16%"
           >
             <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
@@ -244,7 +248,7 @@ export function CalorieSummary() {
               stroke="var(--color-data-2)"
               strokeDasharray="2 3"
               strokeOpacity={0.55}
-              label={{
+              label={isMobile ? undefined : {
                 value: "P",
                 position: "right",
                 fill: "var(--color-data-2)",
@@ -257,7 +261,7 @@ export function CalorieSummary() {
               stroke="var(--color-data-3)"
               strokeDasharray="2 3"
               strokeOpacity={0.55}
-              label={{
+              label={isMobile ? undefined : {
                 value: "P+C",
                 position: "right",
                 fill: "var(--color-data-3)",
@@ -270,7 +274,7 @@ export function CalorieSummary() {
               stroke="var(--color-data-4)"
               strokeDasharray="2 3"
               strokeOpacity={0.75}
-              label={{
+              label={isMobile ? undefined : {
                 value: "target · P+C+F",
                 position: "right",
                 fill: "var(--color-data-4)",
