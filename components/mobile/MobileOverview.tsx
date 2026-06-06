@@ -73,9 +73,6 @@ function Hero({ days, rangeLabel }: { days: DayAgenda[]; rangeLabel: string }) {
     const b = wb.byType[disc];
     if (b?.count) legend.push({ label: TYPE[disc].label, count: b.count, color: TYPE[disc].color });
   }
-  if (wb.restDays > 0) {
-    legend.push({ label: "Rest", count: wb.restDays, color: "var(--color-surface-disabled)" });
-  }
 
   return (
     <div style={{ padding: "16px 16px 0" }}>
