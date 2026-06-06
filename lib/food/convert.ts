@@ -10,10 +10,20 @@ import type {
   FmaItem,
   FmaComponent,
   FmaMacros,
+  FmaServing,
   FoodLogSource,
   MealComponent,
   PendingItem,
 } from "./types";
+
+/**
+ * Default grams for a search hit: the serving amount when present (g or mL —
+ * density~1 assumed for mL), else 100. Guards against null/zero/negative.
+ */
+export function defaultGramsForHit(serving: FmaServing | null | undefined): number {
+  const a = serving?.amount;
+  return a != null && a > 0 ? a : 100;
+}
 
 export function fmaComponentToMeal(c: FmaComponent): MealComponent {
   return {

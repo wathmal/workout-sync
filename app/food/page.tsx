@@ -34,7 +34,7 @@ import type {
   MealItem,
   PendingItem,
 } from "@/lib/food/types";
-import { fromFmaItem, displayComponents, pendingRawResponse } from "@/lib/food/convert";
+import { fromFmaItem, displayComponents, pendingRawResponse, defaultGramsForHit } from "@/lib/food/convert";
 import { PhotoDropzone } from "@/app/_components/photo-dropzone";
 import type { PreparedImage } from "@/lib/image-resize";
 import {
@@ -1030,8 +1030,9 @@ function SearchPanel({
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {hits.map((h) => {
           const key = `${h.source}:${h.source_id}`;
-          const gStr = pickGrams[key] ?? "100";
+          const gStr = pickGrams[key] ?? String(defaultGramsForHit(h.serving));
           const grams = Number(gStr) || 100;
+          const servingLabel = formatServing(h.serving);
           const scale = grams / 100;
           const kcal = (h.kcal_per_100g ?? 0) * scale;
           const protein = (h.protein_g_per_100g ?? 0) * scale;
@@ -1053,6 +1054,11 @@ function SearchPanel({
             >
               <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0, alignItems: "flex-start" }}>
                 <span style={{ fontSize: 13 }}>{h.name}</span>
+                {servingLabel && (
+                  <span style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>
+                    {servingLabel}
+                  </span>
+                )}
                 <MacroChips p={protein} c={carbs} f={fat} />
               </div>
               <input
