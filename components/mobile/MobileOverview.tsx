@@ -166,28 +166,15 @@ function Agenda({ days, loading }: { days: DayAgenda[]; loading: boolean }) {
   return (
     <div style={{ padding: "16px 16px 0" }}>
       <div style={{ background: "var(--color-surface-card)", borderRadius: "var(--radius-lg)", padding: 14 }}>
-        {/* day + date (tap the week strip below to navigate) */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: isRest ? 4 : 14 }}>
+        {/* day title — same font/size as other card titles; tap the week strip to navigate */}
+        <div style={{ marginBottom: isRest ? 4 : 14 }}>
           <span
+            className="text-headline-md"
             style={{
-              fontFamily: "var(--font-body)",
-              fontWeight: 500,
-              fontSize: 18,
-              color: day.isToday ? "var(--color-brand-accent)" : "var(--color-text-secondary)",
+              color: day.isToday ? "var(--color-brand-accent)" : "var(--color-text-primary)",
             }}
           >
             {FULL_DAY[day.day] ?? day.day}
-          </span>
-          <span
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 18,
-              fontWeight: 500,
-              color: isRest ? "var(--color-text-tertiary)" : "var(--color-text-primary)",
-              fontVariantNumeric: "tabular-nums",
-            }}
-          >
-            {day.date}
           </span>
         </div>
 
