@@ -434,13 +434,13 @@ function RaceSpine({ views }: { views: RaceView[] }) {
   return (
     <div style={{ padding: SECTION_PAD }}>
       <div style={{ background: "var(--color-surface-card)", borderRadius: "var(--radius-card)", padding: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <span style={{ fontFamily: "var(--font-body)", fontWeight: 600, fontSize: 10, letterSpacing: "1.3px", textTransform: "uppercase", color: "var(--color-text-tertiary)" }}>
-            Long horizon · Race calendar.
-          </span>
-          <span style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "var(--color-text-muted)" }}>
+        <div style={{ marginBottom: 16 }}>
+          <div className="text-label-md" style={{ color: "var(--color-text-tertiary)" }}>
             {views.length} events · {done} done
-          </span>
+          </div>
+          <h2 className="text-headline-md" style={{ color: "var(--color-text-primary)", margin: "2px 0 0" }}>
+            Race calendar.
+          </h2>
         </div>
 
         <div style={{ position: "relative" }}>
