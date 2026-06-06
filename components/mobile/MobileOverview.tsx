@@ -319,10 +319,7 @@ function Agenda({
 
           {!isRest && (
             <div style={{ margin: "14px 14px 0", borderTop: "1px solid var(--color-outline)" }}>
-              <div style={{ height: 3, background: "var(--color-surface-disabled)", borderRadius: 999, margin: "8px 0 6px" }}>
-                <div style={{ width: "60%", height: "100%", background: "var(--color-data-3)", borderRadius: 999 }} />
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0 12px" }}>
                 <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--color-text-muted)" }}>
                   {groups.length} log{groups.length === 1 ? "" : "s"}
                 </span>
