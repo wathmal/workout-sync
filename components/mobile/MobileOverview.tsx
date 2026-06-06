@@ -418,14 +418,15 @@ function StatNav({
         alignSelf: "stretch",
         flexShrink: 0,
         border: 0,
+        // Always visible (solid card) even at the week edge — only the arrow
+        // greys out to signal disabled.
         background: "var(--color-surface-card)",
         borderRadius: "var(--radius-card)",
         cursor: active ? "pointer" : "default",
-        opacity: active ? 1 : 0.4,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: active ? "var(--color-text-primary)" : "var(--color-surface-disabled)",
+        color: active ? "var(--color-text-primary)" : "var(--color-text-muted)",
       }}
     >
       {dir === "prev" ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
