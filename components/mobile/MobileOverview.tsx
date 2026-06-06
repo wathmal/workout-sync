@@ -44,7 +44,7 @@ export function MobileOverview({
   svgs: { front: string; back: string };
   trend: TrendPoint[];
 }) {
-  const { agendaDays, agendaRangeLabel } = useDashboardWeek();
+  const { agendaDays, agendaRangeLabel, agendaLoading } = useDashboardWeek();
   const { views, nextRace } = useRaces();
 
   // Shared day selection: the nav arrows live in the hero stats strip, the dots
@@ -66,7 +66,7 @@ export function MobileOverview({
         onPrev={() => setPicked(Math.max(0, idx - 1))}
         onNext={() => setPicked(Math.min(lastIdx, idx + 1))}
       />
-      <Agenda days={agendaDays} idx={idx} setIdx={setPicked} />
+      <Agenda days={agendaDays} idx={idx} setIdx={setPicked} loading={agendaLoading} />
       <div style={{ padding: SECTION_PAD }}>
         <CalorieSummary />
       </div>
@@ -205,16 +205,53 @@ function Hero({
 }
 
 /* ── Agenda: single-day navigator + week strip ────────────────── */
+function AgendaSkeleton() {
+  return (
+    <div style={{ padding: "12px 16px 0" }} aria-busy="true">
+      <div
+        style={{
+          height: 5,
+          width: 60,
+          borderRadius: 999,
+          background: "var(--color-surface-disabled)",
+          margin: "0 auto 12px",
+        }}
+      />
+      <div
+        style={{
+          height: 180,
+          borderRadius: "var(--radius-lg)",
+          background: "var(--color-surface-card)",
+          border: "1px solid var(--color-outline)",
+        }}
+      />
+      <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div
+            key={i}
+            style={{ height: 56, borderRadius: "var(--radius-md)", background: "var(--color-surface-card)" }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Agenda({
   days,
   idx,
   setIdx,
+  loading,
 }: {
   days: DayAgenda[];
   idx: number;
   setIdx: (i: number) => void;
+  loading: boolean;
 }) {
-  if (days.length === 0) return null;
+  // /api/agenda (Garmin subprocess + Calendar + Hevy merge) is slower than the
+  // local food data, so reserve the height with a skeleton while it loads —
+  // otherwise the cards below paint first, then the agenda shoves them down.
+  if (days.length === 0) return loading ? <AgendaSkeleton /> : null;
   const day = days[Math.min(idx, days.length - 1)];
   const groups = groupDay(day);
   const isRest = day.isRest || day.sessions.length === 0;
