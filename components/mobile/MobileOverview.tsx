@@ -134,15 +134,30 @@ function Hero({ days, rangeLabel }: { days: DayAgenda[]; rangeLabel: string }) {
 
 /* ── Agenda: single-day navigator + week strip ────────────────── */
 function AgendaSkeleton() {
+  // Mirror the real agenda card (overline + title + a session + week strip) so
+  // it fills the same footprint and the live data swaps in without a shift.
+  const block = (w: number | string, h: number, r = 6) => ({
+    width: w,
+    height: h,
+    borderRadius: r,
+    background: "var(--color-surface-disabled)",
+  });
   return (
     <div style={{ padding: "16px 16px 0" }} aria-busy="true">
-      <div
-        style={{
-          height: 252,
-          borderRadius: "var(--radius-lg)",
-          background: "var(--color-surface-card)",
-        }}
-      />
+      <div style={{ background: "var(--color-surface-card)", borderRadius: "var(--radius-lg)", padding: 14 }}>
+        <div style={{ ...block(72, 10, 4), marginBottom: 8 }} />
+        <div style={{ ...block(150, 24), marginBottom: 16 }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+          <div style={block(8, 8, 2)} />
+          <div style={block(170, 14, 4)} />
+        </div>
+        <div style={{ ...block(90, 11, 4), marginLeft: 18, marginBottom: 18 }} />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} style={{ height: 58, borderRadius: "var(--radius-md)", background: "var(--color-surface-low)" }} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
