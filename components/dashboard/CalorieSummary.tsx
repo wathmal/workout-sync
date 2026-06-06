@@ -523,9 +523,9 @@ function MacroBar({
           style={{ fontSize: 14, color: "var(--color-text-primary)", whiteSpace: "nowrap" }}
         >
           {consumed}
-          <small style={{ color: "var(--color-text-tertiary)", fontSize: 11 }}>
+          <span style={{ color: "var(--color-text-tertiary)" }}>
             {" "}/ {target}g
-          </small>
+          </span>
         </span>
       </div>
       <div
