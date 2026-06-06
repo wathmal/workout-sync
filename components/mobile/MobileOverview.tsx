@@ -47,10 +47,26 @@ export function MobileOverview({
   const { agendaDays, agendaRangeLabel } = useDashboardWeek();
   const { views, nextRace } = useRaces();
 
+  // Shared day selection: the nav arrows live in the hero stats strip, the dots
+  // / day card / week strip in the agenda. null = follow today (agendaDays loads
+  // async, so we can't seed useState off todayIdx — it's -1 on first paint).
+  const todayIdx = agendaDays.findIndex((d) => d.isToday);
+  const [picked, setPicked] = useState<number | null>(null);
+  const lastIdx = Math.max(0, agendaDays.length - 1);
+  const idx = Math.min(picked ?? (todayIdx >= 0 ? todayIdx : 0), lastIdx);
+
   return (
     <div>
-      <Hero days={agendaDays} rangeLabel={agendaRangeLabel} raceInDays={nextRace?.daysUntil ?? null} />
-      <Agenda days={agendaDays} rangeLabel={agendaRangeLabel} />
+      <Hero
+        days={agendaDays}
+        rangeLabel={agendaRangeLabel}
+        raceInDays={nextRace?.daysUntil ?? null}
+        canPrev={idx > 0}
+        canNext={idx < lastIdx}
+        onPrev={() => setPicked(Math.max(0, idx - 1))}
+        onNext={() => setPicked(Math.min(lastIdx, idx + 1))}
+      />
+      <Agenda days={agendaDays} idx={idx} setIdx={setPicked} />
       <div style={{ padding: SECTION_PAD }}>
         <CalorieSummary />
       </div>
@@ -69,10 +85,18 @@ function Hero({
   days,
   rangeLabel,
   raceInDays,
+  canPrev,
+  canNext,
+  onPrev,
+  onNext,
 }: {
   days: DayAgenda[];
   rangeLabel: string;
   raceInDays: number | null;
+  canPrev: boolean;
+  canNext: boolean;
+  onPrev: () => void;
+  onNext: () => void;
 }) {
   const today = days.find((d) => d.isToday);
   const wb = weekBreakdown(days);
@@ -120,120 +144,84 @@ function Hero({
         </span>
       </h1>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          background: "var(--color-surface-card)",
-          borderRadius: "var(--radius-card)",
-          overflow: "hidden",
-        }}
-      >
-        {stats.map((s, i) => (
-          <div
-            key={s.label}
-            style={{
-              padding: "10px 0 10px 14px",
-              borderLeft: i > 0 ? "1px solid var(--color-outline)" : "none",
-            }}
-          >
+      <div style={{ display: "flex", alignItems: "stretch", gap: 8 }}>
+        <StatNav dir="prev" active={canPrev} onClick={onPrev} />
+        <div
+          style={{
+            flex: 1,
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            background: "var(--color-surface-card)",
+            borderRadius: "var(--radius-card)",
+            overflow: "hidden",
+          }}
+        >
+          {stats.map((s, i) => (
             <div
+              key={s.label}
               style={{
-                fontFamily: "var(--font-body)",
-                fontWeight: 600,
-                fontSize: 9,
-                letterSpacing: "1.2px",
-                textTransform: "uppercase",
-                color: "var(--color-text-tertiary)",
-                marginBottom: 3,
+                padding: "10px 0 10px 14px",
+                borderLeft: i > 0 ? "1px solid var(--color-outline)" : "none",
               }}
             >
-              {s.label}
+              <div
+                style={{
+                  fontFamily: "var(--font-body)",
+                  fontWeight: 600,
+                  fontSize: 9,
+                  letterSpacing: "1.2px",
+                  textTransform: "uppercase",
+                  color: "var(--color-text-tertiary)",
+                  marginBottom: 3,
+                }}
+              >
+                {s.label}
+              </div>
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontWeight: 500,
+                  fontSize: 20,
+                  color: "var(--color-text-primary)",
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: 2,
+                  fontVariantNumeric: "tabular-nums",
+                  lineHeight: 1,
+                }}
+              >
+                {s.value}
+                {s.unit && (
+                  <small style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>{s.unit}</small>
+                )}
+              </div>
             </div>
-            <div
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontWeight: 500,
-                fontSize: 20,
-                color: "var(--color-text-primary)",
-                display: "flex",
-                alignItems: "baseline",
-                gap: 2,
-                fontVariantNumeric: "tabular-nums",
-                lineHeight: 1,
-              }}
-            >
-              {s.value}
-              {s.unit && (
-                <small style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>{s.unit}</small>
-              )}
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
+        <StatNav dir="next" active={canNext} onClick={onNext} />
       </div>
     </div>
   );
 }
 
 /* ── Agenda: single-day navigator + week strip ────────────────── */
-function Agenda({ days, rangeLabel }: { days: DayAgenda[]; rangeLabel: string }) {
-  const todayIdx = days.findIndex((d) => d.isToday);
-  // null = "follow today". agendaDays loads async, so we can't seed useState off
-  // todayIdx (it's -1 on first paint). Stay on today until the user navigates.
-  const [picked, setIdx] = useState<number | null>(null);
-  const idx = picked ?? (todayIdx >= 0 ? todayIdx : 0);
-
+function Agenda({
+  days,
+  idx,
+  setIdx,
+}: {
+  days: DayAgenda[];
+  idx: number;
+  setIdx: (i: number) => void;
+}) {
   if (days.length === 0) return null;
   const day = days[Math.min(idx, days.length - 1)];
-  const canPrev = idx > 0;
-  const canNext = idx < days.length - 1;
   const groups = groupDay(day);
   const isRest = day.isRest || day.sessions.length === 0;
   const dayMins = day.sessions.reduce((a, s) => a + (s.durationMin ?? 0), 0);
 
   return (
-    <div style={{ padding: "16px 0 0" }}>
-      {/* nav header */}
-      <div style={{ display: "flex", alignItems: "center", padding: "0 16px", marginBottom: 10 }}>
-        <AgendaNav dir="prev" active={canPrev} onClick={() => setIdx(Math.max(0, idx - 1))} />
-        <div style={{ flex: 1, textAlign: "center", padding: "0 4px" }}>
-          <div
-            style={{
-              fontFamily: "var(--font-body)",
-              fontWeight: 600,
-              fontSize: 9,
-              letterSpacing: "1.3px",
-              textTransform: "uppercase",
-              color: "var(--color-text-tertiary)",
-              marginBottom: 3,
-            }}
-          >
-            {rangeLabel}
-          </div>
-          <div
-            style={{
-              fontFamily: "var(--font-display)",
-              fontWeight: 500,
-              fontSize: 17,
-              color: day.isToday ? "var(--color-brand-accent)" : "var(--color-text-primary)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              letterSpacing: "-0.3px",
-            }}
-          >
-            {day.day} {day.date}
-            {day.isToday && (
-              <span
-                style={{ width: 6, height: 6, borderRadius: 999, background: "var(--color-brand-accent)" }}
-              />
-            )}
-          </div>
-        </div>
-        <AgendaNav dir="next" active={canNext} onClick={() => setIdx(Math.min(days.length - 1, idx + 1))} />
-      </div>
-
+    <div style={{ padding: "12px 0 0" }}>
       {/* position dots */}
       <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 12 }}>
         {days.map((d, i) => (
@@ -410,7 +398,8 @@ function Agenda({ days, rangeLabel }: { days: DayAgenda[]; rangeLabel: string })
   );
 }
 
-function AgendaNav({
+// Day-nav arrow that flanks the hero stats strip — stretches to its height.
+function StatNav({
   dir,
   active,
   onClick,
@@ -425,20 +414,21 @@ function AgendaNav({
       disabled={!active}
       aria-label={dir === "prev" ? "Previous day" : "Next day"}
       style={{
-        width: 48,
-        height: 48,
+        width: 40,
+        alignSelf: "stretch",
         flexShrink: 0,
         border: 0,
-        background: active ? "var(--color-surface-card)" : "transparent",
-        borderRadius: "var(--radius-md)",
+        background: "var(--color-surface-card)",
+        borderRadius: "var(--radius-card)",
         cursor: active ? "pointer" : "default",
+        opacity: active ? 1 : 0.4,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         color: active ? "var(--color-text-primary)" : "var(--color-surface-disabled)",
       }}
     >
-      {dir === "prev" ? <ChevronLeft size={22} /> : <ChevronRight size={22} />}
+      {dir === "prev" ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
     </button>
   );
 }
