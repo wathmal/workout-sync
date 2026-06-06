@@ -182,7 +182,7 @@ export function CalorieSummary() {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}
-            margin={{ top: 16, right: isMobile ? 10 : 96, left: 0, bottom: 24 }}
+            margin={{ top: 16, right: 12, left: 0, bottom: 24 }}
             barCategoryGap="16%"
           >
             <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
@@ -254,39 +254,18 @@ export function CalorieSummary() {
               stroke="var(--color-data-2)"
               strokeDasharray="2 3"
               strokeOpacity={0.55}
-              label={isMobile ? undefined : {
-                value: "P",
-                position: "right",
-                fill: "var(--color-data-2)",
-                fontSize: 10,
-                fontFamily: "var(--font-mono)",
-              }}
             />
             <ReferenceLine
               y={targetPC}
               stroke="var(--color-data-3)"
               strokeDasharray="2 3"
               strokeOpacity={0.55}
-              label={isMobile ? undefined : {
-                value: "P+C",
-                position: "right",
-                fill: "var(--color-data-3)",
-                fontSize: 10,
-                fontFamily: "var(--font-mono)",
-              }}
             />
             <ReferenceLine
               y={targetTotal}
               stroke="var(--color-data-4)"
               strokeDasharray="2 3"
               strokeOpacity={0.75}
-              label={isMobile ? undefined : {
-                value: "target · P+C+F",
-                position: "right",
-                fill: "var(--color-data-4)",
-                fontSize: 10,
-                fontFamily: "var(--font-mono)",
-              }}
             />
             <Bar
               dataKey="plannedGhost"
