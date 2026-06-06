@@ -230,7 +230,7 @@ export function CalorieSummary() {
                         ? "—"
                         : isMobile
                         ? item && item.total > 0
-                          ? (item.total / 1000).toFixed(1)
+                          ? `${(item.total / 1000).toFixed(1)}k`
                           : "0"
                         : item?.total.toLocaleString()}
                     </text>
