@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -14,7 +14,6 @@ import { useRaces } from "@/app/_providers/race-provider";
 import { MobileTopBar } from "@/app/_components/mobile-top-bar";
 import { CalorieSummary } from "@/components/dashboard/CalorieSummary";
 import { MuscleCoverage } from "@/components/dashboard/MuscleCoverage";
-import { BodyTrendChart } from "@/components/dashboard/BodyTrendChart";
 import {
   TYPE,
   fmtH,
@@ -61,9 +60,7 @@ export function MobileOverview({
         <MuscleCoverage svgs={svgs} />
       </div>
       <RaceSpine views={views} />
-      <div style={{ padding: SECTION_PAD }}>
-        <BodyTrendChart series={trend} />
-      </div>
+      <MobileBodyTrend series={trend} />
       <div style={{ height: 16 }} />
     </div>
   );
@@ -654,6 +651,162 @@ function RaceSpine({ views }: { views: RaceView[] }) {
               ))}
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Body trend (self-contained SVG — responsive viewBox, no recharts) ── */
+const TREND_RANGES = [
+  { k: "7d", n: 7 },
+  { k: "30d", n: 30 },
+  { k: "90d", n: 90 },
+] as const;
+type TrendRange = (typeof TREND_RANGES)[number]["k"];
+
+function MobileBodyTrend({ series }: { series: TrendPoint[] }) {
+  const [range, setRange] = useState<TrendRange>("90d");
+  const visible = useMemo(() => {
+    const cfg = TREND_RANGES.find((r) => r.k === range)!;
+    return series.slice(-cfg.n);
+  }, [series, range]);
+  if (visible.length < 2) return null;
+
+  const W = 600;
+  const H = 150;
+  const bfs = visible.map((p) => p.bodyFatPct);
+  const kgs = visible.map((p) => p.weightKg);
+  const bfMin = Math.floor(Math.min(...bfs) * 2) / 2;
+  const bfMax = Math.ceil(Math.max(...bfs) * 2) / 2;
+  const kgMin = Math.floor(Math.min(...kgs));
+  const kgMax = Math.ceil(Math.max(...kgs));
+  const xs = (i: number) => (i / (visible.length - 1)) * W;
+  const ybf = (v: number) => H - ((v - bfMin) / (bfMax - bfMin || 1)) * H;
+  const ykg = (v: number) => H - ((v - kgMin) / (kgMax - kgMin || 1)) * H;
+  const pathBf = visible.map((p, i) => `${i ? "L" : "M"}${xs(i).toFixed(1)} ${ybf(p.bodyFatPct).toFixed(1)}`).join(" ");
+  const pathKg = visible.map((p, i) => `${i ? "L" : "M"}${xs(i).toFixed(1)} ${ykg(p.weightKg).toFixed(1)}`).join(" ");
+  const latest = visible[visible.length - 1];
+  const first = visible[0];
+  const bfD = latest.bodyFatPct - first.bodyFatPct;
+  const kgD = latest.weightKg - first.weightKg;
+
+  const months: { i: number; label: string }[] = [];
+  const seen = new Set<string>();
+  visible.forEach((p, i) => {
+    const m = p.date.slice(0, 7);
+    if (!seen.has(m)) {
+      seen.add(m);
+      months.push({ i, label: new Date(`${p.date}T00:00`).toLocaleString("en-US", { month: "short" }) });
+    }
+  });
+
+  const chips = [
+    { color: "var(--color-data-1)", label: "Body fat", value: `${latest.bodyFatPct.toFixed(1)}%`, delta: bfD },
+    { color: "var(--color-data-2)", label: "Weight", value: `${latest.weightKg.toFixed(1)}kg`, delta: kgD },
+  ];
+
+  return (
+    <div style={{ padding: SECTION_PAD }}>
+      <div style={{ background: "var(--color-surface-card)", borderRadius: "var(--radius-card)", padding: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 12, gap: 12 }}>
+          <div>
+            <div
+              style={{
+                fontFamily: "var(--font-body)",
+                fontWeight: 600,
+                fontSize: 10,
+                letterSpacing: "1.4px",
+                textTransform: "uppercase",
+                color: "var(--color-text-tertiary)",
+                marginBottom: 3,
+              }}
+            >
+              Body composition · {range}
+            </div>
+            <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 18, color: "var(--color-text-primary)", margin: 0 }}>
+              Trending lean.
+            </h2>
+          </div>
+          <div style={{ display: "inline-flex", background: "var(--color-surface-elevated)", borderRadius: "var(--radius-sm)", padding: 2, flexShrink: 0 }}>
+            {TREND_RANGES.map((r) => {
+              const on = r.k === range;
+              return (
+                <button
+                  key={r.k}
+                  onClick={() => setRange(r.k)}
+                  style={{
+                    padding: "3px 8px",
+                    fontSize: 11,
+                    fontWeight: 500,
+                    border: 0,
+                    cursor: "pointer",
+                    fontFamily: "var(--font-body)",
+                    borderRadius: "var(--radius-sm)",
+                    background: on ? "var(--color-surface-card)" : "transparent",
+                    color: on ? "var(--color-text-primary)" : "var(--color-text-tertiary)",
+                  }}
+                >
+                  {r.k}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 12 }}>
+          {chips.map((c) => (
+            <span key={c.label} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <span style={{ width: 9, height: 9, borderRadius: 2, background: c.color }} />
+              {c.label}
+              <span style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-primary)", fontVariantNumeric: "tabular-nums" }}>
+                {c.value}
+              </span>
+              <span
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontVariantNumeric: "tabular-nums",
+                  color: c.delta < 0 ? "var(--color-semantic-success)" : "var(--color-semantic-warning)",
+                }}
+              >
+                {c.delta < 0 ? "↓" : "↑"}
+                {Math.abs(c.delta).toFixed(1)}
+              </span>
+            </span>
+          ))}
+        </div>
+
+        <div style={{ position: "relative" }}>
+          <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" width="100%" height={H} style={{ display: "block", overflow: "visible" }}>
+            {[0, 0.5, 1].map((f) => (
+              <line key={f} x1="0" x2={W} y1={H * f} y2={H * f} stroke="rgba(150,150,150,0.08)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+            ))}
+            <path d={pathKg} fill="none" stroke="var(--color-data-2)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+            <path d={pathBf} fill="none" stroke="var(--color-data-1)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+            <circle cx={xs(visible.length - 1)} cy={ykg(latest.weightKg)} r="3" fill="var(--color-data-2)" />
+            <circle cx={xs(visible.length - 1)} cy={ybf(latest.bodyFatPct)} r="3" fill="var(--color-data-1)" />
+          </svg>
+          <div style={{ display: "flex", position: "relative", height: 16, marginTop: 4 }}>
+            {months.map((m, k) => (
+              <span
+                key={k}
+                style={{
+                  position: "absolute",
+                  left: `${(m.i / (visible.length - 1)) * 100}%`,
+                  transform: "translateX(-50%)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 10,
+                  color: "var(--color-text-tertiary)",
+                }}
+              >
+                {m.label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "var(--color-text-muted)", marginTop: 10 }}>
+          measured weekly · sat 7am
         </div>
       </div>
     </div>

@@ -60,15 +60,16 @@ export function MobileTopBar() {
         position: "sticky",
         top: 0,
         zIndex: 50,
-        background: "var(--color-glass)",
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
+        // Opaque (not glass) so scrolled content doesn't bleed through the bar —
+        // backdrop-blur is unreliable over bright cards in iOS standalone PWAs.
+        background: "var(--color-surface-base)",
         borderBottom: "1px solid var(--color-outline)",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         padding: "0 16px",
         height: 52,
+        boxSizing: "content-box",
         paddingTop: "env(safe-area-inset-top, 0px)",
       }}
     >
