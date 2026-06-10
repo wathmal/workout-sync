@@ -241,15 +241,31 @@ export interface MacroTarget {
   note: string | null;
 }
 
-export interface QuickAddSuggestion {
+/** One frozen item inside a favorited meal snapshot. */
+export interface FavoriteMealItem {
   name: string;
-  /** grams of the most recent log for this name. */
   grams: number;
-  /** macros of the most recent log for this name (absolute, not per-g). */
   kcal: number;
   proteinG: number;
   carbsG: number;
   fatG: number;
+  kcalPerG: number;
+  proteinPerG: number;
+  carbsPerG: number;
+  fatPerG: number;
+  fmaFoodId: number | null;
+  fmaSource: string | null;
+  fmaSourceId: string | null;
+}
+
+/** A user-favorited meal: a durable snapshot of a logged batch. */
+export interface FavoriteMeal {
+  id: string;
+  /** Content signature (normalized meal name + sorted item names, portion-agnostic). */
+  signature: string;
+  mealName: string | null;
+  items: FavoriteMealItem[];
+  createdAt: string;
 }
 
 export interface MealBatchInput {

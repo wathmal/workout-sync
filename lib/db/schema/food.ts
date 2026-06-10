@@ -60,6 +60,24 @@ export const foodLogEntry = pgTable(
   ],
 );
 
+export const favoriteMeal = pgTable(
+  "favorite_meal",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // Content signature (normalized meal name + sorted item names, portion-agnostic).
+    // UNIQUE so favoriting the same meal twice is idempotent.
+    signature: text("signature").notNull().unique(),
+    mealName: text("meal_name"),
+    // Frozen snapshot of the batch's items (FavoriteMealItem[]). Includes per-gram
+    // rates + FMA ids so a re-log reconstructs MealBatchInput exactly.
+    items: jsonb("items").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (t) => [index("favorite_meal_created_at_idx").on(t.createdAt)],
+);
+
 export const macroTarget = pgTable(
   "macro_target",
   {
@@ -82,3 +100,5 @@ export type FoodLogEntryRow = typeof foodLogEntry.$inferSelect;
 export type FoodLogEntryInsert = typeof foodLogEntry.$inferInsert;
 export type MacroTargetRow = typeof macroTarget.$inferSelect;
 export type MacroTargetInsert = typeof macroTarget.$inferInsert;
+export type FavoriteMealRow = typeof favoriteMeal.$inferSelect;
+export type FavoriteMealInsert = typeof favoriteMeal.$inferInsert;

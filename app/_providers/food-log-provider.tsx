@@ -12,10 +12,10 @@ import React, {
 } from "react";
 import type {
   DayAggregate,
+  FavoriteMeal,
   MacroTarget,
   MealBatchInput,
   MealItem,
-  QuickAddSuggestion,
 } from "@/lib/food/types";
 import { todayLocalStr } from "@/lib/food/local-date";
 
@@ -24,7 +24,9 @@ interface FoodLogContextType {
   today: MealItem[];
   week: DayAggregate[];
   target: MacroTarget | null;
-  quickAdd: QuickAddSuggestion[];
+  favorites: FavoriteMeal[];
+  /** Signatures of all favorited meals — drives the MealRow star fill state. */
+  favoriteSignatures: Set<string>;
   lastFetched: number | null;
   loading: boolean;
   error: string | null;
@@ -38,6 +40,13 @@ interface FoodLogContextType {
   addMeal: (batch: MealBatchInput) => Promise<MealItem[]>;
   deleteMeal: (batchId: string) => Promise<void>;
   editGrams: (itemId: string, grams: number) => Promise<MealItem | null>;
+  /** Favorite a logged batch (snapshot it). Idempotent server-side. */
+  addFavorite: (batchId: string) => Promise<void>;
+  removeFavorite: (id: string) => Promise<void>;
+  /** Star toggle from a MealRow: add when not yet favorited, else remove by signature. */
+  toggleFavoriteForBatch: (batchId: string, signature: string) => Promise<void>;
+  /** Re-log a favorite's snapshot at the current time (instant, no review). */
+  logFavorite: (fav: FavoriteMeal) => Promise<void>;
   refresh: () => Promise<void>;
 }
 
@@ -56,7 +65,7 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
   const [today, setToday] = useState<MealItem[]>([]);
   const [week, setWeek] = useState<DayAggregate[]>([]);
   const [target, setTarget] = useState<MacroTarget | null>(null);
-  const [quickAdd, setQuickAdd] = useState<QuickAddSuggestion[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteMeal[]>([]);
   const [lastFetched, setLastFetched] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,16 +80,16 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const [t, w, tg, qa] = await Promise.all([
+      const [t, w, tg, fav] = await Promise.all([
         getJson<{ items: MealItem[] }>("/api/food/log"),
         getJson<{ week: DayAggregate[] }>("/api/food/log/week"),
         getJson<{ target: MacroTarget | null }>("/api/food/targets"),
-        getJson<{ items: QuickAddSuggestion[] }>("/api/food/quick-add"),
+        getJson<{ items: FavoriteMeal[] }>("/api/food/favorites"),
       ]);
       setToday(t.items);
       setWeek(w.week);
       setTarget(tg.target);
-      setQuickAdd(qa.items);
+      setFavorites(fav.items);
       setLastFetched(Date.now());
     } catch (err) {
       setError((err as Error).message);
@@ -152,12 +161,80 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
     [refresh, reloadDay],
   );
 
+  const favoriteSignatures = useMemo(
+    () => new Set(favorites.map((f) => f.signature)),
+    [favorites],
+  );
+  const signatureToId = useMemo(
+    () => new Map(favorites.map((f) => [f.signature, f.id])),
+    [favorites],
+  );
+
+  const addFavorite = useCallback(
+    async (batchId: string) => {
+      await getJson("/api/food/favorites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batchId }),
+      });
+      await refresh();
+    },
+    [refresh],
+  );
+
+  const removeFavorite = useCallback(
+    async (id: string) => {
+      await getJson(`/api/food/favorites?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      await refresh();
+    },
+    [refresh],
+  );
+
+  const toggleFavoriteForBatch = useCallback(
+    async (batchId: string, signature: string) => {
+      const existingId = signatureToId.get(signature);
+      if (existingId) {
+        await removeFavorite(existingId);
+      } else {
+        await addFavorite(batchId);
+      }
+    },
+    [signatureToId, addFavorite, removeFavorite],
+  );
+
+  const logFavorite = useCallback(
+    async (fav: FavoriteMeal) => {
+      await addMeal({
+        loggedAt: new Date().toISOString(),
+        source: "manual",
+        mealName: fav.mealName,
+        items: fav.items.map((it) => ({
+          name: it.name,
+          grams: it.grams,
+          kcal: it.kcal,
+          proteinG: it.proteinG,
+          carbsG: it.carbsG,
+          fatG: it.fatG,
+          fmaFoodId: it.fmaFoodId,
+          fmaSource: it.fmaSource,
+          fmaSourceId: it.fmaSourceId,
+          confidence: null,
+          warnings: null,
+        })),
+      });
+    },
+    [addMeal],
+  );
+
   const value = useMemo(
     () => ({
       today,
       week,
       target,
-      quickAdd,
+      favorites,
+      favoriteSignatures,
       lastFetched,
       loading,
       error,
@@ -168,9 +245,13 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
       addMeal,
       deleteMeal,
       editGrams,
+      addFavorite,
+      removeFavorite,
+      toggleFavoriteForBatch,
+      logFavorite,
       refresh,
     }),
-    [today, week, target, quickAdd, lastFetched, loading, error, selectedDate, dayMeals, dayLoading, addMeal, deleteMeal, editGrams, refresh],
+    [today, week, target, favorites, favoriteSignatures, lastFetched, loading, error, selectedDate, dayMeals, dayLoading, addMeal, deleteMeal, editGrams, addFavorite, removeFavorite, toggleFavoriteForBatch, logFavorite, refresh],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

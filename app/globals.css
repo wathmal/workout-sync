@@ -420,9 +420,14 @@ html { scroll-behavior: smooth; }
     top: 4px;
     right: 4px;
   }
+  .food-mealrow-fav {
+    position: absolute;
+    top: 4px;
+    right: 32px;
+  }
   .food-mealrow {
     position: relative;
-    padding-right: 32px !important;
+    padding-right: 56px !important;
   }
   .food-item-grid {
     grid-template-columns: 14px 1fr auto auto !important;
@@ -475,14 +480,38 @@ html { scroll-behavior: smooth; }
   .food-brand-row > :nth-child(1) { grid-area: name; }
   .food-brand-row > :nth-child(2) { grid-area: kcal; text-align: left !important; }
   .food-brand-row > :nth-child(3) { grid-area: add; align-self: center; }
+  .food-favrow {
+    grid-template-columns: 1fr auto !important;
+    grid-template-areas:
+      "name kcal"
+      "macros macros" !important;
+    row-gap: 2px !important;
+    column-gap: 8px !important;
+    position: relative;
+    padding-right: 56px !important;
+  }
+  .food-favrow-name   { grid-area: name; min-width: 0; }
+  .food-favrow-macros { grid-area: macros; justify-content: flex-start !important; width: auto !important; }
+  .food-favrow-kcal   { grid-area: kcal; width: auto !important; }
+  .food-favrow-log {
+    position: absolute;
+    top: 4px;
+    right: 32px;
+  }
+  .food-favrow-del {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+  }
   .food-tabbar {
     width: 100% !important;
-    display: flex !important;
-    gap: 2px !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 4px !important;
     padding: 3px !important;
   }
   .food-tab-btn {
-    padding: 6px 4px !important;
+    padding: 7px 4px !important;
     font-size: 12px !important;
     gap: 4px !important;
     min-width: 0;

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  RefreshCw,
   Upload,
   ArrowRight,
   Camera,
@@ -10,30 +9,26 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useFoodLog } from "@/app/_providers/food-log-provider";
-import type { QuickAddSuggestion } from "@/lib/food/types";
+import type { FavoriteMeal } from "@/lib/food/types";
 
-interface ActionsData {
-  lastSync: string;
-  /** Static fallback chips shown when no recent logs exist. */
-  quickAdd: { name: string; kcal: number }[];
+const MAX_QUICK_ADD = 6;
+
+function favoriteLabel(fav: FavoriteMeal): string {
+  if (fav.mealName) return fav.mealName;
+  const first = fav.items[0]?.name ?? "Meal";
+  return fav.items.length > 1 ? `${first} +${fav.items.length - 1}` : first;
+}
+
+function favoriteKcal(fav: FavoriteMeal): number {
+  return fav.items.reduce((s, i) => s + i.kcal, 0);
 }
 
 /**
  * Two-card quick-action stack that mirrors the rightmost column of the
  * middle row in tmp/dashboard.html: "Log a workout" + "Log a meal".
  */
-export function ManualLog({ data }: { data: ActionsData }) {
-  const { quickAdd: live, addMeal } = useFoodLog();
-  const chips: QuickAddSuggestion[] = live.length
-    ? live
-    : data.quickAdd.map((q) => ({
-        name: q.name,
-        kcal: q.kcal,
-        grams: 0,
-        proteinG: 0,
-        carbsG: 0,
-        fatG: 0,
-      }));
+export function ManualLog() {
+  const { favorites, logFavorite } = useFoodLog();
   return (
     <div
       style={{
@@ -46,26 +41,8 @@ export function ManualLog({ data }: { data: ActionsData }) {
     >
       <WorkoutCard />
       <MealCard
-        quickAdd={chips}
-        onQuickAdd={async (q) => {
-          if (!Number.isFinite(q.grams) || q.grams <= 0) return; // static fallback w/o macros — skip
-          await addMeal({
-            loggedAt: new Date().toISOString(),
-            source: "manual",
-            items: [
-              {
-                name: q.name,
-                grams: q.grams,
-                kcal: q.kcal,
-                proteinG: q.proteinG,
-                carbsG: q.carbsG,
-                fatG: q.fatG,
-                confidence: null,
-                warnings: null,
-              },
-            ],
-          }).catch((err) => console.error(err));
-        }}
+        favorites={favorites.slice(0, MAX_QUICK_ADD)}
+        onLog={(fav) => logFavorite(fav).catch((err) => console.error(err))}
       />
     </div>
   );
@@ -107,11 +84,11 @@ function WorkoutCard() {
 }
 
 function MealCard({
-  quickAdd,
-  onQuickAdd,
+  favorites,
+  onLog,
 }: {
-  quickAdd: QuickAddSuggestion[];
-  onQuickAdd: (q: QuickAddSuggestion) => Promise<void> | void;
+  favorites: FavoriteMeal[];
+  onLog: (fav: FavoriteMeal) => void;
 }) {
   return (
     <Card>
@@ -149,20 +126,24 @@ function MealCard({
         </PrimaryButton>
       </div>
 
-      {quickAdd.length > 0 && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "var(--space-xs)",
-          }}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "var(--space-xs)",
+        }}
+      >
+        <span
+          className="text-label-md"
+          style={{ color: "var(--color-text-tertiary)" }}
         >
-          <span
-            className="text-label-md"
-            style={{ color: "var(--color-text-tertiary)" }}
-          >
-            Quick add
+          Quick add
+        </span>
+        {favorites.length === 0 ? (
+          <span style={{ color: "var(--color-text-tertiary)", fontSize: 12 }}>
+            Star a meal to pin it here.
           </span>
+        ) : (
           <div
             style={{
               display: "flex",
@@ -170,11 +151,11 @@ function MealCard({
               gap: 6,
             }}
           >
-            {quickAdd.map((q) => (
+            {favorites.map((fav) => (
               <button
-                key={q.name}
+                key={fav.id}
                 type="button"
-                onClick={() => void onQuickAdd(q)}
+                onClick={() => onLog(fav)}
                 style={{
                   background: "var(--color-surface-chip)",
                   color: "var(--color-text-primary)",
@@ -189,18 +170,18 @@ function MealCard({
                   gap: 4,
                 }}
               >
-                + {q.name}
+                + {favoriteLabel(fav)}
                 <span
                   className="font-mono-sm"
                   style={{ color: "var(--color-text-tertiary)", fontSize: 11 }}
                 >
-                  {Math.round(q.kcal)}
+                  {Math.round(favoriteKcal(fav))}
                 </span>
               </button>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </Card>
   );
 }

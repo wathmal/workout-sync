@@ -50,7 +50,7 @@ export default async function OverviewPage() {
           <MuscleCoverageCard />
         </div>
         <div style={{ minWidth: 0, display: "flex" }}>
-          <ManualLog data={overviewMock.actions} />
+          <ManualLog />
         </div>
       </section>
 

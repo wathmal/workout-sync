@@ -2,15 +2,17 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { desc, eq, sql } from "drizzle-orm";
 import { db } from "./db";
-import { foodLogEntry } from "./schema";
+import { favoriteMeal, foodLogEntry } from "./schema";
 import type {
   DayAggregate,
+  FavoriteMeal,
+  FavoriteMealItem,
   FmaItem,
   MealBatchInput,
   MealItem,
-  QuickAddSuggestion,
 } from "./types";
 import { fmaComponentToMeal, scaleFmaItem } from "./convert";
+import { favoriteSignature } from "./favorite-signature";
 import { todayInUserTz } from "./targets";
 
 function userTz(): string {
@@ -218,35 +220,80 @@ export async function editGrams(itemId: string, newGrams: number): Promise<MealI
   return updated ? toMealItem(updated) : null;
 }
 
-export async function getQuickAdd(limit = 6): Promise<QuickAddSuggestion[]> {
-  const { rows } = await db.execute<{
-    name: string;
-    grams: string;
-    kcal: string;
-    protein_g: string;
-    carbs_g: string;
-    fat_g: string;
-  }>(sql`
-    WITH recent AS (
-      SELECT name, grams, kcal, protein_g, carbs_g, fat_g,
-             ROW_NUMBER() OVER (PARTITION BY name ORDER BY logged_at DESC) AS rn,
-             COUNT(*) OVER (PARTITION BY name) AS freq
-      FROM ${foodLogEntry}
-      WHERE logged_at > now() - INTERVAL '30 days'
-        AND grams > 0
-    )
-    SELECT name, grams::text, kcal::text, protein_g::text, carbs_g::text, fat_g::text
-    FROM recent
-    WHERE rn = 1
-    ORDER BY freq DESC
-    LIMIT ${limit}
-  `);
-  return rows.map((r) => ({
+function toFavoriteMeal(r: typeof favoriteMeal.$inferSelect): FavoriteMeal {
+  return {
+    id: r.id,
+    signature: r.signature,
+    mealName: r.mealName,
+    items: (r.items as FavoriteMealItem[]) ?? [],
+    createdAt: r.createdAt.toISOString(),
+  };
+}
+
+/** All favorites, most-recently-favorited first (drives dashboard chips + tab). */
+export async function getFavorites(): Promise<FavoriteMeal[]> {
+  const rows = await db
+    .select()
+    .from(favoriteMeal)
+    .orderBy(desc(favoriteMeal.createdAt));
+  return rows.map(toFavoriteMeal);
+}
+
+/**
+ * Favorite a logged batch: freeze its current items (incl. per-gram rates + FMA
+ * ids) into a durable snapshot keyed by content signature. Idempotent — a batch
+ * whose signature already exists returns the existing favorite untouched.
+ */
+export async function addFavorite(batchId: string): Promise<FavoriteMeal> {
+  const rows = await db
+    .select()
+    .from(foodLogEntry)
+    .where(eq(foodLogEntry.batchId, batchId));
+  if (rows.length === 0) {
+    throw new Error("No logged batch found for that id.");
+  }
+
+  const mealName = rows[0].mealName;
+  const items: FavoriteMealItem[] = rows.map((r) => ({
     name: r.name,
     grams: Number(r.grams),
     kcal: Number(r.kcal),
-    proteinG: Number(r.protein_g),
-    carbsG: Number(r.carbs_g),
-    fatG: Number(r.fat_g),
+    proteinG: Number(r.proteinG),
+    carbsG: Number(r.carbsG),
+    fatG: Number(r.fatG),
+    kcalPerG: Number(r.kcalPerG),
+    proteinPerG: Number(r.proteinPerG),
+    carbsPerG: Number(r.carbsPerG),
+    fatPerG: Number(r.fatPerG),
+    fmaFoodId: r.fmaFoodId,
+    fmaSource: r.fmaSource,
+    fmaSourceId: r.fmaSourceId,
   }));
+  const signature = favoriteSignature(
+    mealName,
+    items.map((i) => i.name),
+  );
+
+  const [inserted] = await db
+    .insert(favoriteMeal)
+    .values({ signature, mealName, items })
+    .onConflictDoNothing({ target: favoriteMeal.signature })
+    .returning();
+  if (inserted) return toFavoriteMeal(inserted);
+
+  // Conflict: the meal is already a favorite — return the existing row.
+  const [existing] = await db
+    .select()
+    .from(favoriteMeal)
+    .where(eq(favoriteMeal.signature, signature))
+    .limit(1);
+  return toFavoriteMeal(existing);
+}
+
+export async function removeFavorite(id: string): Promise<number> {
+  const rows = await db
+    .delete(favoriteMeal)
+    .where(eq(favoriteMeal.id, id))
+    .returning({ id: favoriteMeal.id });
+  return rows.length;
 }

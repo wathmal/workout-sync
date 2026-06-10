@@ -84,10 +84,6 @@ export interface OverviewMock {
     attention: import("./muscle-coverage").AttentionRow[];
   };
   log: LogEntry[];
-  actions: {
-    lastSync: string; // e.g. "Synced 5m"
-    quickAdd: { name: string; kcal: number }[];
-  };
   trend: TrendPoint[]; // 90 days, oldest → newest
 }
 
@@ -181,17 +177,6 @@ export const overviewMock: OverviewMock = {
     { kind: "workout", label: "Hyrox sim — 48:32 PR", time: "Thu 17:55" },
     { kind: "measurement", label: "Waist 82.0 cm", time: "Sat 07:08" },
   ],
-
-  actions: {
-    lastSync: "Synced 5m",
-    quickAdd: [
-      { name: "Coffee", kcal: 5 },
-      { name: "Ham & Cheese Croissant", kcal: 420 },
-      { name: "Banana", kcal: 95 },
-      { name: "Greek yogurt", kcal: 130 },
-      { name: "Whey shake", kcal: 160 },
-    ],
-  },
 
   trend: buildTrend(),
 };

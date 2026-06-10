@@ -10,6 +10,8 @@ import {
   Package,
   Trash2,
   Pencil,
+  Star,
+  Plus,
   ChevronDown,
   ChevronUp,
   ChevronLeft,
@@ -26,6 +28,7 @@ import {
   type FoodLocale,
 } from "@/app/_providers/food-locale";
 import type {
+  FavoriteMeal,
   FmaAnalyzeResponse,
   FmaSearchHit,
   FmaOffSearchHit,
@@ -35,6 +38,8 @@ import type {
   PendingItem,
 } from "@/lib/food/types";
 import { fromFmaItem, displayComponents, pendingRawResponse, defaultGramsForHit } from "@/lib/food/convert";
+import { favoriteSignature } from "@/lib/food/favorite-signature";
+import { MacroChips, KcalCell, iconBtnStyle } from "@/components/food/meal-row";
 import { PhotoDropzone } from "@/app/_components/photo-dropzone";
 import type { PreparedImage } from "@/lib/image-resize";
 import {
@@ -43,7 +48,7 @@ import {
   formatDayLabel,
 } from "@/lib/food/local-date";
 
-type Mode = "search" | "off" | "text" | "snap" | "barcode";
+type Mode = "search" | "off" | "text" | "snap" | "barcode" | "favorites";
 
 const LOW_CONF = 0.7;
 
@@ -118,7 +123,8 @@ function FoodPageInner() {
       modeParam === "off" ||
       modeParam === "text" ||
       modeParam === "snap" ||
-      modeParam === "barcode"
+      modeParam === "barcode" ||
+      modeParam === "favorites"
       ? modeParam
       : "text",
   );
@@ -132,6 +138,11 @@ function FoodPageInner() {
     addMeal,
     deleteMeal,
     editGrams,
+    favorites,
+    favoriteSignatures,
+    toggleFavoriteForBatch,
+    removeFavorite,
+    logFavorite,
     error: ctxError,
   } = useFoodLog();
   const { locale, setLocale } = useFoodLocale();
@@ -266,6 +277,8 @@ function FoodPageInner() {
         onNext={() => setSelectedDate(addDaysStr(selectedDate, 1))}
         onDelete={deleteMeal}
         onEditGrams={editGrams}
+        favoriteSignatures={favoriteSignatures}
+        onToggleFavorite={toggleFavoriteForBatch}
       />
 
       <Card>
@@ -330,6 +343,13 @@ function FoodPageInner() {
               appendItems(items, { mealName, loggedAtIso })
             }
             setError={setError}
+          />
+        )}
+        {mode === "favorites" && (
+          <FavoritesPanel
+            favorites={favorites}
+            onLog={logFavorite}
+            onRemove={removeFavorite}
           />
         )}
 
@@ -400,6 +420,8 @@ function TodayStrip({
   onNext,
   onDelete,
   onEditGrams,
+  favoriteSignatures,
+  onToggleFavorite,
 }: {
   meals: MealItem[];
   target: { kcal: number } | null;
@@ -410,6 +432,8 @@ function TodayStrip({
   onNext: () => void;
   onDelete: (batchId: string) => Promise<void>;
   onEditGrams: (itemId: string, grams: number) => Promise<MealItem | null>;
+  favoriteSignatures: Set<string>;
+  onToggleFavorite: (batchId: string, signature: string) => Promise<void>;
 }) {
   const isToday = selectedDate === todayLocalStr();
   const totalKcal = meals.reduce((s, m) => s + m.kcal, 0);
@@ -481,6 +505,15 @@ function TodayStrip({
             items={g.items}
             onDelete={() => onDelete(g.batchId)}
             onEditGrams={onEditGrams}
+            isFavorited={favoriteSignatures.has(
+              favoriteSignature(g.items[0]?.mealName ?? null, g.items.map((i) => i.name)),
+            )}
+            onToggleFavorite={() =>
+              onToggleFavorite(
+                g.batchId,
+                favoriteSignature(g.items[0]?.mealName ?? null, g.items.map((i) => i.name)),
+              )
+            }
           />
         ))}
       </div>
@@ -492,12 +525,17 @@ function MealRow({
   items,
   onDelete,
   onEditGrams,
+  isFavorited,
+  onToggleFavorite,
 }: {
   items: MealItem[];
   onDelete: () => Promise<void>;
   onEditGrams: (itemId: string, grams: number) => Promise<MealItem | null>;
+  isFavorited: boolean;
+  onToggleFavorite: () => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [favBusy, setFavBusy] = useState(false);
   const totals = items.reduce(
     (acc, i) => ({
       kcal: acc.kcal + i.kcal,
@@ -535,7 +573,7 @@ function MealRow({
         className="food-mealrow-grid"
         style={{
           display: "grid",
-          gridTemplateColumns: "56px 1fr 140px 86px 28px",
+          gridTemplateColumns: "56px 1fr 140px 86px 28px 28px",
           gap: 8,
           alignItems: "center",
         }}
@@ -571,6 +609,28 @@ function MealRow({
         </button>
         <MacroChips p={totals.p} c={totals.c} f={totals.f} className="food-mealrow-macros" />
         <KcalCell kcal={totalKcal} className="food-mealrow-kcal" />
+        <button
+          type="button"
+          onClick={async () => {
+            if (favBusy) return;
+            setFavBusy(true);
+            try {
+              await onToggleFavorite();
+            } finally {
+              setFavBusy(false);
+            }
+          }}
+          disabled={favBusy}
+          title={isFavorited ? "Remove from favorites" : "Save as favorite"}
+          aria-pressed={isFavorited}
+          className="food-mealrow-fav"
+          style={{
+            ...iconBtnStyle,
+            color: isFavorited ? "var(--color-accent, #f5a623)" : undefined,
+          }}
+        >
+          <Star size={13} fill={isFavorited ? "currentColor" : "none"} />
+        </button>
         <button
           type="button"
           onClick={onDelete}
@@ -738,68 +798,6 @@ function EditableItemRow({
   );
 }
 
-const iconBtnStyle: React.CSSProperties = {
-  width: 28,
-  height: 28,
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  background: "transparent",
-  border: 0,
-  color: "var(--color-text-tertiary)",
-  cursor: "pointer",
-  padding: 0,
-};
-
-function MacroChips({ p, c, f, className }: { p: number; c: number; f: number; className?: string }) {
-  // padStart to 2 chars + white-space: pre keeps the leading space so single-
-  // and double-digit values align under each other in the monospace font.
-  const fmt = (n: number) => String(Math.round(n)).padStart(3, " ");
-  const sep = <span style={{ color: "var(--color-outline)" }}>·</span>;
-  const cell: React.CSSProperties = { whiteSpace: "pre" };
-  return (
-    <span
-      className={`font-mono-sm food-macros ${className ?? ""}`}
-      style={{
-        fontSize: 11,
-        color: "var(--color-text-tertiary)",
-        display: "inline-flex",
-        alignItems: "baseline",
-        justifyContent: "flex-end",
-        gap: 6,
-        width: 140,
-      }}
-    >
-      <span style={cell}>P {fmt(p)}</span>
-      <span className="food-macros-extra" style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
-        {sep}
-        <span style={cell}>C {fmt(c)}</span>
-        {sep}
-        <span style={cell}>F {fmt(f)}</span>
-      </span>
-    </span>
-  );
-}
-
-function KcalCell({ kcal, size = 13, className }: { kcal: number; size?: number; className?: string }) {
-  return (
-    <span
-      className={`font-mono-sm ${className ?? ""}`}
-      style={{
-        fontSize: size,
-        color: "var(--color-text-secondary)",
-        display: "inline-block",
-        width: 86,
-        textAlign: "right",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {Math.round(kcal)}
-      <small style={{ color: "var(--color-text-tertiary)" }}> kcal</small>
-    </span>
-  );
-}
-
 function fmtServingNum(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, "");
 }
@@ -840,6 +838,125 @@ function SourceBadge({ source }: { source: FoodLogSource }) {
   );
 }
 
+// ── Favorites ─────────────────────────────────────────────────────────────
+
+function favoriteLabel(fav: FavoriteMeal): string {
+  if (fav.mealName) return fav.mealName;
+  const first = fav.items[0]?.name ?? "Meal";
+  return fav.items.length > 1 ? `${first} + ${fav.items.length - 1} more` : first;
+}
+
+function FavoritesPanel({
+  favorites,
+  onLog,
+  onRemove,
+}: {
+  favorites: FavoriteMeal[];
+  onLog: (fav: FavoriteMeal) => Promise<void>;
+  onRemove: (id: string) => Promise<void>;
+}) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  if (favorites.length === 0) {
+    return (
+      <div
+        style={{
+          padding: "var(--space-lg)",
+          textAlign: "center",
+          color: "var(--color-text-tertiary)",
+          fontSize: 13,
+        }}
+      >
+        No favorites yet. Star a meal in the log above to pin it here for one-tap re-logging.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
+      {favorites.map((fav) => {
+        const totals = fav.items.reduce(
+          (acc, i) => ({
+            kcal: acc.kcal + i.kcal,
+            p: acc.p + i.proteinG,
+            c: acc.c + i.carbsG,
+            f: acc.f + i.fatG,
+          }),
+          { kcal: 0, p: 0, c: 0, f: 0 },
+        );
+        const busy = busyId === fav.id;
+        return (
+          <div
+            key={fav.id}
+            className="food-favrow"
+            style={{
+              background: "var(--color-surface-low)",
+              borderRadius: "var(--radius-md)",
+              padding: "8px 10px",
+              display: "grid",
+              gridTemplateColumns: "1fr 140px 86px 28px 28px",
+              gap: 8,
+              alignItems: "center",
+            }}
+          >
+            <span
+              className="food-favrow-name"
+              style={{
+                color: "var(--color-text-primary)",
+                fontSize: 13,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                minWidth: 0,
+              }}
+            >
+              {favoriteLabel(fav)}
+            </span>
+            <MacroChips p={totals.p} c={totals.c} f={totals.f} className="food-favrow-macros" />
+            <KcalCell kcal={Math.round(totals.kcal)} className="food-favrow-kcal" />
+            <button
+              type="button"
+              onClick={async () => {
+                if (busy) return;
+                setBusyId(fav.id);
+                try {
+                  await onLog(fav);
+                } finally {
+                  setBusyId(null);
+                }
+              }}
+              disabled={busy}
+              title="Log this meal now"
+              className="food-favrow-log"
+              style={iconBtnStyle}
+            >
+              <Plus size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (busy) return;
+                setBusyId(fav.id);
+                try {
+                  await onRemove(fav.id);
+                } finally {
+                  setBusyId(null);
+                }
+              }}
+              disabled={busy}
+              title="Remove favorite"
+              className="food-favrow-del"
+              style={iconBtnStyle}
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Tabs ──────────────────────────────────────────────────────────────────
 
 function TabBar({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
@@ -849,18 +966,20 @@ function TabBar({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void })
     { id: "text", label: "Type", icon: <AlignLeft size={13} /> },
     { id: "snap", label: "Snap", icon: <Camera size={13} /> },
     { id: "barcode", label: "Barcode", icon: <ScanBarcode size={13} /> },
+    { id: "favorites", label: "Favorites", icon: <Star size={13} /> },
   ];
   return (
     <div
       role="tablist"
       className="food-tabbar"
       style={{
-        display: "inline-flex",
+        display: "grid",
+        gridTemplateColumns: "repeat(3, 1fr)",
         gap: 4,
         padding: 4,
         background: "var(--color-surface-low)",
         borderRadius: "var(--radius-md)",
-        width: "fit-content",
+        width: "100%",
       }}
     >
       {tabs.map((t) => {
@@ -885,7 +1004,7 @@ function TabBar({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void })
               fontWeight: 500,
               cursor: "pointer",
               whiteSpace: "nowrap",
-              flex: "1 1 0",
+              minWidth: 0,
               justifyContent: "center",
             }}
           >
