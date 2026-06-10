@@ -28,6 +28,11 @@ export function isPastStr(dateStr: string): boolean {
   return dateStr < todayLocalStr();
 }
 
+/** Default log timestamp for a day: now when it's today, noon otherwise. */
+export function defaultLoggedAtDate(dateStr: string): Date {
+  return dateStr === todayLocalStr() ? new Date() : new Date(`${dateStr}T12:00:00`);
+}
+
 /** Human label: "Today" / "Yesterday" / "Mon, May 27". */
 export function formatDayLabel(dateStr: string): string {
   const today = todayLocalStr();

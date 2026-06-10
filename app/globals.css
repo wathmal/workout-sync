@@ -403,32 +403,25 @@ html { scroll-behavior: smooth; }
     gap: 16px !important;
   }
   .food-card { padding: 14px !important; }
+  /* Two-row phone layout: content on top, all action icons gathered on row 2. */
   .food-mealrow-grid {
-    grid-template-columns: 48px 1fr auto !important;
+    grid-template-columns: 48px 1fr auto auto auto !important;
     grid-template-areas:
-      "time name kcal"
-      "time macros macros" !important;
+      "time name   kcal kcal kcal"
+      "time macros copy fav  del" !important;
     row-gap: 2px !important;
     column-gap: 8px !important;
   }
   .food-mealrow-time   { grid-area: time; }
   .food-mealrow-name   { grid-area: name; min-width: 0; }
   .food-mealrow-macros { grid-area: macros; justify-content: flex-start !important; width: auto !important; }
-  .food-mealrow-kcal   { grid-area: kcal; width: auto !important; }
-  .food-mealrow-delete {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-  }
-  .food-mealrow-fav {
-    position: absolute;
-    top: 4px;
-    right: 32px;
-  }
-  .food-mealrow {
-    position: relative;
-    padding-right: 56px !important;
-  }
+  .food-mealrow-kcal   { grid-area: kcal; width: auto !important; justify-self: end; }
+  .food-mealrow-copy   { grid-area: copy; }
+  .food-mealrow-fav    { grid-area: fav; }
+  /* The delete button shares its column with the wider kcal text — push it to
+     the column's end, and let the negative margin eat the button's internal
+     right padding so the trash glyph lines up with the kcal text's right edge. */
+  .food-mealrow-delete { grid-area: del; justify-self: end; margin-right: -8px; }
   .food-item-grid {
     grid-template-columns: 14px 1fr auto auto !important;
     grid-template-areas:
@@ -480,29 +473,20 @@ html { scroll-behavior: smooth; }
   .food-brand-row > :nth-child(1) { grid-area: name; }
   .food-brand-row > :nth-child(2) { grid-area: kcal; text-align: left !important; }
   .food-brand-row > :nth-child(3) { grid-area: add; align-self: center; }
+  /* Favorites rows mirror the meal-row phone layout: icons on row 2. */
   .food-favrow {
-    grid-template-columns: 1fr auto !important;
+    grid-template-columns: 1fr auto auto !important;
     grid-template-areas:
-      "name kcal"
-      "macros macros" !important;
+      "name   kcal kcal"
+      "macros log  del" !important;
     row-gap: 2px !important;
     column-gap: 8px !important;
-    position: relative;
-    padding-right: 56px !important;
   }
   .food-favrow-name   { grid-area: name; min-width: 0; }
   .food-favrow-macros { grid-area: macros; justify-content: flex-start !important; width: auto !important; }
-  .food-favrow-kcal   { grid-area: kcal; width: auto !important; }
-  .food-favrow-log {
-    position: absolute;
-    top: 4px;
-    right: 32px;
-  }
-  .food-favrow-del {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-  }
+  .food-favrow-kcal   { grid-area: kcal; width: auto !important; justify-self: end; }
+  .food-favrow-log    { grid-area: log; }
+  .food-favrow-del    { grid-area: del; justify-self: end; margin-right: -8px; }
   .food-tabbar {
     width: 100% !important;
     display: grid !important;

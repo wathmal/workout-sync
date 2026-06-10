@@ -17,7 +17,50 @@ import type {
   MealBatchInput,
   MealItem,
 } from "@/lib/food/types";
-import { todayLocalStr } from "@/lib/food/local-date";
+import { todayLocalStr, defaultLoggedAtDate } from "@/lib/food/local-date";
+
+/** In-flight copy-meal clipboard: a snapshot, not a batch ref — paste survives source deletion. */
+export interface CopiedMeal {
+  /** YYYY-MM-DD the batch was copied from (paste hidden on this date). */
+  sourceDate: string;
+  /** Snapshot at copy time; batchId/mealName derive from items[0]. */
+  items: MealItem[];
+}
+
+/**
+ * Fields that survive a re-log (favorites, copy-paste): identity + macros + FMA
+ * provenance. Confidence/warnings are per-analysis instrumentation and reset.
+ */
+function toBatchItems(
+  items: Array<
+    Pick<
+      MealItem,
+      | "name"
+      | "grams"
+      | "kcal"
+      | "proteinG"
+      | "carbsG"
+      | "fatG"
+      | "fmaFoodId"
+      | "fmaSource"
+      | "fmaSourceId"
+    >
+  >,
+): MealBatchInput["items"] {
+  return items.map((it) => ({
+    name: it.name,
+    grams: it.grams,
+    kcal: it.kcal,
+    proteinG: it.proteinG,
+    carbsG: it.carbsG,
+    fatG: it.fatG,
+    fmaFoodId: it.fmaFoodId,
+    fmaSource: it.fmaSource,
+    fmaSourceId: it.fmaSourceId,
+    confidence: null,
+    warnings: null,
+  }));
+}
 
 interface FoodLogContextType {
   /** Actual today's meals — drives the dashboard, independent of navigation. */
@@ -47,6 +90,12 @@ interface FoodLogContextType {
   toggleFavoriteForBatch: (batchId: string, signature: string) => Promise<void>;
   /** Re-log a favorite's snapshot at the current time (instant, no review). */
   logFavorite: (fav: FavoriteMeal) => Promise<void>;
+  /** Copy-meal clipboard (one-shot copy → paste across dates). */
+  copiedMeal: CopiedMeal | null;
+  copyMeal: (items: MealItem[], sourceDate: string) => void;
+  cancelCopy: () => void;
+  /** Paste the clipboard batch onto a date (now if today, noon otherwise), then clear. */
+  pasteMeal: (targetDate: string) => Promise<void>;
   refresh: () => Promise<void>;
 }
 
@@ -210,22 +259,33 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
         loggedAt: new Date().toISOString(),
         source: "manual",
         mealName: fav.mealName,
-        items: fav.items.map((it) => ({
-          name: it.name,
-          grams: it.grams,
-          kcal: it.kcal,
-          proteinG: it.proteinG,
-          carbsG: it.carbsG,
-          fatG: it.fatG,
-          fmaFoodId: it.fmaFoodId,
-          fmaSource: it.fmaSource,
-          fmaSourceId: it.fmaSourceId,
-          confidence: null,
-          warnings: null,
-        })),
+        items: toBatchItems(fav.items),
       });
     },
     [addMeal],
+  );
+
+  const [copiedMeal, setCopiedMeal] = useState<CopiedMeal | null>(null);
+
+  const copyMeal = useCallback((items: MealItem[], sourceDate: string) => {
+    if (!items.length) return;
+    setCopiedMeal({ sourceDate, items });
+  }, []);
+
+  const cancelCopy = useCallback(() => setCopiedMeal(null), []);
+
+  const pasteMeal = useCallback(
+    async (targetDate: string) => {
+      if (!copiedMeal) return;
+      await addMeal({
+        loggedAt: defaultLoggedAtDate(targetDate).toISOString(),
+        source: "manual",
+        mealName: copiedMeal.items[0]?.mealName ?? null,
+        items: toBatchItems(copiedMeal.items),
+      });
+      setCopiedMeal(null);
+    },
+    [copiedMeal, addMeal],
   );
 
   const value = useMemo(
@@ -249,9 +309,13 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
       removeFavorite,
       toggleFavoriteForBatch,
       logFavorite,
+      copiedMeal,
+      copyMeal,
+      cancelCopy,
+      pasteMeal,
       refresh,
     }),
-    [today, week, target, favorites, favoriteSignatures, lastFetched, loading, error, selectedDate, dayMeals, dayLoading, addMeal, deleteMeal, editGrams, addFavorite, removeFavorite, toggleFavoriteForBatch, logFavorite, refresh],
+    [today, week, target, favorites, favoriteSignatures, lastFetched, loading, error, selectedDate, dayMeals, dayLoading, addMeal, deleteMeal, editGrams, addFavorite, removeFavorite, toggleFavoriteForBatch, logFavorite, copiedMeal, copyMeal, cancelCopy, pasteMeal, refresh],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

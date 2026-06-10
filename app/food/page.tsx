@@ -12,6 +12,10 @@ import {
   Pencil,
   Star,
   Plus,
+  Copy,
+  Check,
+  ClipboardPaste,
+  ClipboardX,
   ChevronDown,
   ChevronUp,
   ChevronLeft,
@@ -21,7 +25,7 @@ import {
   CornerDownRight,
 } from "lucide-react";
 import { Overline } from "@/app/_components/overline";
-import { useFoodLog } from "@/app/_providers/food-log-provider";
+import { useFoodLog, type CopiedMeal } from "@/app/_providers/food-log-provider";
 import {
   useFoodLocale,
   FOOD_LOCALES,
@@ -46,6 +50,7 @@ import {
   todayLocalStr,
   addDaysStr,
   formatDayLabel,
+  defaultLoggedAtDate,
 } from "@/lib/food/local-date";
 
 type Mode = "search" | "off" | "text" | "snap" | "barcode" | "favorites";
@@ -66,9 +71,9 @@ function toIsoLocal(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** Default log timestamp for the navigator's selected day: now if today, else noon. */
+/** Default log timestamp for the navigator's selected day (shared now-or-noon rule). */
 function defaultLoggedAt(dateStr: string): string {
-  return dateStr === todayLocalStr() ? isoLocalNow() : `${dateStr}T12:00`;
+  return toIsoLocal(defaultLoggedAtDate(dateStr).toISOString());
 }
 
 
@@ -143,6 +148,10 @@ function FoodPageInner() {
     toggleFavoriteForBatch,
     removeFavorite,
     logFavorite,
+    copiedMeal,
+    copyMeal,
+    cancelCopy,
+    pasteMeal,
     error: ctxError,
   } = useFoodLog();
   const { locale, setLocale } = useFoodLocale();
@@ -279,6 +288,10 @@ function FoodPageInner() {
         onEditGrams={editGrams}
         favoriteSignatures={favoriteSignatures}
         onToggleFavorite={toggleFavoriteForBatch}
+        copiedMeal={copiedMeal}
+        onCopy={(items) => copyMeal(items, selectedDate)}
+        onPaste={() => pasteMeal(selectedDate)}
+        onCancelCopy={cancelCopy}
       />
 
       <Card>
@@ -422,6 +435,10 @@ function TodayStrip({
   onEditGrams,
   favoriteSignatures,
   onToggleFavorite,
+  copiedMeal,
+  onCopy,
+  onPaste,
+  onCancelCopy,
 }: {
   meals: MealItem[];
   target: { kcal: number } | null;
@@ -434,7 +451,13 @@ function TodayStrip({
   onEditGrams: (itemId: string, grams: number) => Promise<MealItem | null>;
   favoriteSignatures: Set<string>;
   onToggleFavorite: (batchId: string, signature: string) => Promise<void>;
+  copiedMeal: CopiedMeal | null;
+  onCopy: (items: MealItem[]) => void;
+  onPaste: () => Promise<void>;
+  onCancelCopy: () => void;
 }) {
+  const [pasting, setPasting] = useState(false);
+  const canPasteHere = copiedMeal !== null && copiedMeal.sourceDate !== selectedDate;
   const isToday = selectedDate === todayLocalStr();
   const totalKcal = meals.reduce((s, m) => s + m.kcal, 0);
   const groups = useMemo(() => {
@@ -448,6 +471,10 @@ function TodayStrip({
       .map(([batchId, items]) => ({
         batchId,
         items: items.sort((a, b) => a.loggedAt.localeCompare(b.loggedAt)),
+        signature: favoriteSignature(
+          items[0]?.mealName ?? null,
+          items.map((i) => i.name),
+        ),
       }))
       .sort((a, b) =>
         b.items[0]?.loggedAt.localeCompare(a.items[0]?.loggedAt ?? "") ?? 0,
@@ -477,11 +504,54 @@ function TodayStrip({
             </small>
           </h2>
         </div>
-        <span
-          className="font-mono-sm"
-          style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}
-        >
-          {loading ? "…" : `${meals.length} item${meals.length === 1 ? "" : "s"}`}
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+          {canPasteHere && (
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 2,
+                background: "var(--color-surface-low)",
+                border: "1px solid var(--color-outline)",
+                borderRadius: "var(--radius-full)",
+                padding: "1px 4px",
+              }}
+            >
+              <button
+                type="button"
+                onClick={async () => {
+                  if (pasting) return;
+                  setPasting(true);
+                  try {
+                    await onPaste();
+                  } finally {
+                    setPasting(false);
+                  }
+                }}
+                disabled={pasting}
+                title="Paste meal here"
+                style={{ ...iconBtnStyle, color: "var(--color-text-primary)" }}
+              >
+                <ClipboardPaste size={15} />
+              </button>
+              <span style={{ width: 1, height: 14, background: "var(--color-outline)" }} />
+              <button
+                type="button"
+                onClick={onCancelCopy}
+                disabled={pasting}
+                title="Cancel copy"
+                style={iconBtnStyle}
+              >
+                <ClipboardX size={15} />
+              </button>
+            </span>
+          )}
+          <span
+            className="font-mono-sm"
+            style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}
+          >
+            {loading ? "…" : `${meals.length} item${meals.length === 1 ? "" : "s"}`}
+          </span>
         </span>
       </div>
 
@@ -505,15 +575,10 @@ function TodayStrip({
             items={g.items}
             onDelete={() => onDelete(g.batchId)}
             onEditGrams={onEditGrams}
-            isFavorited={favoriteSignatures.has(
-              favoriteSignature(g.items[0]?.mealName ?? null, g.items.map((i) => i.name)),
-            )}
-            onToggleFavorite={() =>
-              onToggleFavorite(
-                g.batchId,
-                favoriteSignature(g.items[0]?.mealName ?? null, g.items.map((i) => i.name)),
-              )
-            }
+            isFavorited={favoriteSignatures.has(g.signature)}
+            onToggleFavorite={() => onToggleFavorite(g.batchId, g.signature)}
+            isCopied={copiedMeal?.items[0]?.batchId === g.batchId}
+            onCopy={() => onCopy(g.items)}
           />
         ))}
       </div>
@@ -527,12 +592,16 @@ function MealRow({
   onEditGrams,
   isFavorited,
   onToggleFavorite,
+  isCopied,
+  onCopy,
 }: {
   items: MealItem[];
   onDelete: () => Promise<void>;
   onEditGrams: (itemId: string, grams: number) => Promise<MealItem | null>;
   isFavorited: boolean;
   onToggleFavorite: () => Promise<void>;
+  isCopied: boolean;
+  onCopy: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
@@ -573,7 +642,7 @@ function MealRow({
         className="food-mealrow-grid"
         style={{
           display: "grid",
-          gridTemplateColumns: "56px 1fr 140px 86px 28px 28px",
+          gridTemplateColumns: "56px 1fr 140px 86px 28px 28px 28px",
           gap: 8,
           alignItems: "center",
         }}
@@ -611,6 +680,19 @@ function MealRow({
         <KcalCell kcal={totalKcal} className="food-mealrow-kcal" />
         <button
           type="button"
+          onClick={onCopy}
+          title={isCopied ? "Copied" : "Copy meal"}
+          aria-pressed={isCopied}
+          className="food-mealrow-copy"
+          style={{
+            ...iconBtnStyle,
+            color: isCopied ? "var(--color-text-primary)" : undefined,
+          }}
+        >
+          {isCopied ? <Check size={13} /> : <Copy size={13} />}
+        </button>
+        <button
+          type="button"
           onClick={async () => {
             if (favBusy) return;
             setFavBusy(true);
@@ -626,7 +708,7 @@ function MealRow({
           className="food-mealrow-fav"
           style={{
             ...iconBtnStyle,
-            color: isFavorited ? "var(--color-accent, #f5a623)" : undefined,
+            color: isFavorited ? "var(--color-brand-accent)" : undefined,
           }}
         >
           <Star size={13} fill={isFavorited ? "currentColor" : "none"} />
@@ -973,8 +1055,9 @@ function TabBar({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void })
       role="tablist"
       className="food-tabbar"
       style={{
+        // One row on desktop; the phone media query collapses this to 3 columns (2 rows).
         display: "grid",
-        gridTemplateColumns: "repeat(3, 1fr)",
+        gridTemplateColumns: "repeat(6, 1fr)",
         gap: 4,
         padding: 4,
         background: "var(--color-surface-low)",
@@ -1610,6 +1693,22 @@ function BarcodePanel({
 
   return (
     <div style={panelStyle}>
+      <PanelLabel>Barcode photo</PanelLabel>
+      <PhotoDropzone
+        icon={<ScanBarcode size={14} />}
+        label="Tap to pick a barcode photo · or paste"
+        busyLabel="Decoding…"
+        busy={busyPhoto}
+        onPrepared={handlePrepared}
+        onError={setError}
+      />
+      {previewUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={previewUrl} alt="barcode" style={previewImgStyle} />
+      )}
+
+      <Divider label="or type the code" />
+
       <PanelLabel>Type a barcode</PanelLabel>
       <input
         type="text"
@@ -1624,22 +1723,6 @@ function BarcodePanel({
         style={inputStyle}
       />
       <ActionRow busy={busyCode} disabled={!code.trim()} onClick={submitCode} />
-
-      <Divider label="or snap a barcode" />
-
-      <PanelLabel>Barcode photo</PanelLabel>
-      <PhotoDropzone
-        icon={<ScanBarcode size={14} />}
-        label="Tap to pick a barcode photo · or paste"
-        busyLabel="Decoding…"
-        busy={busyPhoto}
-        onPrepared={handlePrepared}
-        onError={setError}
-      />
-      {previewUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={previewUrl} alt="barcode" style={previewImgStyle} />
-      )}
     </div>
   );
 }
