@@ -10,12 +10,96 @@ import {
   ReferenceLine,
   ResponsiveContainer,
   Cell,
+  Tooltip,
 } from "recharts";
 import { AlertTriangle } from "lucide-react";
 import { useDashboardWeek } from "@/app/_providers/dashboard-week-provider";
 import { useShell } from "@/app/_providers/shell-provider";
 
 const DOW_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+
+interface TipProps {
+  active?: boolean;
+  label?: string;
+  payload?: {
+    dataKey: string;
+    name: string;
+    value: number;
+    fill: string;
+    payload: { isPlanned: boolean; total: number };
+  }[];
+}
+
+function ChartTooltip({ active, payload, label }: TipProps) {
+  if (!active || !payload?.length) return null;
+  // Planned (future) days carry only the dashed ghost bar — nothing to show.
+  if (payload[0]?.payload.isPlanned) return null;
+  const rows = payload.filter((p) => p.dataKey !== "plannedGhost" && p.value > 0);
+  if (!rows.length) return null;
+  const total = rows.reduce((s, p) => s + p.value, 0);
+  return (
+    <div
+      style={{
+        minWidth: 150,
+        background: "var(--color-surface-elevated)",
+        border: "1px solid var(--color-outline)",
+        borderRadius: 8,
+        padding: "10px 12px",
+        boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
+      }}
+    >
+      <p
+        style={{
+          margin: 0,
+          fontSize: 10,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "var(--color-text-tertiary)",
+        }}
+      >
+        {label}
+      </p>
+      <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
+        {rows.map((p) => (
+          <div
+            key={p.dataKey}
+            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}
+          >
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 12,
+                color: "var(--color-text-secondary)",
+              }}
+            >
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: p.fill }} />
+              {p.name}
+            </span>
+            <span className="font-mono-sm" style={{ fontSize: 12, color: "var(--color-text-primary)" }}>
+              {Math.round(p.value)}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div
+        style={{
+          marginTop: 8,
+          paddingTop: 6,
+          borderTop: "1px solid var(--color-outline)",
+          display: "flex",
+          justifyContent: "space-between",
+        }}
+      >
+        <span style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>Total</span>
+        <span className="font-mono-sm" style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-primary)" }}>
+          {Math.round(total)} kcal
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export function CalorieSummary() {
   const {
@@ -267,6 +351,10 @@ export function CalorieSummary() {
               strokeDasharray="2 3"
               strokeOpacity={0.75}
             />
+            <Tooltip
+              content={<ChartTooltip />}
+              cursor={{ fill: "rgba(255,255,255,0.05)" }}
+            />
             <Bar
               dataKey="plannedGhost"
               stackId="m"
@@ -274,25 +362,25 @@ export function CalorieSummary() {
               stroke="var(--color-outline)"
               strokeDasharray="3 4"
               strokeWidth={1}
-              isAnimationActive={false}
               maxBarSize={56}
             />
-            <Bar dataKey="protein" stackId="m" fill="var(--color-data-2)" isAnimationActive={false} maxBarSize={56}>
+            <Bar dataKey="protein" name="Protein" stackId="m" fill="var(--color-data-2)" maxBarSize={56}>
               {chartData.map((d, i) => (
                 <Cell key={i} fillOpacity={d.isPlanned ? 0 : d.isToday ? 0.85 : 1} />
               ))}
             </Bar>
-            <Bar dataKey="carbs" stackId="m" fill="var(--color-data-3)" isAnimationActive={false} maxBarSize={56}>
+            <Bar dataKey="carbs" name="Carbs" stackId="m" fill="var(--color-data-3)" maxBarSize={56}>
               {chartData.map((d, i) => (
                 <Cell key={i} fillOpacity={d.isPlanned ? 0 : d.isToday ? 0.85 : 1} />
               ))}
             </Bar>
             <Bar
               dataKey="fat"
+              name="Fat"
               stackId="m"
               fill="var(--color-data-4)"
               radius={[3, 3, 0, 0]}
-              isAnimationActive={false} maxBarSize={56}
+              maxBarSize={56}
               stroke="var(--color-brand-accent)"
               strokeDasharray="3 4"
               strokeWidth={1.4}
