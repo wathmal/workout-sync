@@ -18,6 +18,12 @@ import { useShell } from "@/app/_providers/shell-provider";
 
 const DOW_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
+const GRAMS_KEY = {
+  protein: "proteinG",
+  carbs: "carbsG",
+  fat: "fatG",
+} as const;
+
 interface TipProps {
   active?: boolean;
   label?: string;
@@ -26,7 +32,13 @@ interface TipProps {
     name: string;
     value: number;
     fill: string;
-    payload: { isPlanned: boolean; total: number };
+    payload: {
+      isPlanned: boolean;
+      total: number;
+      proteinG: number;
+      carbsG: number;
+      fatG: number;
+    };
   }[];
 }
 
@@ -34,7 +46,12 @@ function ChartTooltip({ active, payload, label }: TipProps) {
   if (!active || !payload?.length) return null;
   // Planned (future) days carry only the dashed ghost bar — nothing to show.
   if (payload[0]?.payload.isPlanned) return null;
-  const rows = payload.filter((p) => p.dataKey !== "plannedGhost" && p.value > 0);
+  const rows = payload
+    .filter((p) => p.dataKey !== "plannedGhost" && p.value > 0)
+    .map((p) => ({
+      ...p,
+      grams: p.payload[GRAMS_KEY[p.dataKey as keyof typeof GRAMS_KEY]] ?? 0,
+    }));
   if (!rows.length) return null;
   const total = rows.reduce((s, p) => s + p.value, 0);
   return (
@@ -78,7 +95,7 @@ function ChartTooltip({ active, payload, label }: TipProps) {
               {p.name}
             </span>
             <span className="font-mono-sm" style={{ fontSize: 12, color: "var(--color-text-primary)" }}>
-              {Math.round(p.value)}
+              {Math.round(p.grams)} g
             </span>
           </div>
         ))}
@@ -144,6 +161,10 @@ export function CalorieSummary() {
     protein: d.proteinKcal,
     carbs: d.carbsKcal,
     fat: d.fatKcal,
+    // Grams ride along for the tooltip; bars stack kcal (the chart's axis).
+    proteinG: d.proteinG,
+    carbsG: d.carbsG,
+    fatG: d.fatG,
     total: d.totalKcal,
     plannedGhost: d.isPlanned ? targetTotalKcal : 0,
     isToday: d.isToday,
