@@ -1,0 +1,54 @@
+# TrueNAS SCALE (Fangtooth 25.04+) — Custom App -> Discover -> (3-dot) Install via YAML.
+#
+# Differs from docker-compose.prod.yml on purpose: the TrueNAS panel does NOT do
+# ${VAR} / .env interpolation, so values are LITERAL (no ${...}, no :? guards),
+# and there is no top-level `name:` (TrueNAS owns the project name you typed).
+#
+# Before applying:
+#   1. Create the dataset for the DB volume (Storage -> Datasets), e.g.
+#      /mnt/POOL/apps/fit-sync/pgdata  — fix POOL and make sure the path exists.
+#   2. Replace every CHANGE_ME below. POSTGRES_PASSWORD must match the one inside
+#      DATABASE_URL.
+#   3. If the GHCR package is private: make it public or add registry creds.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: workout
+      POSTGRES_PASSWORD: CHANGE_ME_DB_PASS
+      POSTGRES_DB: workout
+    ports:
+      # Connect from your laptop: psql postgres://workout:PASS@<truenas-ip>:5432/workout
+      # LAN-only — keep a strong password, never expose to the internet.
+      # For no LAN exposure, use "127.0.0.1:5432:5432" + an SSH tunnel instead.
+      - "31310:5432"
+    volumes:
+      - /mnt/HomeNAS/fit-sync:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workout -d workout"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: ghcr.io/wathmal/workout-sync:main
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "31300:3000"
+    environment:
+      # Must match POSTGRES_PASSWORD above.
+      DATABASE_URL: postgres://workout:CHANGE_ME_DB_PASS@db:5432/workout
+      USER_TZ: Australia/Sydney
+      # Blank a value to disable that feature.
+      GROQ_API_KEY: CHANGE_ME
+      HEVY_API_KEY: CHANGE_ME
+      FMA_BASE_URL: CHANGE_ME
+      FMA_API_KEY: CHANGE_ME
+      GARMIN_TOKEN_B64: CHANGE_ME
+      GOOGLE_SA_KEY: CHANGE_ME
+      GCAL_ID: CHANGE_ME
+      AGENDA_SYNC_SECRET: CHANGE_ME
