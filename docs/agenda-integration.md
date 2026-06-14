@@ -97,13 +97,25 @@ POST user/pass -> sso.garmin.com (ticket) [+ MFA code]
 **Runtime: Python in the web Docker image**, invoked as a subprocess by the sync route.
 - FFI / in-process embedding rejected — same Python+`curl_cffi` native footprint, but worse isolation
   (a native crash or hung login would take down the Next.js process).
-- **Token delivery — env only, no volume.** `scripts/garmin/bootstrap.py` (run off-box / via `docker exec`)
-  does the one-time interactive login, then packs the token store (tar.gz) and prints `GARMIN_TOKEN_B64`.
-  Paste that one value into the container env. `fetch.py` (`resolve_tokenstore()`) base64-decodes it into a
-  fresh temp dir each run, then `client.login(tmp)` — **no password, no MFA, no browser, no mounted file**.
-  Decoder auto-detects tar(.gz) vs a single `garmin_tokens.json`. Safe because OAuth1 (the ~1yr durable
-  token) is in the value and the short OAuth2 is re-minted in memory per run — a read-only env value needs
-  no write-back. Re-mint ~yearly (token death / password change).
+- **Token delivery — credentials + container-local cache, no volume.** Give `GARMIN_EMAIL` +
+  `GARMIN_PASSWORD` (account **2FA must be off**). `fetch.py` caches the token in `GARMIN_TOKEN_DIR`
+  (default `/tmp/garmin-token`, on the container's writable layer — no mounted volume) and:
+  loads it if valid → DI-refreshes if the access token lapsed → falls back to an email+password login if
+  both tokens are dead, then `client.dump()`s the fresh token back so subsequent runs reuse it. Fully
+  self-healing, no human step. The cache is lost on container recreate, after which the next run silently
+  re-mints. `GARMIN_TOKEN_B64` (from off-box `bootstrap.py`, tar.gz or a single `garmin_tokens.json`,
+  base64) is an **optional first-boot seed** only.
+  - **Why credentials + write-back, not env-only:** the original design assumed `garminconnect` rode
+    `garth`'s OAuth1 (~1yr durable) + OAuth2, where a read-only env token self-refreshes ~yearly. That is
+    false now — `garminconnect` (pinned `==0.3.6`) dropped `garth` and uses Garmin **DI auth**: a
+    short-lived access token (~28h) with a **rotating** refresh token. A read-only env value cannot survive
+    rotation, so it dies within ~a day of the access token first lapsing (the bug we hit:
+    `DI token refresh failed: 400 invalid_grant` → "Failed to retrieve social profile"). `garth` is also
+    deprecated/Cloudflare-blocked, so reverting is not an option. Hence: store credentials, let the lib
+    auto-relogin, and persist (write-back) the rotated token. Pin the lib so the auth model can't shift
+    again silently.
+  - **Security:** this stores the Garmin password at rest (a deliberate reversal of the old
+    "password never stored" stance). Prefer a secrets store over plaintext env; restrict file perms.
 - Subprocess **stdout must be clean JSON** — apply the `_silence` stdout-redirect pattern used by the
   `claude-cli` agent shims (`scripts/agent-tools/_silence`), or boot prints corrupt the parent's parse.
 - Dockerfile: add `python3` + `pip install garminconnect` to the runtime stage.
@@ -182,7 +194,9 @@ call on dashboard render** — only Postgres reads + the existing Hevy fetch.
 - Exact Garmin `activityType` values counted as "strength" for de-dup.
 - 90-minute overlap threshold (tunable).
 - Calendar sync window (current week ± buffer).
-- New env: `GARMIN_TOKEN_B64` (from bootstrap.py), `GOOGLE_SA_KEY` (or path), `GCAL_ID`, `AGENDA_SYNC_SECRET`.
-- Dockerfile: `python3` + `garminconnect` in the runtime stage; mount the token volume.
+- New env: `GARMIN_EMAIL`/`GARMIN_PASSWORD` (+ optional `GARMIN_TOKEN_DIR`, `GARMIN_TOKEN_B64` seed),
+  `GOOGLE_SA_KEY` (or path), `GCAL_ID`, `AGENDA_SYNC_SECRET`.
+- Dockerfile: `python3` + `garminconnect==0.3.6` in the runtime stage; no token volume (cached on the
+  container's writable layer at `GARMIN_TOKEN_DIR`).
 - Whether de-dup should *merge* Garmin cardio metrics into a matched Hevy card later (currently:
   drop-Garmin-keep-Hevy only). Out of scope now.

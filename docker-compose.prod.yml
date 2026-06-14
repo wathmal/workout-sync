@@ -41,6 +41,13 @@ services:
       HEVY_API_KEY: ${HEVY_API_KEY:-}
       FMA_BASE_URL: ${FMA_BASE_URL:-}
       FMA_API_KEY: ${FMA_API_KEY:-}
+      # Garmin: email+password let fetch.py auto-mint/refresh the token (2FA must be
+      # OFF). The token persists to GARMIN_TOKEN_DIR on the container's writable layer
+      # (no volume) so logins stay rare. GARMIN_TOKEN_B64 is now an optional first-boot
+      # seed. Prefer TrueNAS secrets over plaintext for the credentials.
+      GARMIN_EMAIL: ${GARMIN_EMAIL:-}
+      GARMIN_PASSWORD: ${GARMIN_PASSWORD:-}
+      GARMIN_TOKEN_DIR: ${GARMIN_TOKEN_DIR:-/tmp/garmin-token}
       GARMIN_TOKEN_B64: ${GARMIN_TOKEN_B64:-}
       GOOGLE_SA_KEY: ${GOOGLE_SA_KEY:-}
       GCAL_ID: ${GCAL_ID:-}

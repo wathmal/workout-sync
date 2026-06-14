@@ -46,7 +46,7 @@ AGENT_DEBUG_LOG=1 ...             # writes JSONL trace to .agent-runs/
 - `GROQ_API_KEY` — without it, workout extraction falls back to mock data (yellow banner).
 - `HEVY_API_KEY` — needed for sync + catalog refresh.
 - `DATABASE_URL`, `FMA_BASE_URL`, `FMA_API_KEY`, `USER_TZ` — needed for the food log.
-- `GARMIN_TOKEN_B64`, `GOOGLE_SA_KEY`, `GCAL_ID`, `AGENDA_SYNC_SECRET` — dashboard agenda (Garmin + Calendar). Optional; without them the agenda just shows Hevy + an empty planned side. `GARMIN_TOKEN_B64` is minted by `scripts/garmin/bootstrap.py` (env-only, no volume). See `docs/agenda-integration.md`.
+- `GARMIN_EMAIL`/`GARMIN_PASSWORD`, `GOOGLE_SA_KEY`, `GCAL_ID`, `AGENDA_SYNC_SECRET` — dashboard agenda (Garmin + Calendar). Optional; without them the agenda just shows Hevy + an empty planned side. Garmin auto-mints + refreshes its token from email+password (requires **2FA off**), caching it to `GARMIN_TOKEN_DIR` (default `/tmp/garmin-token`, container-local, no volume). `GARMIN_TOKEN_B64` is now just an optional first-boot seed (off-box `scripts/garmin/bootstrap.py`). See `docs/agenda-integration.md`.
 
 ## Architecture
 

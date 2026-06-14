@@ -69,7 +69,7 @@ RUN adduser --system --uid 1001 nextjs
 RUN apk add --no-cache python3 libstdc++ \
  && apk add --no-cache --virtual .py-build py3-pip gcc musl-dev libffi-dev \
  && python3 -m venv /opt/garmin-venv \
- && /opt/garmin-venv/bin/pip install --no-cache-dir garminconnect \
+ && /opt/garmin-venv/bin/pip install --no-cache-dir "garminconnect==0.3.6" \
  && apk del .py-build
 ENV GARMIN_PYTHON=/opt/garmin-venv/bin/python3
 

@@ -124,7 +124,9 @@ See `.env.example` for the full template. Highlights:
 | `FMA_API_KEY` | for food log | FMA bearer token |
 | `DATABASE_URL` | for food log | Postgres connection string |
 | `USER_TZ` | optional | IANA timezone for day-boundary aggregation + the agenda 21:00 day-switch |
-| `GARMIN_TOKEN_B64` | for agenda | Base64 Garmin token, minted off-box via `scripts/garmin/bootstrap.py` |
+| `GARMIN_EMAIL` / `GARMIN_PASSWORD` | for agenda | Garmin credentials — `fetch.py` auto-mints + refreshes the token (requires **2FA off**; stores the password at rest) |
+| `GARMIN_TOKEN_DIR` | optional | Container-local token cache (default `/tmp/garmin-token`, no volume) |
+| `GARMIN_TOKEN_B64` | optional | First-boot token seed, minted off-box via `scripts/garmin/bootstrap.py`; superseded by `GARMIN_EMAIL`/`GARMIN_PASSWORD` |
 | `GOOGLE_SA_KEY` | for agenda | Google service-account key (inline JSON, base64, or file path) |
 | `GCAL_ID` | for agenda | Calendar id to read (the calendar's address, not `primary`) |
 | `AGENDA_SYNC_SECRET` | for cron | Shared secret for `POST /api/agenda/sync`; required on internet-exposed deploys |
@@ -188,7 +190,8 @@ podman run -d \
   -e FMA_BASE_URL=... \
   -e FMA_API_KEY=... \
   -e USER_TZ=Australia/Brisbane \
-  -e GARMIN_TOKEN_B64=... \
+  -e GARMIN_EMAIL=... \
+  -e GARMIN_PASSWORD=... \
   -e GOOGLE_SA_KEY=... \
   -e GCAL_ID=... \
   -e AGENDA_SYNC_SECRET=... \
