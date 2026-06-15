@@ -10,13 +10,19 @@ import { RaceTimeline } from "@/components/dashboard/RaceTimeline";
 import { BodyTrendChart } from "@/components/dashboard/BodyTrendChart";
 import { BodyCard } from "@/components/body-card/BodyCard";
 import { MobileOverview } from "@/components/mobile/MobileOverview";
+import { AutoRefresh } from "@/app/_components/auto-refresh";
 
 export default async function OverviewPage() {
   const isMobile = (await headers()).get("x-shell") === "m";
 
   if (isMobile) {
     // Bespoke mobile dashboard — merged single scroll, live providers.
-    return <MobileOverview svgs={loadMuscleSvgs()} trend={overviewMock.trend} />;
+    return (
+      <>
+        <AutoRefresh />
+        <MobileOverview svgs={loadMuscleSvgs()} trend={overviewMock.trend} />
+      </>
+    );
   }
 
   return (
@@ -30,6 +36,7 @@ export default async function OverviewPage() {
         gap: "var(--space-2xl)",
       }}
     >
+      <AutoRefresh />
       <OverviewHeading />
 
       <WeeklyAgendaLive />
