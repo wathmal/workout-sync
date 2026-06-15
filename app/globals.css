@@ -259,6 +259,11 @@ html { scroll-behavior: smooth; }
 
 .footer-link:hover { color: var(--color-text-primary) !important; }
 
+/* Voqi admin DS §2.9: inactive tabs + round icon controls brighten to
+   text-primary (text-on-surface) on hover. */
+.topnav-tab:hover { color: var(--color-text-primary) !important; }
+.topnav-theme:hover { color: var(--color-text-primary) !important; }
+
 .thin-slider::-moz-range-thumb {
   width: 10px;
   height: 10px;

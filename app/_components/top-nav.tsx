@@ -15,6 +15,10 @@ const TABS = [
   { href: "/races", label: "Races", shortLabel: "Races" },
 ] as const;
 
+// Dashboard auto-refresh cadence — mirrors AutoRefresh's 15-min interval so the
+// nav can show "· next in Nm" (Voqi admin DS §2.9 refresh-status copy).
+const REFRESH_MIN = 15;
+
 // Prod build (TrueNAS / `next start`) reads NODE_ENV=production → "PROD".
 // `npm run dev` → "DEV". NEXT_PUBLIC_APP_ENV overrides for staging/custom.
 const ENV_LABEL =
@@ -58,6 +62,7 @@ export function TopNav() {
   const [mounted, setMounted] = useState(false);
   const [refreshing, startRefresh] = useTransition();
   const [now, setNow] = useState(() => Date.now());
+  const [mountedAt] = useState(() => Date.now());
 
   useEffect(() => {
     const current = (document.documentElement.getAttribute("data-theme") as
@@ -81,12 +86,13 @@ export function TopNav() {
     return Number.isFinite(min) ? min : null;
   })();
   const ageMin = oldest == null ? null : Math.max(0, Math.floor((now - oldest) / 60_000));
+  // "· next in Nm" countdown over the 15-min auto-refresh cycle (DS §2.9).
+  const sinceCycle = Math.floor((now - mountedAt) / 60_000) % REFRESH_MIN;
+  const nextIn = REFRESH_MIN - sinceCycle;
   const updated =
     ageMin == null
       ? "Loading…"
-      : ageMin === 0
-      ? "Last updated just now"
-      : `Last updated ${ageMin}m ago`;
+      : `${ageMin === 0 ? "Updated just now" : `Updated ${ageMin}m ago`} · next in ${nextIn}m`;
 
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
@@ -309,15 +315,17 @@ export function TopNav() {
           aria-label="Toggle theme"
           className="topnav-theme"
           style={{
-            padding: 8,
+            width: 32,
+            height: 32,
             borderRadius: 999,
             border: 0,
-            background: "transparent",
+            background: "var(--color-surface-chip)",
             color: "var(--color-text-tertiary)",
             cursor: "pointer",
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
+            transition: "color var(--motion-fast) var(--ease)",
           }}
         >
           {mounted ? (
@@ -333,7 +341,7 @@ export function TopNav() {
             width: 32,
             height: 32,
             borderRadius: 999,
-            background: "var(--color-surface-elevated)",
+            background: "var(--color-surface-chip)",
             display: "grid",
             placeItems: "center",
           }}
