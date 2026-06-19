@@ -7,6 +7,7 @@ import type {
   TrackedMuscle,
 } from "@/lib/dashboard/muscle-coverage";
 import { SectionHead } from "./SectionHead";
+import { SuggestWorkout } from "./SuggestWorkout";
 import { useDashboardWeek } from "@/app/_providers/dashboard-week-provider";
 
 const BUCKET_COLOR: Record<MuscleBucket, string> = {
@@ -197,6 +198,8 @@ export function MuscleCoverage({ svgs }: { svgs: { front: string; back: string }
           </div>
         )}
       </div>
+
+      <SuggestWorkout />
     </div>
   );
 }

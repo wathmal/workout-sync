@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getWorkoutsSince } from "@/lib/hevy/workouts-since";
+import { getWorkoutsCached, getWorkoutsSince } from "@/lib/hevy/workouts-since";
 
 /**
  * GET /api/hevy-workouts?since=<ISO>&until=<ISO>
@@ -34,7 +34,21 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const result = await getWorkoutsSince(sinceMs, true);
+  // Longer windows (e.g. the 75-day suggester history) need more pages than the
+  // default 5*10=50-workout cap. Clamp to a sane ceiling.
+  const maxPagesParam = Number(request.nextUrl.searchParams.get("maxPages"));
+  const maxPages = Number.isFinite(maxPagesParam)
+    ? Math.min(20, Math.max(1, Math.trunc(maxPagesParam)))
+    : undefined;
+
+  // Opt-in 6h TTL cache for large historical windows (the suggester). Week
+  // coverage / by-date / agenda omit `cache` and stay fresh. `refresh=1` forces
+  // a cold pull (the /suggest Refresh button).
+  const useCache = request.nextUrl.searchParams.get("cache") === "1";
+  const force = request.nextUrl.searchParams.get("refresh") === "1";
+  const result = useCache
+    ? await getWorkoutsCached(sinceMs, maxPages ?? 12, { force })
+    : await getWorkoutsSince(sinceMs, true, maxPages);
   if (!result.ok) {
     if (result.error === "no-key") {
       return NextResponse.json(

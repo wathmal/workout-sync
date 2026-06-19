@@ -4,16 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Dumbbell, Utensils, Flag } from "lucide-react";
 
-// 4-tab nav. Body composition lives inside the Overview scroll (no separate
-// tab — see plan). /review is a forward step of the workout flow, so it keeps
-// the Workout tab lit.
+// 4-tab nav. Workout = unified suggest + log screen (/suggest). /upload + /review
+// are forward steps of the log flow, so they keep the Workout tab lit. Body
+// composition lives inside the Overview scroll (no separate tab — see plan).
 const ITEMS = [
   { href: "/", label: "Overview", icon: LayoutDashboard, match: (p: string) => p === "/" },
   {
-    href: "/upload",
+    href: "/suggest",
     label: "Workout",
     icon: Dumbbell,
-    match: (p: string) => p.startsWith("/upload") || p.startsWith("/review"),
+    match: (p: string) =>
+      p.startsWith("/suggest") || p.startsWith("/upload") || p.startsWith("/review"),
   },
   { href: "/food", label: "Food", icon: Utensils, match: (p: string) => p.startsWith("/food") },
   { href: "/races", label: "Races", icon: Flag, match: (p: string) => p.startsWith("/races") },

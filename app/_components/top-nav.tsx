@@ -10,7 +10,7 @@ import { useAgenda } from "@/app/_providers/agenda-provider";
 
 const TABS = [
   { href: "/", label: "Overview", shortLabel: "Home" },
-  { href: "/upload", label: "Log Workout", shortLabel: "Workout" },
+  { href: "/suggest", label: "Workout", shortLabel: "Workout" },
   { href: "/food", label: "Log Food", shortLabel: "Food" },
   { href: "/races", label: "Races", shortLabel: "Races" },
 ] as const;

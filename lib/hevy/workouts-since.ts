@@ -105,6 +105,7 @@ function joinWorkout(raw: HevyRawWorkout): JoinedWorkout {
 async function loadWorkoutsSince(
   sinceMs: number,
   fresh = false,
+  maxPages = MAX_PAGES,
 ): Promise<GetWorkoutsResult> {
   const apiKey = process.env.HEVY_API_KEY;
   if (!apiKey) return { ok: false, error: "no-key" };
@@ -113,7 +114,7 @@ async function loadWorkoutsSince(
   const collected: JoinedWorkout[] = [];
 
   try {
-    for (let page = 1; page <= MAX_PAGES; page++) {
+    for (let page = 1; page <= maxPages; page++) {
       const data = await fetchPage(page, apiKey, fresh);
       const list = data.workouts ?? [];
       if (list.length === 0) break;
@@ -139,6 +140,30 @@ async function loadWorkoutsSince(
 }
 
 export const getWorkoutsSince = cache(loadWorkoutsSince);
+
+// --- TTL cache for large historical windows (the suggester's 75-day pull) -----
+// In-memory + opt-in (only callers that pass cache=1). Persists across requests
+// for the process lifetime — fine for the self-hosted single-container deploy;
+// not shared across processes, lost on redeploy (repopulates on first hit).
+// Revisit if ever deployed serverless.
+const HEVY_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+const windowCache = new Map<string, { ts: number; workouts: JoinedWorkout[] }>();
+
+/** TTL-cached wrapper for large historical windows. Caches only ok results. */
+export async function getWorkoutsCached(
+  sinceMs: number,
+  maxPages: number,
+  opts: { force?: boolean } = {},
+): Promise<GetWorkoutsResult> {
+  const key = `${sinceMs}|${maxPages}`;
+  const hit = windowCache.get(key);
+  if (!opts.force && hit && Date.now() - hit.ts < HEVY_CACHE_TTL_MS) {
+    return { ok: true, workouts: hit.workouts };
+  }
+  const result = await loadWorkoutsSince(sinceMs, true, maxPages);
+  if (result.ok) windowCache.set(key, { ts: Date.now(), workouts: result.workouts });
+  return result;
+}
 
 /**
  * Start of the current calendar week (Monday 00:00 local time) as ms timestamp.
