@@ -395,4 +395,21 @@ const UW_CSS = `
 .uw-empty { padding:28px 14px; text-align:center; color:var(--color-text-muted); }
 .uw-empty a { color:var(--color-brand-accent); text-decoration:none; cursor:pointer; }
 .uw-notice { padding:10px 12px; background:var(--color-surface-low); border-radius:var(--radius-md); color:var(--color-text-tertiary); font-size:13px; }
+
+@media (max-width: 600px) {
+  .uw-hdr { align-items:flex-start; gap:var(--space-md); }
+  .uw-seg button { padding:0 14px; }
+  .uw-panel { padding:var(--space-md); }
+  .uw-ehead { flex-wrap:wrap; gap:12px; }
+  .uw-etime .big { font-size:24px; }
+  /* Band: stack label over exercise cells; drop the fixed 172px column. */
+  .uw-band { grid-template-columns:1fr; gap:11px; padding:14px; position:relative; }
+  .uw-blabel { border-right:none; padding-right:38px; flex-direction:row; flex-wrap:wrap; align-items:baseline; justify-content:flex-start; column-gap:10px; row-gap:2px; }
+  /* Single-column cells so long exercise names + loads stop clipping. */
+  .uw-bex { grid-template-columns:1fr; }
+  .uw-cell { padding:11px 12px; }
+  .uw-cell .nm { font-size:14px; }
+  /* Discard out of the flow into the band's top-right corner. */
+  .uw-discard { position:absolute; top:8px; right:8px; }
+}
 `;

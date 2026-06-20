@@ -1,6 +1,6 @@
 # Fitness Dashboard — Design System
 
-**Version 0.3 · Desktop · Single-user**
+**Version 0.4 · Responsive (mobile PWA + desktop) · Single-user**
 
 Trimmed Voqi design system for personal fitness dashboard. Tokens (color, type, spacing) inherit Voqi Foundations v1.1 so dashboard read as same product family.
 
@@ -278,11 +278,24 @@ KPI-style strip showing day-total calories + macro micro-bars (protein / carbs /
 
 ## 5. Layout & navigation
 
-### Target display
+### Surfaces & responsive model
 
-Nominal: 1920 × 1080. Minimum: 1440 × 900. Content column max-width 1400px, centered, with `space-2xl` outer padding. Below 1100px multi-column rows collapse to single-column stacks. Below 760px dashboard refuse to render + show "use the mobile app" message — desktop-only by design.
+Two **co-equal** shells. Neither primary — same tokens, same components, same data; only layout density + nav chrome differ. A component spec is "done" only when it reads correctly in **both** shells.
 
-### Navigation: horizontal top nav
+Shell chosen server-side by user-agent (`proxy.ts` sets the `x-shell` header; `?shell=m|d` overrides and sticks via cookie):
+
+- **Desktop shell** — horizontal top nav + footer. Content column max-width 1400px, centered, `space-2xl` outer padding. Nominal 1920 × 1080, minimum 1440 × 900. Multi-column asymmetric grids (see splits below); below ~1100px multi-column rows collapse to single-column stacks.
+- **Mobile PWA shell** — installable, standalone, **portrait** (`manifest.ts`: `display: standalone`, `orientation: portrait`, theme `#0D0D0D`). Phone-first: 480px max-width centered container, mobile top-bar + fixed bottom tab nav, `100dvh` height, `env(safe-area-inset-*)` honored, content padding clamps down to `space-md`. Multi-column grids stack to single column; component-level reflow at `@media (max-width: 600px)`.
+
+Tablets land on the **desktop** shell by design — iPadOS Safari reports a desktop UA, and the mobile shell is phone-class only.
+
+> Legacy `ViewportGuard` (desktop-only "use the mobile app" refusal below 760px) is **retired** — it predates the mobile shell and is no longer wired in. Don't reintroduce a hard viewport refusal; both surfaces render.
+
+### Navigation
+
+Each shell carries its own nav; both expose the same sections.
+
+**Desktop — horizontal top nav.**
 
 Persistent 64px horizontal bar — **not** sidebar. Bar carry wordmark, six section tabs (Overview · Training · Body · Nutrition · Timeline · Settings), search (Cmd+K), date range control, Refresh primary action, theme toggle, avatar.
 
@@ -295,6 +308,10 @@ Horizontal chosen over sidebar because:
 Active tab use 2px brand-accent underline replacing nav's bottom border in tab's slot — no fill, no pill.
 
 If 7th section ever added, drop search to icon-only before reflowing tabs.
+
+**Mobile — top-bar + bottom tab nav.**
+
+Phone shell splits nav in two: a slim top-bar (wordmark + theme toggle) and a fixed bottom tab bar inside the safe-area inset. Bottom bar carries the primary sections as icon + label tabs (Overview · Workout · Food · Races); active tab uses brand-accent icon + label, inactive muted. Thumb-reachable navigation is why sections live at the bottom, not the top. `main` reserves `calc(56px + safe-area-inset-bottom)` bottom padding so content never hides behind the bar. Secondary destinations (Settings, search) fold into the top-bar / a section, not the tab row — keep the bar at four to five tabs.
 
 ### Page chrome
 
@@ -398,10 +415,11 @@ Suggested stack (not prescriptive): React + Tailwind v4 with tokens under `@them
 
 ## Changelog
 
+- **v0.4 (mobile PWA)** — Reframed from desktop-only to **co-equal responsive**. Documented the two server-switched shells (desktop top-nav vs phone-first portrait PWA with top-bar + bottom tab nav), the `x-shell` UA switch + `?shell=` override, the 480px mobile container, `@media (max-width: 600px)` reflow convention, and safe-area handling. Retired the `ViewportGuard` sub-760px refusal. Tablets stay on desktop shell by design.
 - **v0.3 (philosophy pass)** — Stripped component-level pixel specs. Tokens stay (foundations), principles stay, key decisions stay (horizontal nav, dual-axis chart, body preview vs full, axis-based timeline, no KPI strip on Overview, etc.). Component sections rewritten as 1–2 paragraph descriptions of what each component is + what's distinctive. `dashboard.html` mock = visual reference; this doc = vocabulary.
 - **v0.2 (mock reconcile)** — Reconciled spec to shipped mock: axis-based race timeline (not scroll cards), body render full + preview variants, dual-axis trend chart, horizontal top nav (not sidebar), KPI strip removed from Overview, muscle heatmap moved to Training.
 - **v0.1** — Initial draft. Derived from Voqi Foundations v1.1 with mobile, marketing, pronunciation-specific patterns cut; fitness primitives added.
 
 ---
 
-*Fitness Dashboard Design · v0.3 · Derived from Voqi Foundations v1.1*
+*Fitness Dashboard Design · v0.4 · Derived from Voqi Foundations v1.1*
