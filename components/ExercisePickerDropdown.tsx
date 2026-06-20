@@ -52,7 +52,7 @@ export function ExercisePickerDropdown({
   return (
     <div
       style={{
-        width: 460,
+        width: "min(460px, calc(100vw - 24px))",
         background: "var(--color-card)",
         borderRadius: "var(--radius-md)",
         boxShadow:

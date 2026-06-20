@@ -680,7 +680,7 @@ export default function ReviewPage() {
                 align="center"
                 sideOffset={8}
                 className="p-0 border-0 bg-transparent shadow-none"
-                style={{ width: 520 }}
+                style={{ width: "min(520px, calc(100vw - 16px))" }}
               >
                 <ExercisePickerDropdown
                   onSelect={handleAddExercise}

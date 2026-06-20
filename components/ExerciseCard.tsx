@@ -201,7 +201,7 @@ export function ExerciseCard({
             align="end"
             sideOffset={8}
             className="p-0 border-0 bg-transparent shadow-none"
-            style={{ width: 520 }}
+            style={{ width: "min(520px, calc(100vw - 16px))" }}
           >
             <ExercisePickerDropdown
               currentTitle={ex.title}
