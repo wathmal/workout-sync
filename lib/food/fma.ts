@@ -120,6 +120,26 @@ export async function fmaAnalyzeBarcode(
   });
 }
 
+/**
+ * Transcribe a nutrition-label / panel image (incl. website nutrition tables).
+ * Macros are READ off the image (passthrough, not DB-resolved), so items come
+ * back `basis: per_serving` with `source_ref.kind="label"` + a
+ * `label_transcription` warning. `context` is an optional product-name hint.
+ */
+export async function fmaAnalyzeLabel(
+  imageBase64: string,
+  opts?: { locale?: string; context?: string },
+): Promise<FmaAnalyzeResponse> {
+  return fma<FmaAnalyzeResponse>("/v1/analyze/label", {
+    method: "POST",
+    body: {
+      image_base64: imageBase64,
+      locale: opts?.locale,
+      context: opts?.context,
+    },
+  });
+}
+
 export async function fmaAnalyzeBarcodePhoto(
   imageBase64: string,
   opts?: { locale?: string; context?: string },

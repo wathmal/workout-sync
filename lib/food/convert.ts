@@ -10,6 +10,7 @@ import type {
   FmaItem,
   FmaComponent,
   FmaMacros,
+  FmaNutrients,
   FmaServing,
   FoodLogSource,
   MealComponent,
@@ -26,14 +27,15 @@ export function defaultGramsForHit(serving: FmaServing | null | undefined): numb
 }
 
 export function fmaComponentToMeal(c: FmaComponent): MealComponent {
+  const m = c.nutrients.macros;
   return {
     inputName: c.input_name,
     name: c.matched?.name ?? c.input_name,
-    grams: c.grams,
-    kcal: c.macros.kcal,
-    proteinG: c.macros.protein_g,
-    carbsG: c.macros.carbs_g,
-    fatG: c.macros.fat_g,
+    grams: c.nutrients.grams,
+    kcal: m.kcal,
+    proteinG: m.protein_g,
+    carbsG: m.carbs_g,
+    fatG: m.fat_g,
     warnings: c.warnings ?? [],
     matched: c.matched ? { source: c.matched.source, name: c.matched.name } : null,
   };
@@ -41,14 +43,15 @@ export function fmaComponentToMeal(c: FmaComponent): MealComponent {
 
 /** FmaItem → PendingItem. Null-safe; composites + `no_match` singles supported. */
 export function fromFmaItem(it: FmaItem, idx: number, source: FoodLogSource): PendingItem {
-  const g = it.grams;
+  const m = it.nutrients.macros;
+  const g = it.nutrients.grams;
   const basePerG =
     g > 0
       ? {
-          kcal: it.macros.kcal / g,
-          proteinG: it.macros.protein_g / g,
-          carbsG: it.macros.carbs_g / g,
-          fatG: it.macros.fat_g / g,
+          kcal: m.kcal / g,
+          proteinG: m.protein_g / g,
+          carbsG: m.carbs_g / g,
+          fatG: m.fat_g / g,
         }
       : null;
 
@@ -60,13 +63,13 @@ export function fromFmaItem(it: FmaItem, idx: number, source: FoodLogSource): Pe
     key: `fma-${idx}-${it.matched?.source_id ?? `x-${idx}`}`,
     source,
     name: it.matched?.name ?? it.input_name ?? "Unknown",
-    grams: it.grams,
-    kcal: it.macros.kcal,
-    proteinG: it.macros.protein_g,
-    carbsG: it.macros.carbs_g,
-    fatG: it.macros.fat_g,
+    grams: g,
+    kcal: m.kcal,
+    proteinG: m.protein_g,
+    carbsG: m.carbs_g,
+    fatG: m.fat_g,
     basePerG,
-    serving: it.matched?.serving ?? null,
+    serving: it.nutrients.serving ?? null,
     fmaFoodId: it.matched?.food_id ?? null,
     fmaSource: it.matched?.source ?? null,
     fmaSourceId: it.matched?.source_id ?? null,
@@ -77,8 +80,58 @@ export function fromFmaItem(it: FmaItem, idx: number, source: FoodLogSource): Pe
     enabled: !noMatchSingle,
     kind: isComposite ? "composite" : "single",
     components: isComposite ? (it.components ?? []).map(fmaComponentToMeal) : undefined,
-    baseGrams: it.grams,
+    baseGrams: g,
   };
+}
+
+/**
+ * FmaItem (`basis: per_serving`, label passthrough) → PendingItem on the
+ * SERVINGS axis. The serving IS the unit: macros are per-1-serving, scaled by a
+ * `servings` count — no grams, no per_100g derivation. Brand (when present) is
+ * prefixed into the name.
+ */
+export function fromFmaLabelItem(it: FmaItem, idx: number): PendingItem {
+  const m = it.nutrients.macros;
+  const base = it.input_name ?? it.matched?.name ?? "Unknown";
+  const brand = it.source_ref?.brand;
+  const name = brand ? `${brand} ${base}` : base;
+
+  return {
+    key: `label-${idx}-${it.source_ref?.brand ?? base}`,
+    source: "label",
+    name,
+    grams: 0, // grams-free; hidden in the UI for serving items
+    kcal: m.kcal,
+    proteinG: m.protein_g,
+    carbsG: m.carbs_g,
+    fatG: m.fat_g,
+    basePerG: null,
+    serving: it.nutrients.serving ?? null,
+    fmaFoodId: null,
+    fmaSource: null,
+    fmaSourceId: null,
+    confidence: it.confidence,
+    warnings: it.warnings,
+    rationale: it.rationale,
+    rawResponse: it,
+    enabled: true,
+    kind: "single",
+    unit: "serving",
+    servings: 1,
+    servingLabel: it.nutrients.serving?.label ?? "1 serving",
+  };
+}
+
+/**
+ * Dispatch an analyze item to the right mapper by `nutrients.basis`:
+ * `per_serving` → servings axis ({@link fromFmaLabelItem}); everything else
+ * (`per_portion`, `per_100g`, or an unknown future basis) → grams axis
+ * ({@link fromFmaItem}). Future-proof: routes by shape, not by endpoint.
+ */
+export function fromFmaAnalyzeItem(it: FmaItem, idx: number, source: FoodLogSource): PendingItem {
+  return it.nutrients.basis === "per_serving"
+    ? fromFmaLabelItem(it, idx)
+    : fromFmaItem(it, idx, source);
 }
 
 /** Scale a camelCase component breakdown by `factor` (for display/storage). */
@@ -113,16 +166,22 @@ function scaleMacros(m: FmaMacros, factor: number): FmaMacros {
   };
 }
 
-/** Scale a raw FMA item (snake) by `factor` — grams, macros, and each component. */
+/**
+ * Scale the portion-dependent fields of a nutrients block. `basis`, `serving`,
+ * `extra`, and the `per_100g` sidecar are portion-independent — left untouched.
+ */
+function scaleNutrients(n: FmaNutrients, factor: number): FmaNutrients {
+  return { ...n, grams: n.grams * factor, macros: scaleMacros(n.macros, factor) };
+}
+
+/** Scale a raw FMA item by `factor` — its nutrients and each component's. */
 export function scaleFmaItem(it: FmaItem, factor: number): FmaItem {
   return {
     ...it,
-    grams: it.grams * factor,
-    macros: scaleMacros(it.macros, factor),
+    nutrients: scaleNutrients(it.nutrients, factor),
     components: it.components?.map((c) => ({
       ...c,
-      grams: c.grams * factor,
-      macros: scaleMacros(c.macros, factor),
+      nutrients: scaleNutrients(c.nutrients, factor),
     })),
   };
 }
@@ -135,7 +194,7 @@ export function scaleFmaItem(it: FmaItem, factor: number): FmaItem {
 export function pendingRawResponse(item: PendingItem): unknown {
   const it = item.rawResponse as FmaItem | undefined;
   if (!it || item.kind !== "composite") return item.rawResponse;
-  const base = item.baseGrams && item.baseGrams > 0 ? item.baseGrams : it.grams || 1;
+  const base = item.baseGrams && item.baseGrams > 0 ? item.baseGrams : it.nutrients.grams || 1;
   const factor = (item.grams || 0) / base;
   return factor === 1 ? it : scaleFmaItem(it, factor);
 }

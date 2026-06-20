@@ -44,7 +44,8 @@ function toBatchItems(
       | "fmaFoodId"
       | "fmaSource"
       | "fmaSourceId"
-    >
+    > &
+      Partial<Pick<MealItem, "unit" | "servings" | "servingLabel">>
   >,
 ): MealBatchInput["items"] {
   return items.map((it) => ({
@@ -59,6 +60,10 @@ function toBatchItems(
     fmaSourceId: it.fmaSourceId,
     confidence: null,
     warnings: null,
+    // Portion axis must survive a re-log so a label food re-logs as servings.
+    unit: it.unit ?? "g",
+    servings: it.servings ?? undefined,
+    servingLabel: it.servingLabel ?? null,
   }));
 }
 
@@ -83,6 +88,8 @@ interface FoodLogContextType {
   addMeal: (batch: MealBatchInput) => Promise<MealItem[]>;
   deleteMeal: (batchId: string) => Promise<void>;
   editGrams: (itemId: string, grams: number) => Promise<MealItem | null>;
+  /** Rescale a label (unit='serving') item by servings count. */
+  editServings: (itemId: string, servings: number) => Promise<MealItem | null>;
   /** Favorite a logged batch (snapshot it). Idempotent server-side. */
   addFavorite: (batchId: string) => Promise<void>;
   removeFavorite: (id: string) => Promise<void>;
@@ -210,6 +217,22 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
     [refresh, reloadDay],
   );
 
+  const editServings = useCallback(
+    async (itemId: string, servings: number) => {
+      const { item } = await getJson<{ item: MealItem }>(
+        `/api/food/log/${encodeURIComponent(itemId)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ servings }),
+        },
+      );
+      await Promise.all([refresh(), reloadDay(selectedDateRef.current)]);
+      return item;
+    },
+    [refresh, reloadDay],
+  );
+
   const favoriteSignatures = useMemo(
     () => new Set(favorites.map((f) => f.signature)),
     [favorites],
@@ -305,6 +328,7 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
       addMeal,
       deleteMeal,
       editGrams,
+      editServings,
       addFavorite,
       removeFavorite,
       toggleFavoriteForBatch,
@@ -315,7 +339,7 @@ export function FoodLogProvider({ children }: { children: ReactNode }) {
       pasteMeal,
       refresh,
     }),
-    [today, week, target, favorites, favoriteSignatures, lastFetched, loading, error, selectedDate, dayMeals, dayLoading, addMeal, deleteMeal, editGrams, addFavorite, removeFavorite, toggleFavoriteForBatch, logFavorite, copiedMeal, copyMeal, cancelCopy, pasteMeal, refresh],
+    [today, week, target, favorites, favoriteSignatures, lastFetched, loading, error, selectedDate, dayMeals, dayLoading, addMeal, deleteMeal, editGrams, editServings, addFavorite, removeFavorite, toggleFavoriteForBatch, logFavorite, copiedMeal, copyMeal, cancelCopy, pasteMeal, refresh],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

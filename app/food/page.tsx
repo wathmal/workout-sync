@@ -22,6 +22,9 @@ import {
   ChevronRight,
   AlertTriangle,
   Loader2,
+  Lock,
+  ReceiptText,
+  Minus,
   CornerDownRight,
 } from "lucide-react";
 import { Overline } from "@/app/_components/overline";
@@ -34,6 +37,7 @@ import {
 import type {
   FavoriteMeal,
   FmaAnalyzeResponse,
+  FmaItem,
   FmaSearchHit,
   FmaOffSearchHit,
   FmaServing,
@@ -41,7 +45,7 @@ import type {
   MealItem,
   PendingItem,
 } from "@/lib/food/types";
-import { fromFmaItem, displayComponents, pendingRawResponse, defaultGramsForHit } from "@/lib/food/convert";
+import { fromFmaItem, fromFmaAnalyzeItem, displayComponents, pendingRawResponse, defaultGramsForHit } from "@/lib/food/convert";
 import { favoriteSignature } from "@/lib/food/favorite-signature";
 import { MacroChips, KcalCell, iconBtnStyle } from "@/components/food/meal-row";
 import { PhotoDropzone } from "@/app/_components/photo-dropzone";
@@ -53,7 +57,7 @@ import {
   defaultLoggedAtDate,
 } from "@/lib/food/local-date";
 
-type Mode = "search" | "off" | "text" | "snap" | "barcode" | "favorites";
+type Mode = "search" | "off" | "text" | "snap" | "barcode" | "label" | "favorites";
 
 const LOW_CONF = 0.7;
 
@@ -78,10 +82,12 @@ function defaultLoggedAt(dateStr: string): string {
 
 
 function fromSearchHit(hit: FmaSearchHit, grams: number): PendingItem {
-  const k100 = hit.kcal_per_100g ?? 0;
-  const p100 = hit.protein_g_per_100g ?? 0;
-  const c100 = hit.carbs_g_per_100g ?? 0;
-  const f100 = hit.fat_g_per_100g ?? 0;
+  // Search rows are per_100g basis: `nutrients.macros` are the per-100g values.
+  const m = hit.nutrients.macros;
+  const k100 = m.kcal ?? 0;
+  const p100 = m.protein_g ?? 0;
+  const c100 = m.carbs_g ?? 0;
+  const f100 = m.fat_g ?? 0;
   const scale = grams / 100;
   return {
     key: `search-${hit.source}-${hit.source_id}`,
@@ -98,7 +104,7 @@ function fromSearchHit(hit: FmaSearchHit, grams: number): PendingItem {
       carbsG: c100 / 100,
       fatG: f100 / 100,
     },
-    serving: hit.serving ?? null,
+    serving: hit.nutrients.serving ?? null,
     fmaFoodId: hit.food_id,
     fmaSource: hit.source,
     fmaSourceId: hit.source_id,
@@ -129,6 +135,7 @@ function FoodPageInner() {
       modeParam === "text" ||
       modeParam === "snap" ||
       modeParam === "barcode" ||
+      modeParam === "label" ||
       modeParam === "favorites"
       ? modeParam
       : "text",
@@ -143,6 +150,7 @@ function FoodPageInner() {
     addMeal,
     deleteMeal,
     editGrams,
+    editServings,
     favorites,
     favoriteSignatures,
     toggleFavoriteForBatch,
@@ -252,6 +260,10 @@ function FoodPageInner() {
           fmaSourceId: it.fmaSourceId ?? null,
           confidence: it.confidence ?? null,
           warnings: it.warnings ?? null,
+          // Portion axis (label items scale by servings, grams-free).
+          unit: it.unit ?? "g",
+          servings: it.servings,
+          servingLabel: it.servingLabel ?? null,
           // For a grams-edited composite, rescale the stored breakdown to match.
           rawResponse: pendingRawResponse(it),
         })),
@@ -286,6 +298,7 @@ function FoodPageInner() {
         onNext={() => setSelectedDate(addDaysStr(selectedDate, 1))}
         onDelete={deleteMeal}
         onEditGrams={editGrams}
+        onEditServings={editServings}
         favoriteSignatures={favoriteSignatures}
         onToggleFavorite={toggleFavoriteForBatch}
         copiedMeal={copiedMeal}
@@ -355,6 +368,13 @@ function FoodPageInner() {
             onResult={(items, loggedAtIso, mealName) =>
               appendItems(items, { mealName, loggedAtIso })
             }
+            setError={setError}
+          />
+        )}
+        {mode === "label" && (
+          <LabelPanel
+            locale={locale}
+            onResult={(items, loggedAtIso) => appendItems(items, { loggedAtIso })}
             setError={setError}
           />
         )}
@@ -433,6 +453,7 @@ function TodayStrip({
   onNext,
   onDelete,
   onEditGrams,
+  onEditServings,
   favoriteSignatures,
   onToggleFavorite,
   copiedMeal,
@@ -449,6 +470,7 @@ function TodayStrip({
   onNext: () => void;
   onDelete: (batchId: string) => Promise<void>;
   onEditGrams: (itemId: string, grams: number) => Promise<MealItem | null>;
+  onEditServings: (itemId: string, servings: number) => Promise<MealItem | null>;
   favoriteSignatures: Set<string>;
   onToggleFavorite: (batchId: string, signature: string) => Promise<void>;
   copiedMeal: CopiedMeal | null;
@@ -575,6 +597,7 @@ function TodayStrip({
             items={g.items}
             onDelete={() => onDelete(g.batchId)}
             onEditGrams={onEditGrams}
+            onEditServings={onEditServings}
             isFavorited={favoriteSignatures.has(g.signature)}
             onToggleFavorite={() => onToggleFavorite(g.batchId, g.signature)}
             isCopied={copiedMeal?.items[0]?.batchId === g.batchId}
@@ -590,6 +613,7 @@ function MealRow({
   items,
   onDelete,
   onEditGrams,
+  onEditServings,
   isFavorited,
   onToggleFavorite,
   isCopied,
@@ -598,6 +622,7 @@ function MealRow({
   items: MealItem[];
   onDelete: () => Promise<void>;
   onEditGrams: (itemId: string, grams: number) => Promise<MealItem | null>;
+  onEditServings: (itemId: string, servings: number) => Promise<MealItem | null>;
   isFavorited: boolean;
   onToggleFavorite: () => Promise<void>;
   isCopied: boolean;
@@ -736,7 +761,7 @@ function MealRow({
           }}
         >
           {items.map((it) => (
-            <EditableItemRow key={it.id} item={it} onEditGrams={onEditGrams} />
+            <EditableItemRow key={it.id} item={it} onEditGrams={onEditGrams} onEditServings={onEditServings} />
           ))}
         </div>
       )}
@@ -747,26 +772,35 @@ function MealRow({
 function EditableItemRow({
   item,
   onEditGrams,
+  onEditServings,
 }: {
   item: MealItem;
   onEditGrams: (itemId: string, grams: number) => Promise<MealItem | null>;
+  onEditServings: (itemId: string, servings: number) => Promise<MealItem | null>;
 }) {
+  // Label items edit on the servings axis (grams-free); everything else on grams.
+  const isServing = item.unit === "serving";
+  const current = isServing ? item.servings ?? 1 : item.grams;
   const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(item.grams.toString());
+  const [value, setValue] = useState(current.toString());
   const [busy, setBusy] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const isComposite = item.kind === "composite" && (item.components?.length ?? 0) > 0;
+  // Composite logged before the unified-nutrients migration: its raw_response is
+  // the old flat shape, so the breakdown can't be rebuilt or rescaled. Lock edits.
+  const locked = item.kind === "composite" && (item.components?.length ?? 0) === 0;
 
   const save = async () => {
-    const g = Number(value);
-    if (!Number.isFinite(g) || g <= 0) return;
-    if (g === item.grams) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return;
+    if (n === current) {
       setEditing(false);
       return;
     }
     setBusy(true);
     try {
-      await onEditGrams(item.id, g);
+      if (isServing) await onEditServings(item.id, n);
+      else await onEditGrams(item.id, n);
       setEditing(false);
     } finally {
       setBusy(false);
@@ -845,20 +879,44 @@ function EditableItemRow({
           <span
             className="font-mono-sm"
             style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}
+            title={isServing && item.servingLabel ? item.servingLabel : undefined}
           >
-            {Math.round(item.grams)}g
+            {isServing ? `×${fmtServingNum(item.servings ?? 1)}` : `${Math.round(item.grams)}g`}
           </span>
         )}
         <MacroChips p={item.proteinG} c={item.carbsG} f={item.fatG} />
         <KcalCell kcal={item.kcal} size={12} />
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => (editing ? void save() : setEditing(true))}
-          style={iconBtnStyle}
-        >
-          {busy ? <Loader2 size={12} className="spin" /> : <Pencil size={12} />}
-        </button>
+        {locked ? (
+          <span
+            title="Legacy item — grams can't be edited (pre-migration format)"
+            style={{
+              ...iconBtnStyle,
+              opacity: 0.4,
+              cursor: "default",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Lock size={12} />
+          </span>
+        ) : (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              if (editing) {
+                void save();
+              } else {
+                setValue(current.toString());
+                setEditing(true);
+              }
+            }}
+            style={iconBtnStyle}
+          >
+            {busy ? <Loader2 size={12} className="spin" /> : <Pencil size={12} />}
+          </button>
+        )}
       </div>
       {isComposite && expanded && (
         <div style={{ paddingLeft: 22, display: "flex", flexDirection: "column", gap: 2, margin: "2px 0 4px" }}>
@@ -904,6 +962,7 @@ function SourceBadge({ source }: { source: FoodLogSource }) {
     barcode: <ScanBarcode size={11} />,
     off: <Package size={11} />,
     manual: <Pencil size={11} />,
+    label: <ReceiptText size={11} />,
   };
   return (
     <span
@@ -1048,6 +1107,7 @@ function TabBar({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void })
     { id: "text", label: "Type", icon: <AlignLeft size={13} /> },
     { id: "snap", label: "Snap", icon: <Camera size={13} /> },
     { id: "barcode", label: "Barcode", icon: <ScanBarcode size={13} /> },
+    { id: "label", label: "Label", icon: <ReceiptText size={13} /> },
     { id: "favorites", label: "Favorites", icon: <Star size={13} /> },
   ];
   return (
@@ -1057,7 +1117,7 @@ function TabBar({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void })
       style={{
         // One row on desktop; the phone media query collapses this to 3 columns (2 rows).
         display: "grid",
-        gridTemplateColumns: "repeat(6, 1fr)",
+        gridTemplateColumns: "repeat(7, 1fr)",
         gap: 4,
         padding: 4,
         background: "var(--color-surface-low)",
@@ -1232,14 +1292,15 @@ function SearchPanel({
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {hits.map((h) => {
           const key = `${h.source}:${h.source_id}`;
-          const gStr = pickGrams[key] ?? String(defaultGramsForHit(h.serving));
+          const gStr = pickGrams[key] ?? String(defaultGramsForHit(h.nutrients.serving));
           const grams = Number(gStr) || 100;
-          const servingLabel = formatServing(h.serving);
+          const servingLabel = formatServing(h.nutrients.serving);
           const scale = grams / 100;
-          const kcal = (h.kcal_per_100g ?? 0) * scale;
-          const protein = (h.protein_g_per_100g ?? 0) * scale;
-          const carbs = (h.carbs_g_per_100g ?? 0) * scale;
-          const fat = (h.fat_g_per_100g ?? 0) * scale;
+          const m = h.nutrients.macros;
+          const kcal = (m.kcal ?? 0) * scale;
+          const protein = (m.protein_g ?? 0) * scale;
+          const carbs = (m.carbs_g ?? 0) * scale;
+          const fat = (m.fat_g ?? 0) * scale;
           return (
             <div
               key={key}
@@ -1386,7 +1447,7 @@ function OffSearchPanel({
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {hits.map((h, i) => {
           const brand = h.brands.length ? h.brands.join(", ") : null;
-          const per100 = h.kcal_per_100g;
+          const per100 = h.nutrients.per_100g === null ? null : h.nutrients.macros.kcal;
           const busyRow = resolving === h.barcode;
           return (
             <div
@@ -1727,6 +1788,104 @@ function BarcodePanel({
   );
 }
 
+// ── Label panel (nutrition-panel transcription) ──────────────────────────
+
+function LabelPanel({
+  locale,
+  onResult,
+  setError,
+}: {
+  locale: FoodLocale;
+  onResult: (items: PendingItem[], loggedAtIso?: string) => void;
+  setError: (msg: string | null) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [staged, setStaged] = useState<PreparedImage | null>(null);
+  const [context, setContext] = useState("");
+
+  const handleStaged = (prepared: PreparedImage) => {
+    setError(null);
+    setStaged(prepared);
+    setPreviewUrl(`data:${prepared.mimeType};base64,${prepared.base64}`);
+  };
+
+  const analyze = async () => {
+    if (!staged || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/food/analyze/label", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageBase64: staged.base64,
+          filename: staged.filename,
+          mimeType: staged.mimeType,
+          capturedAt: staged.capturedAt ? staged.capturedAt.toISOString() : null,
+          locale: locale === "en" ? undefined : locale,
+          context: context.trim() || undefined,
+        }),
+      });
+      const body = (await res.json()) as FmaAnalyzeResponse & {
+        exifDate?: string | null;
+        convertedImageBase64?: string;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(body.error ?? `${res.status}`);
+      if (body.convertedImageBase64) {
+        setPreviewUrl(`data:image/jpeg;base64,${body.convertedImageBase64}`);
+      }
+      if (!body.items?.length) {
+        throw new Error("No nutrition table detected — try a clearer crop or add a product-name hint.");
+      }
+      // basis-dispatch: per_serving → servings item; other bases → grams item.
+      onResult(
+        body.items.map((it, i) => fromFmaAnalyzeItem(it, i, "label")),
+        body.exifDate ?? undefined,
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={panelStyle}>
+      <PanelLabel>Product name (optional)</PanelLabel>
+      <textarea
+        value={context}
+        onChange={(e) => setContext(e.target.value)}
+        rows={1}
+        placeholder="e.g. 'Big Arch Maccas' (helps find the table)"
+        style={panelTextareaStyle}
+      />
+      <PanelLabel>Nutrition label</PanelLabel>
+      <PhotoDropzone
+        icon={<ReceiptText size={14} />}
+        label={staged ? "Tap to replace · or paste" : "Tap to pick a label image · or paste"}
+        busyLabel="Reading label…"
+        busy={busy}
+        // Labels are text — keep OCR fidelity (higher dim/quality than plate photos).
+        prepareOpts={{
+          maxBase64Bytes: 1_400_000,
+          maxDim: 2000,
+          qualitySteps: [0.92, 0.85, 0.8, 0.7],
+          bestEffort: true,
+        }}
+        onPrepared={handleStaged}
+        onError={setError}
+      />
+      {previewUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={previewUrl} alt="nutrition label" style={previewImgStyle} />
+      )}
+      <ActionRow busy={busy} disabled={!staged} onClick={analyze} />
+    </div>
+  );
+}
+
 function Divider({ label }: { label: string }) {
   return (
     <div
@@ -1833,8 +1992,10 @@ function ReviewList({
       }),
       { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 },
     );
+  // Serving (label) items are grams-free — their portion is `servings`, so the
+  // grams-> 0 guard only applies to gram items.
   const hasInvalidGrams = items.some(
-    (i) => i.enabled && (!Number.isFinite(i.grams) || i.grams <= 0),
+    (i) => i.enabled && i.unit !== "serving" && (!Number.isFinite(i.grams) || i.grams <= 0),
   );
 
   return (
@@ -1932,6 +2093,73 @@ function ReviewList({
   );
 }
 
+/** Compact −/+ servings control. Buttons step ±1; the field accepts decimals (min > 0). */
+function ServingsStepper({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+}) {
+  const [text, setText] = useState(String(value));
+  // Reset the field when the committed value changes (without an effect — avoids
+  // the cascading-render warning): adjust state during render on a value change.
+  const [lastValue, setLastValue] = useState(value);
+  if (value !== lastValue) {
+    setLastValue(value);
+    setText(String(value));
+  }
+  const fire = (n: number) => {
+    if (Number.isFinite(n) && n > 0) onChange(Number(n.toFixed(2)));
+  };
+  const stepBtn: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 20,
+    height: 24,
+    flexShrink: 0,
+    background: "var(--color-surface-elevated)",
+    color: "var(--color-text-primary)",
+    border: "1px solid var(--color-outline)",
+    borderRadius: 4,
+    cursor: "pointer",
+  };
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+      <button
+        type="button"
+        aria-label="Fewer servings"
+        onClick={() => fire(value - 1)}
+        disabled={value <= 1}
+        style={{ ...stepBtn, opacity: value <= 1 ? 0.4 : 1, cursor: value <= 1 ? "default" : "pointer" }}
+      >
+        <Minus size={11} />
+      </button>
+      <input
+        type="number"
+        value={text}
+        min={0}
+        step={1}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => {
+          const n = Number(text);
+          if (Number.isFinite(n) && n > 0) fire(n);
+          else setText(String(value));
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        }}
+        aria-label="Servings"
+        style={{ ...inputStyle, width: 34, padding: "4px 2px", textAlign: "center" }}
+      />
+      <button type="button" aria-label="More servings" onClick={() => fire(value + 1)} style={stepBtn}>
+        <Plus size={11} />
+      </button>
+    </div>
+  );
+}
+
 function ReviewRow({
   item,
   onChange,
@@ -1944,8 +2172,38 @@ function ReviewRow({
   const [expanded, setExpanded] = useState(false);
   const lowConf = item.confidence !== null && item.confidence !== undefined && item.confidence < LOW_CONF;
   const hasWarnings = (item.warnings?.length ?? 0) > 0;
+  const isServing = item.unit === "serving";
+  const isTranscribed = (item.warnings ?? []).includes("label_transcription");
   const serving = formatServing(item.serving);
   const isComposite = item.kind === "composite";
+
+  // Servings axis (label items): rescale from the immutable per-serving macros
+  // held in rawResponse, so editing to 0 and back recovers (mirrors basePerG).
+  const updateServings = (n: number) => {
+    const s = Number.isFinite(n) && n > 0 ? n : 0;
+    const base = (item.rawResponse as FmaItem | undefined)?.nutrients?.macros;
+    if (base) {
+      onChange({
+        ...item,
+        servings: s,
+        kcal: base.kcal * s,
+        proteinG: base.protein_g * s,
+        carbsG: base.carbs_g * s,
+        fatG: base.fat_g * s,
+      });
+      return;
+    }
+    const cur = item.servings && item.servings > 0 ? item.servings : 1;
+    const f = s / cur;
+    onChange({
+      ...item,
+      servings: s,
+      kcal: item.kcal * f,
+      proteinG: item.proteinG * f,
+      carbsG: item.carbsG * f,
+      fatG: item.fatG * f,
+    });
+  };
   // Components are derived from the immutable base by current grams, so editing
   // grams (below) needs no special handling — the breakdown rescales live.
   const components = isComposite ? displayComponents(item) : [];
@@ -1989,7 +2247,7 @@ function ReviewRow({
         padding: "8px 10px",
         opacity: item.enabled ? 1 : 0.5,
         boxShadow:
-          item.enabled && (!Number.isFinite(item.grams) || item.grams <= 0)
+          item.enabled && !isServing && (!Number.isFinite(item.grams) || item.grams <= 0)
             ? "inset 0 0 0 1px var(--color-semantic-danger)"
             : undefined,
       }}
@@ -1998,7 +2256,7 @@ function ReviewRow({
         className="food-review-row-grid"
         style={{
           display: "grid",
-          gridTemplateColumns: "auto 1fr 72px 80px auto",
+          gridTemplateColumns: "auto 1fr 88px 80px auto",
           gap: 8,
           alignItems: "center",
         }}
@@ -2057,6 +2315,26 @@ function ReviewRow({
                 est
               </span>
             )}
+            {isTranscribed && (
+              <span
+                title="Macros transcribed from a label image — verify before trusting"
+                style={{
+                  flexShrink: 0,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 3,
+                  padding: "2px 6px",
+                  background: "rgba(91,163,245,0.14)",
+                  color: "var(--color-text-secondary)",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  borderRadius: 999,
+                }}
+              >
+                <ReceiptText size={9} />
+                label
+              </span>
+            )}
           </div>
           {serving && (
             <span
@@ -2073,14 +2351,18 @@ function ReviewRow({
             </span>
           )}
         </div>
-        <input
-          type="number"
-          value={item.grams.toString()}
-          min={0}
-          step={1}
-          onChange={(e) => updateGrams(Number(e.target.value))}
-          style={{ ...inputStyle, padding: "4px 8px", textAlign: "right" }}
-        />
+        {isServing ? (
+          <ServingsStepper value={item.servings ?? 1} onChange={updateServings} />
+        ) : (
+          <input
+            type="number"
+            value={item.grams.toString()}
+            min={0}
+            step={1}
+            onChange={(e) => updateGrams(Number(e.target.value))}
+            style={{ ...inputStyle, padding: "4px 8px", textAlign: "right" }}
+          />
+        )}
         <span
           className="font-mono-sm"
           style={{ fontSize: 12, color: "var(--color-text-secondary)", textAlign: "right" }}

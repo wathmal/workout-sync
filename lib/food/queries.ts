@@ -19,11 +19,32 @@ function userTz(): string {
   return process.env.USER_TZ ?? "UTC";
 }
 
-/** Pull kind + ingredient breakdown out of the stored FMA item (composites only). */
+/**
+ * A raw FMA item is the post-migration shape iff it carries a `nutrients` block.
+ * Rows logged before migration 0001 hold the old flat shape (`grams`/`macros` at
+ * top level) and can't be reparsed — callers must treat them as legacy.
+ */
+function isUnifiedFmaItem(raw: unknown): raw is FmaItem {
+  return (
+    !!raw &&
+    typeof raw === "object" &&
+    typeof (raw as { nutrients?: unknown }).nutrients === "object" &&
+    (raw as { nutrients?: unknown }).nutrients !== null
+  );
+}
+
+/**
+ * Pull kind + ingredient breakdown out of the stored FMA item (composites only).
+ * Legacy (pre-migration) composites keep `kind` but get `components: null` — the
+ * old flat breakdown can't be reparsed — which the UI renders as a locked row.
+ */
 function compositeFromRaw(raw: unknown): Pick<MealItem, "kind" | "components"> {
   const it = raw as FmaItem | null;
-  if (it && it.kind === "composite" && Array.isArray(it.components)) {
-    return { kind: "composite", components: it.components.map(fmaComponentToMeal) };
+  if (it && it.kind === "composite") {
+    if (isUnifiedFmaItem(it) && Array.isArray(it.components)) {
+      return { kind: "composite", components: it.components.map(fmaComponentToMeal) };
+    }
+    return { kind: "composite", components: null };
   }
   return {};
 }
@@ -36,15 +57,19 @@ function toMealItem(r: typeof foodLogEntry.$inferSelect): MealItem {
     source: r.source,
     mealName: r.mealName,
     name: r.name,
-    grams: Number(r.grams),
+    // grams + per-g rates are null for unit='serving' (label) items → 0 (hidden).
+    grams: r.grams != null ? Number(r.grams) : 0,
     kcal: Number(r.kcal),
     proteinG: Number(r.proteinG),
     carbsG: Number(r.carbsG),
     fatG: Number(r.fatG),
-    kcalPerG: Number(r.kcalPerG),
-    proteinPerG: Number(r.proteinPerG),
-    carbsPerG: Number(r.carbsPerG),
-    fatPerG: Number(r.fatPerG),
+    kcalPerG: r.kcalPerG != null ? Number(r.kcalPerG) : 0,
+    proteinPerG: r.proteinPerG != null ? Number(r.proteinPerG) : 0,
+    carbsPerG: r.carbsPerG != null ? Number(r.carbsPerG) : 0,
+    fatPerG: r.fatPerG != null ? Number(r.fatPerG) : 0,
+    unit: (r.unit as "g" | "serving") ?? "g",
+    servings: r.servings != null ? Number(r.servings) : null,
+    servingLabel: r.servingLabel ?? null,
     fmaFoodId: r.fmaFoodId,
     fmaSource: r.fmaSource,
     fmaSourceId: r.fmaSourceId,
@@ -147,20 +172,27 @@ export async function insertBatch(input: MealBatchInput): Promise<MealItem[]> {
   const rows = await db
     .insert(foodLogEntry)
     .values(
-      input.items.map((it) => ({
+      input.items.map((it) => {
+        // unit='serving' (label) items are grams-free: scaled by `servings`,
+        // not grams, so grams + per-g rates are stored null.
+        const isServing = it.unit === "serving";
+        return {
         batchId,
         loggedAt,
         source: it.source ?? input.source,
         name: it.name,
-        grams: it.grams.toString(),
+        unit: it.unit ?? "g",
+        servings: isServing ? (it.servings ?? 1).toString() : null,
+        servingLabel: it.servingLabel ?? null,
+        grams: isServing ? null : it.grams.toString(),
         kcal: it.kcal.toString(),
         proteinG: it.proteinG.toString(),
         carbsG: it.carbsG.toString(),
         fatG: it.fatG.toString(),
-        kcalPerG: safeDiv(it.kcal, it.grams).toString(),
-        proteinPerG: safeDiv(it.proteinG, it.grams).toString(),
-        carbsPerG: safeDiv(it.carbsG, it.grams).toString(),
-        fatPerG: safeDiv(it.fatG, it.grams).toString(),
+        kcalPerG: isServing ? null : safeDiv(it.kcal, it.grams).toString(),
+        proteinPerG: isServing ? null : safeDiv(it.proteinG, it.grams).toString(),
+        carbsPerG: isServing ? null : safeDiv(it.carbsG, it.grams).toString(),
+        fatPerG: isServing ? null : safeDiv(it.fatG, it.grams).toString(),
         fmaFoodId: it.fmaFoodId ?? null,
         fmaSource: it.fmaSource ?? null,
         fmaSourceId: it.fmaSourceId ?? null,
@@ -169,7 +201,8 @@ export async function insertBatch(input: MealBatchInput): Promise<MealItem[]> {
         rawResponse: (it.rawResponse as object | undefined) ?? null,
         mealName: input.mealName ?? null,
         note: input.note ?? null,
-      })),
+        };
+      }),
     )
     .returning();
   return rows.map(toMealItem);
@@ -197,10 +230,12 @@ export async function editGrams(itemId: string, newGrams: number): Promise<MealI
   const fatPerG = Number(existing.fatPerG);
 
   // Keep a composite's stored ingredient breakdown consistent with the new grams.
+  // Legacy (pre-migration) composites have no `nutrients` block to rescale — the
+  // UI locks their grams, so we never reach here for one; skip defensively.
   const oldGrams = Number(existing.grams);
-  const rawItem = existing.rawResponse as FmaItem | null;
+  const rawItem = existing.rawResponse;
   const rescaledRaw =
-    rawItem && rawItem.kind === "composite" && oldGrams > 0
+    isUnifiedFmaItem(rawItem) && rawItem.kind === "composite" && oldGrams > 0
       ? scaleFmaItem(rawItem, newGrams / oldGrams)
       : undefined;
 
@@ -213,6 +248,38 @@ export async function editGrams(itemId: string, newGrams: number): Promise<MealI
       carbsG: (carbsPerG * newGrams).toString(),
       fatG: (fatPerG * newGrams).toString(),
       ...(rescaledRaw ? { rawResponse: rescaledRaw } : {}),
+    })
+    .where(eq(foodLogEntry.id, itemId))
+    .returning();
+
+  return updated ? toMealItem(updated) : null;
+}
+
+/**
+ * Rescale a unit='serving' (label) item to `newServings`. Totals scale by the
+ * servings ratio (per-serving rate is implicit = total/servings); grams stay
+ * null. No-op (returns null) for gram items or zero-baseline rows.
+ */
+export async function editServings(itemId: string, newServings: number): Promise<MealItem | null> {
+  const [existing] = await db
+    .select()
+    .from(foodLogEntry)
+    .where(eq(foodLogEntry.id, itemId))
+    .limit(1);
+  if (!existing) return null;
+
+  const oldServings = Number(existing.servings);
+  if (existing.unit !== "serving" || !(oldServings > 0)) return null;
+
+  const f = newServings / oldServings;
+  const [updated] = await db
+    .update(foodLogEntry)
+    .set({
+      servings: newServings.toString(),
+      kcal: (Number(existing.kcal) * f).toString(),
+      proteinG: (Number(existing.proteinG) * f).toString(),
+      carbsG: (Number(existing.carbsG) * f).toString(),
+      fatG: (Number(existing.fatG) * f).toString(),
     })
     .where(eq(foodLogEntry.id, itemId))
     .returning();
@@ -256,18 +323,21 @@ export async function addFavorite(batchId: string): Promise<FavoriteMeal> {
   const mealName = rows[0].mealName;
   const items: FavoriteMealItem[] = rows.map((r) => ({
     name: r.name,
-    grams: Number(r.grams),
+    grams: r.grams != null ? Number(r.grams) : 0,
     kcal: Number(r.kcal),
     proteinG: Number(r.proteinG),
     carbsG: Number(r.carbsG),
     fatG: Number(r.fatG),
-    kcalPerG: Number(r.kcalPerG),
-    proteinPerG: Number(r.proteinPerG),
-    carbsPerG: Number(r.carbsPerG),
-    fatPerG: Number(r.fatPerG),
+    kcalPerG: r.kcalPerG != null ? Number(r.kcalPerG) : 0,
+    proteinPerG: r.proteinPerG != null ? Number(r.proteinPerG) : 0,
+    carbsPerG: r.carbsPerG != null ? Number(r.carbsPerG) : 0,
+    fatPerG: r.fatPerG != null ? Number(r.fatPerG) : 0,
     fmaFoodId: r.fmaFoodId,
     fmaSource: r.fmaSource,
     fmaSourceId: r.fmaSourceId,
+    unit: (r.unit as "g" | "serving") ?? "g",
+    servings: r.servings != null ? Number(r.servings) : null,
+    servingLabel: r.servingLabel ?? null,
   }));
   const signature = favoriteSignature(
     mealName,

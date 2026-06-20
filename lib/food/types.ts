@@ -11,7 +11,16 @@ export type FoodLogSource =
   | "photo"
   | "manual"
   | "barcode"
-  | "off";
+  | "off"
+  | "label";
+
+/**
+ * Portion axis for a logged/pending item.
+ * - `"g"`: gram-based (grams + per-gram rates drive scaling) — the default.
+ * - `"serving"`: label item with `basis: per_serving` — scaled by a servings
+ *   count; grams-free (per-serving rate = kcal / servings).
+ */
+export type PortionUnit = "g" | "serving";
 
 /** Serving descriptor from FMA (e.g. `{ label: "1 slice", amount: 30, unit: "g" }`). */
 export interface FmaServing {
@@ -27,7 +36,6 @@ export interface FmaMatched {
   name: string;
   locale: string;
   license: string;
-  serving?: FmaServing | null;
 }
 
 export interface FmaMacros {
@@ -37,13 +45,29 @@ export interface FmaMacros {
   fat_g: number;
 }
 
+/** Which portion the `macros` describe. */
+export type FmaBasis = "per_portion" | "per_100g" | "per_serving";
+
+/**
+ * Unified nutrient block (FMA migration 0001). Carries the basis, the grams the
+ * `macros` apply to, the serving descriptor, a `per_100g` comparability sidecar
+ * (null when upstream had none), and an open `extra` map of panel nutrients.
+ */
+export interface FmaNutrients {
+  basis: FmaBasis;
+  grams: number;
+  serving: FmaServing | null;
+  macros: FmaMacros;
+  per_100g: FmaMacros | null;
+  extra: Record<string, number> | null;
+}
+
 /** One ingredient inside a composite dish. `matched` is null when no DB match. */
 export interface FmaComponent {
   input_name: string;
   matched: FmaMatched | null;
-  grams: number;
   ratio: number;
-  macros: FmaMacros;
+  nutrients: FmaNutrients;
   warnings: string[];
 }
 
@@ -52,11 +76,12 @@ export interface FmaItem {
   /** "single" = one matched food; "composite" = decomposed dish (matched null, components set). */
   kind?: "single" | "composite";
   matched: FmaMatched | null;
+  /** Passthrough provenance for label items (`basis: per_serving`); brand nullable. */
+  source_ref?: { kind: string; brand: string | null };
   components?: FmaComponent[];
   amount?: number;
   unit?: "g" | "mL";
-  grams: number;
-  macros: FmaMacros;
+  nutrients: FmaNutrients;
   confidence: number;
   warnings: string[];
   rationale?: string;
@@ -66,7 +91,8 @@ export interface FmaAnalyzeResponse {
   request_id: string;
   meal_name?: string;
   items: FmaItem[];
-  totals: FmaMacros;
+  /** Unified totals block. The app computes its own totals client-side; unused. */
+  totals: FmaNutrients;
   /** Top-level warnings (additive). */
   warnings?: string[];
   /** Pipeline timing/cost when include: ["trace"]. Ignored by the app. */
@@ -80,12 +106,9 @@ export interface FmaSearchHit {
   name: string;
   locale?: string;
   license?: string;
-  kcal_per_100g?: number;
-  protein_g_per_100g?: number;
-  carbs_g_per_100g?: number;
-  fat_g_per_100g?: number;
+  /** per_100g basis: `nutrients.macros` == `nutrients.per_100g`. */
+  nutrients: FmaNutrients;
   density_g_per_ml?: number | null;
-  serving?: FmaServing | null;
   score?: number;
 }
 
@@ -108,12 +131,14 @@ export interface FmaOffSearchHit {
   barcode: string;
   name: string | null;
   brands: string[];
-  kcal_per_100g: number | null;
-  protein_g_per_100g: number | null;
-  carbs_g_per_100g: number | null;
-  fat_g_per_100g: number | null;
+  /**
+   * per_100g basis. Macros are 0-filled when upstream lacked a value — use
+   * `nutrients.per_100g === null` or `warnings` to detect missing data.
+   */
+  nutrients: FmaNutrients;
   license: string;
   score: number;
+  warnings?: string[];
 }
 
 export interface FmaOffSearchResponse {
@@ -166,6 +191,12 @@ export interface MealItem {
   kind?: "single" | "composite";
   /** Ingredient breakdown for composites; null/undefined for singles. */
   components?: MealComponent[] | null;
+  /** Portion axis. `"serving"` items scale by `servings` and hide grams. */
+  unit: PortionUnit;
+  /** Servings count for `unit:"serving"` items; null for gram items. */
+  servings: number | null;
+  /** Serving descriptor for label items (e.g. "1 burger"); null otherwise. */
+  servingLabel: string | null;
 }
 
 /**
@@ -211,6 +242,15 @@ export interface PendingItem {
   components?: MealComponent[];
   /** Dish grams the base components were computed at — the rescale denominator. */
   baseGrams?: number;
+  /**
+   * Portion axis. `"serving"` (label / `basis: per_serving`) items scale by
+   * `servings` and have no grams; `"g"` (default) items use the grams field.
+   */
+  unit?: PortionUnit;
+  /** Servings count for `unit:"serving"` items (default 1). */
+  servings?: number;
+  /** Serving descriptor for label items (e.g. "1 burger"). */
+  servingLabel?: string | null;
 }
 
 /** Per-day aggregate for the dashboard week stack. */
@@ -256,6 +296,10 @@ export interface FavoriteMealItem {
   fmaFoodId: number | null;
   fmaSource: string | null;
   fmaSourceId: string | null;
+  /** Portion axis (frozen so a re-log rebuilds the same kind of item). */
+  unit?: PortionUnit;
+  servings?: number | null;
+  servingLabel?: string | null;
 }
 
 /** A user-favorited meal: a durable snapshot of a logged batch. */
@@ -288,5 +332,9 @@ export interface MealBatchInput {
     confidence?: number | null;
     warnings?: string[] | null;
     rawResponse?: unknown;
+    /** Portion axis. `"serving"` → grams ignored, scaled by `servings`. */
+    unit?: PortionUnit;
+    servings?: number;
+    servingLabel?: string | null;
   }>;
 }

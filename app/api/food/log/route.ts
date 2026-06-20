@@ -40,7 +40,15 @@ export async function POST(request: NextRequest) {
       if (!it || typeof it.name !== "string" || !it.name.trim()) {
         return NextResponse.json({ error: `items[${i}].name required` }, { status: 400 });
       }
-      if (!isFiniteNumber(it.grams) || it.grams <= 0) {
+      // Label items (unit='serving') are grams-free — validate servings instead.
+      if (it.unit === "serving") {
+        if (!isFiniteNumber(it.servings) || it.servings <= 0) {
+          return NextResponse.json(
+            { error: `items[${i}].servings must be > 0 (got ${String(it.servings)})` },
+            { status: 400 },
+          );
+        }
+      } else if (!isFiniteNumber(it.grams) || it.grams <= 0) {
         return NextResponse.json(
           { error: `items[${i}].grams must be > 0 (got ${String(it.grams)})` },
           { status: 400 },

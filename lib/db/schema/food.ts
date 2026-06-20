@@ -19,6 +19,7 @@ export const foodLogSourceEnum = pgEnum("food_log_source", [
   "manual",
   "barcode",
   "off",
+  "label",
 ]);
 
 export const foodLogEntry = pgTable(
@@ -30,16 +31,24 @@ export const foodLogEntry = pgTable(
     source: foodLogSourceEnum("source").notNull(),
 
     name: text("name").notNull(),
-    grams: numeric("grams").notNull(),
+    // Portion axis. `unit='g'` (default): gram-based item — `grams` + `*_per_g`
+    // rates drive scaling. `unit='serving'`: label item scaled by `servings`
+    // (grams + per-g rates are null; per-serving rate = kcal/servings).
+    unit: text("unit").notNull().default("g"),
+    servings: numeric("servings"),
+    servingLabel: text("serving_label"),
+
+    // Nullable since unit='serving' (label) items are grams-free.
+    grams: numeric("grams"),
     kcal: numeric("kcal").notNull(),
     proteinG: numeric("protein_g").notNull(),
     carbsG: numeric("carbs_g").notNull(),
     fatG: numeric("fat_g").notNull(),
 
-    kcalPerG: numeric("kcal_per_g").notNull(),
-    proteinPerG: numeric("protein_per_g").notNull(),
-    carbsPerG: numeric("carbs_per_g").notNull(),
-    fatPerG: numeric("fat_per_g").notNull(),
+    kcalPerG: numeric("kcal_per_g"),
+    proteinPerG: numeric("protein_per_g"),
+    carbsPerG: numeric("carbs_per_g"),
+    fatPerG: numeric("fat_per_g"),
 
     fmaFoodId: integer("fma_food_id"),
     fmaSource: text("fma_source"),
