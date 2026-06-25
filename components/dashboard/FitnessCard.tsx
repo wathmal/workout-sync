@@ -201,7 +201,7 @@ function Hero({ ctl, t, window }: { ctl: number | null; t: Trend; window: string
       <span
         className="font-mono-sm"
         style={{
-          alignSelf: "flex-end",
+          alignSelf: "flex-start",
           display: "inline-flex",
           alignItems: "baseline",
           gap: 6,
