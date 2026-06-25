@@ -10,7 +10,8 @@ import {
 } from "@/lib/fitness/view";
 import { uthVo2max } from "@/lib/fitness/uth";
 import { vdotFromRace } from "@/lib/fitness/vdot";
-import { ctlSeries } from "@/lib/fitness/ctl";
+import { ctlSeries, atlSeries } from "@/lib/fitness/ctl";
+import { HR_CONFIG } from "@/lib/fitness/trimp";
 import { FitnessIndexChart } from "./FitnessIndexChart";
 
 /**
@@ -27,6 +28,12 @@ import { FitnessIndexChart } from "./FitnessIndexChart";
 const GOOD = "var(--color-semantic-success)";
 const BAD = "var(--color-semantic-error)";
 const FLAT = "var(--color-text-tertiary)";
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function fmtDay(d: string): string {
+  const [, m, day] = d.split("-");
+  return `${MON[Number(m) - 1]} ${Number(day)}`;
+}
 
 const CTL_DISPLAY_DAYS = 84; // chart window — 12 weeks of context (dip + rebuild)
 const CTL_TREND_DAYS = 28; // hero delta = recent 4-week direction, not the whole chart
@@ -58,6 +65,14 @@ export function FitnessCard({ series }: { series: FitnessPoint[] }) {
   const ctlNow = latestNonNull(ctl);
   const ctlTrend = trend(ctl.slice(-CTL_TREND_DAYS)); // recent 4-week direction
   const hasLoad = series.some((p) => p.trainingLoadHrtss != null);
+
+  // Fatigue (ATL) + form (TSB) + recent daily-load contributions for the explainer.
+  const atlNow = latestNonNull(atlSeries(loadVals, seed));
+  const tsb = ctlNow != null && atlNow != null ? ctlNow - atlNow : null;
+  const recentLoad = series
+    .slice(-7)
+    .map((p) => ({ date: p.date, load: p.trainingLoadHrtss }))
+    .filter((d) => d.load != null);
 
   // Capacity / performance markers — only the recent month carries these.
   const recent = series.slice(-METRIC_DAYS);
@@ -132,6 +147,8 @@ export function FitnessCard({ series }: { series: FitnessPoint[] }) {
               fmtDelta={(d) => `${d < 0 ? "−" : "+"}${Math.abs(d)}`}
             />
           </Group>
+
+          <ComputeDetails atl={atlNow} tsb={tsb} recent={recentLoad} />
 
           <Footer days={series.length} />
         </>
@@ -298,11 +315,105 @@ function MetricRow({
   );
 }
 
+function ComputeDetails({
+  atl,
+  tsb,
+  recent,
+}: {
+  atl: number | null;
+  tsb: number | null;
+  recent: Array<{ date: string; load: number | null }>;
+}) {
+  const mono = {
+    background: "var(--color-surface-low)",
+    borderRadius: "var(--radius-sm)",
+    padding: "var(--space-sm)",
+    color: "var(--color-text-primary)",
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 3,
+  };
+  return (
+    <details style={{ marginTop: "auto" }}>
+      <summary
+        style={{
+          cursor: "pointer",
+          color: "var(--color-text-tertiary)",
+          fontSize: "0.75rem",
+          paddingTop: "var(--space-sm)",
+        }}
+      >
+        How Fitness (CTL) is computed
+      </summary>
+      <div
+        style={{
+          marginTop: "var(--space-sm)",
+          display: "flex",
+          flexDirection: "column",
+          gap: "var(--space-sm)",
+          color: "var(--color-text-secondary)",
+          fontSize: "0.72rem",
+          lineHeight: 1.5,
+        }}
+      >
+        <p style={{ margin: 0 }}>
+          CTL is a 42-day average of your daily training <b>load</b>. Each session&rsquo;s load:
+        </p>
+        <div className="font-mono-xs" style={mono}>
+          <span>load = 100 × TRIMP ÷ TRIMP(1h @ LTHR)</span>
+          <span>TRIMP = min × HRR × 0.64·e^(1.92·HRR)</span>
+          <span>
+            HRR = (avgHR − {HR_CONFIG.hrRest}) ÷ ({HR_CONFIG.hrMax} − {HR_CONFIG.hrRest})
+          </span>
+        </div>
+        <p style={{ margin: 0 }}>
+          Load grows with <b>duration AND heart rate</b> (harder/longer = more). CTL is the slow
+          42-day average, so steady weeks build it; one session only nudges it.
+        </p>
+        <p style={{ margin: 0, color: "var(--color-text-tertiary)" }}>
+          Inputs: HRmax {HR_CONFIG.hrMax} · HRrest {HR_CONFIG.hrRest} · LTHR {HR_CONFIG.lthr}
+          <span style={{ color: "var(--color-text-muted)" }}> (tunable)</span>
+        </p>
+
+        {recent.length > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ color: "var(--color-text-tertiary)" }}>Recent daily load (hrTSS):</span>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+              {recent.map((d) => (
+                <span
+                  key={d.date}
+                  style={{
+                    background: "var(--color-surface-chip)",
+                    borderRadius: "var(--radius-full)",
+                    padding: "3px 8px",
+                    fontSize: 11,
+                    color: (d.load ?? 0) > 0 ? "var(--color-text-primary)" : "var(--color-text-muted)",
+                  }}
+                >
+                  {fmtDay(d.date)}{" "}
+                  <span className="font-mono-sm">{(d.load ?? 0) > 0 ? Math.round(d.load!) : "rest"}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <p style={{ margin: 0, color: "var(--color-text-tertiary)" }}>
+          Fatigue (7-day, ATL) <b style={{ color: "var(--color-text-secondary)" }}>{atl == null ? "—" : Math.round(atl)}</b>
+          {" · "}Form (CTL−ATL){" "}
+          <b style={{ color: "var(--color-text-secondary)" }}>
+            {tsb == null ? "—" : `${tsb > 0 ? "+" : "−"}${Math.abs(Math.round(tsb))}`}
+          </b>
+        </p>
+      </div>
+    </details>
+  );
+}
+
 function Footer({ days }: { days: number }) {
   return (
     <div
       style={{
-        marginTop: "auto",
         paddingTop: "var(--space-sm)",
         borderTop: "1px solid var(--color-outline)",
         display: "flex",
