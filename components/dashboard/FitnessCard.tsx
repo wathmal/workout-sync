@@ -201,7 +201,7 @@ function Hero({ ctl, t, window }: { ctl: number | null; t: Trend; window: string
       <span
         className="font-mono-sm"
         style={{
-          alignSelf: "flex-start",
+          alignSelf: "flex-end",
           display: "inline-flex",
           alignItems: "baseline",
           gap: 6,
@@ -216,7 +216,7 @@ function Hero({ ctl, t, window }: { ctl: number | null; t: Trend; window: string
         ) : (
           <span>tracking</span>
         )}
-        <span style={{ fontSize: "0.7rem" }}>{window}</span>
+        <span style={{ fontSize: "0.62rem", color: "var(--color-text-muted)" }}>{window}</span>
       </span>
     </div>
   );
