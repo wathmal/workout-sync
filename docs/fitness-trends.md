@@ -191,21 +191,57 @@ a thin extractor (same discipline as the activity path and the agent CLI shims).
 
 ---
 
-## Pure compute — `lib/fitness/`
+## Headline metric — CTL ("Fitness"), not a homemade composite
 
-Unit-tested, no I/O, mirrors `lib/dashboard/agenda.ts`:
+**Decision (post-research):** the dashboard headline is **CTL**, not a hand-rolled
+0–100 blend. A literature review (see [References](#references)) found **no validated
+composite endurance-fitness index exists** — PCA studies find ≥2 orthogonal fitness
+dimensions and decline to collapse them; product "scores" (Garmin Endurance Score,
+Polar Running Index, Whoop) are proprietary unvalidated heuristics. The original blend
+was additionally **RHR-dominated** (via the Uth proxy), and resting-HR↔fitness is weak
+(r≈−0.41; it's an adaptation/recovery signal, not a fitness measure).
+
+**CTL = Chronic Training Load** — a 42-day EWMA of daily training load. It is the
+de-facto endurance-sport "Fitness" curve (TrainingPeaks / Strava / intervals.icu) and
+the parameter-free operationalisation of the **Banister impulse-response model**: it
+keeps the validated exponential-decay structure while dropping the un-identifiable
+per-athlete gain fitting that recent statistical critiques attack. Computable from
+HR-only data (no power meter).
+
+### Pure compute — `lib/fitness/` (unit-tested, no I/O)
 
 ```ts
-// uth.ts — daily VO2max proxy. maxHr configurable; default 195 (observed), NOT Tanaka.
-uthVo2max(restingHr: number, maxHr = 195) => 15.3 * (maxHr / restingHr)
+// trimp.ts — Banister TRIMPexp (men): minutes × HRR × 0.64·e^(1.92·HRR),
+//   HRR = (avgHR − HRrest)/(HRmax − HRrest). hrTSS = 100 × TRIMP / TRIMP(1h @ LTHR),
+//   so one hour at threshold = 100 (intervals.icu method). HR_CONFIG from env
+//   (HRmax 195 / HRrest 54 / LTHR 165 — overridable).
 
-// index.ts — composite fitness index. Needs rolling mean/sd over history → z-scores.
-//   raw  = z(vo2max) + z(vdot(racePred10k)) − z(restingHr) + z(weeklyLoad)   (equal weights to start)
-//   shown = mapped to 0–100 for a readable headline (see Open decisions)
-// Requires ~2–3 weeks of daily snapshots before meaningful → card shows "building…" until then.
+// ctl.ts — CTL (τ=42) / ATL (τ=7) EWMA over the daily hrTSS series:
+//   value_t = value_{t-1}·e^(−1/τ) + load_t·(1 − e^(−1/τ))   (0 on rest days).
+//   CTL = "Fitness", ATL = "Fatigue", CTL−ATL = form/freshness.
 
-// training-status.ts — code → label lookup (0..8: detraining … productive … peaking … strained).
+// uth.ts — VO2max proxy from resting HR (fills the VO2max sparkline when native is
+//   stale): 15.3 × (maxHr / restingHr). maxHr 195 (observed), NOT Tanaka.
+// vdot.ts — Daniels-Gilbert VDOT from predicted 10K (performance-derived capacity).
+// view.ts — secsToClock / trend / sparkPoints / chartPaths / movingAverage.
 ```
+
+Card lanes (matching the research): **Fitness** (CTL hero + chart) · **Capacity**
+(VO2max, VDOT) · **Recovery** (resting HR — separate, never folded into the fitness
+number). The homemade `fitness-index.ts` was deleted; the `fitness_index` DB column is
+kept as a harmless legacy field.
+
+### References
+
+- Banister impulse-response: Banister et al. 1975; statistical critique of gain fitting:
+  *Sci Rep* 2025 (s41598-025-88153-7). CTL/ATL: TrainingPeaks Performance Manager;
+  intervals.icu Fitness chart (public hrTSS = TRIMP / TRIMP@LTHR).
+- TRIMP: Banister TRIMPexp (exponential lactate weighting), validated r≈0.79 vs sRPE.
+- No validated composite: PCA fitness-battery studies (DAFIS); z-score-composite critique.
+- RHR weak as fitness (r≈−0.41; SA-node remodeling): Wang et al.; D'Souza 2014.
+- Garmin VO2max individual error (Engel 2025): bias −4, LoA −12…+4, worse in fit runners.
+
+(Full URLs in the research notes that produced this decision; key ones above.)
 
 VDOT from race predictions uses the Daniels–Gilbert relation (or simply tracks predicted
 5K/10K time directly as the performance trend — both are valid; predicted-time is simpler).
@@ -320,8 +356,9 @@ mobile narrow). Cards are fixed-height to align their grid row.
 
 | Phase | Scope | Ships |
 |---|---|---|
-| **P1** | `fitness.ts` schema + migration · `fetch.py --metrics` · `lib/fitness/sync.ts` + nightly cron · seed today's row · Fitness card (VO2max + race-pred + RHR) in the 429 slot · hide ManualLog | trend visible |
-| **P2** | Uth proxy · composite fitness index (z-scores + 0–100 mapping) · "building…" state | one combined number |
+| **P1** ✅ | `fitness.ts` schema + migration · `fetch.py --metrics` · `lib/fitness/sync.ts` + nightly cron · Fitness card in the 429 slot · hide ManualLog | trend visible |
+| **P2** ✅ | Uth proxy · VDOT · index hero + magenta trend chart (date axis) | one number + graph |
+| **P2.5** ✅ | **CTL/TRIMP** replaces the homemade index as the headline (`trimp.ts`/`ctl.ts`, avgHr in `fetch.py`, 120d load backfill); RHR → Recovery lane | research-grounded curve |
 | **P3** | `hyrox_station_benchmark` seeded from sims · `lib/hyrox/predict.ts` · `hyrox_projection` snapshots · Hyrox card (half row) | live race projection |
 
 ---
@@ -330,15 +367,20 @@ mobile narrow). Cards are fixed-height to align their grid row.
 
 | # | Decision | Default |
 |---|---|---|
-| 1 | maxHR for Uth proxy | **195** (observed sim max) — override if a higher true max is known |
-| 2 | Fitness index weights | **equal** (VO2max / VDOT / RHR⁻¹ / load), tune later |
+| 1 | Headline metric | **CTL** (42-day load EWMA, Banister) — replaced the homemade composite after research |
+| 2 | HR constants (TRIMP/Uth) | HRmax **195** · HRrest **54** · LTHR **165** — env-overridable (`FITNESS_HR_*`) |
 | 3 | Hyrox division | **Open Solo** (152/103 sled); Pro deferred |
-| 4 | Index scale | **0–100** mapped (readable headline) vs raw z-sum (abstract) |
+| 4 | Load backfill depth | **120 days** so the 42-day CTL EWMA is settled before display (shows tail 42d) |
 
 ---
 
 ## Gotchas
 
+- **CTL needs lead-in** — the 42-day EWMA ramps from 0, so we backfill 120d of load and
+  display only the settled ~42-day tail. Absolute CTL is meaningless across athletes; only
+  your own trend matters. 42/7-day constants are conventions, not physiology.
+- **hrTSS under-reads short intervals** — HR lags, so rep/sprint work scores low. Fine for
+  continuous/tempo running; a session-mean HR (not per-second) compounds this slightly.
 - **VO2max latest-only** — cannot backfill history from the API; daily snapshot is the only
   way to build the series. Race predictions are the more responsive trend.
 - **Hardware gating is the scope boundary** — lactate threshold, endurance, hill, ACWR, HRV,
