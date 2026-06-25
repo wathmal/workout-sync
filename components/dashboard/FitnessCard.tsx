@@ -183,23 +183,25 @@ function Hero({ ctl, t, window }: { ctl: number | null; t: Trend; window: string
   const color = trendColor(t, false);
   const hasDelta = t.delta != null;
   return (
-    <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-      <span
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: 48,
-          fontWeight: 500,
-          color: "var(--color-brand-accent)",
-          lineHeight: 1,
-        }}
-      >
-        {ctl == null ? "—" : Math.round(ctl)}
-      </span>
-      <span style={{ color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>CTL</span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 48,
+            fontWeight: 500,
+            color: "var(--color-brand-accent)",
+            lineHeight: 1,
+          }}
+        >
+          {ctl == null ? "—" : Math.round(ctl)}
+        </span>
+        <span style={{ color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>CTL</span>
+      </div>
       <span
         className="font-mono-sm"
         style={{
-          marginLeft: "auto",
+          alignSelf: "flex-end",
           display: "inline-flex",
           alignItems: "baseline",
           gap: 6,
