@@ -6,11 +6,13 @@ import {
   trainingStatusLabel,
   sparkPoints,
   latestNonNull,
+  movingAverage,
   type Trend,
 } from "@/lib/fitness/view";
 import { uthVo2max } from "@/lib/fitness/uth";
 import { vdotFromRace } from "@/lib/fitness/vdot";
 import { fitnessIndex } from "@/lib/fitness/fitness-index";
+import { FitnessIndexChart } from "./FitnessIndexChart";
 
 /**
  * Fitness Trends card (P2) — composite index hero + VO2max / VDOT / resting-HR
@@ -53,12 +55,17 @@ export function FitnessCard({ series }: { series: FitnessPoint[] }) {
   const vdotSeries = series.map((p) => vdotFromRace(p.racePred10kS, 10000));
   const rhrSeries = series.map((p) => p.restingHr);
 
-  // Hold VDOT flat across history (race-pred is latest-only) so the index trend is
-  // driven by the metrics that actually have history, with no 2-vs-3-component jump.
+  // Index = VO2max + VDOT. RHR is intentionally NOT a separate term: it already
+  // enters through the Uth-proxied VO2max, so adding it again would double-count and
+  // amplify daily HR noise. VDOT is held flat across history (race-pred is latest-only)
+  // so the trend reflects the metrics that actually have history. Then 7-day smoothed —
+  // fitness is a trend, not a daily reading.
   const latestVdot = latestNonNull(vdotSeries);
-  const indexSeries = series.map((p, i) =>
-    fitnessIndex({ vo2: vo2Filled[i], vdot: latestVdot, rhr: p.restingHr }),
+  const indexRaw = series.map((_, i) =>
+    fitnessIndex({ vo2: vo2Filled[i], vdot: latestVdot, rhr: null }),
   );
+  const indexSeries = movingAverage(indexRaw, 7);
+  const indexDates = series.map((p) => p.date);
 
   const index = latestNonNull(indexSeries);
   const indexTrend = trend(indexSeries);
@@ -87,6 +94,8 @@ export function FitnessCard({ series }: { series: FitnessPoint[] }) {
       ) : (
         <>
           <Hero index={index} t={indexTrend} window={`${series.length}d`} />
+
+          <FitnessIndexChart values={indexSeries} dates={indexDates} />
 
           <Group label="Trends">
             <MetricRow
