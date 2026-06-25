@@ -8,7 +8,6 @@ import {
   type Trend,
 } from "@/lib/fitness/view";
 import { uthVo2max } from "@/lib/fitness/uth";
-import { vdotFromRace } from "@/lib/fitness/vdot";
 import { ctlSeries, atlSeries } from "@/lib/fitness/ctl";
 import { HR_CONFIG } from "@/lib/fitness/trimp";
 import { FitnessIndexChart } from "./FitnessIndexChart";
@@ -76,7 +75,6 @@ export function FitnessCard({ series }: { series: FitnessPoint[] }) {
   // Capacity / performance markers — only the recent month carries these.
   const recent = series.slice(-METRIC_DAYS);
   const vo2Filled = recent.map((p) => p.vo2maxRunning ?? uthVo2max(p.restingHr));
-  const vdotSeries = recent.map((p) => vdotFromRace(p.racePred10kS, 10000));
   const rhrSeries = recent.map((p) => p.restingHr);
   const nativeVo2 = latestNonNull(recent.map((p) => p.vo2maxRunning));
 
@@ -113,14 +111,6 @@ export function FitnessCard({ series }: { series: FitnessPoint[] }) {
               value={fmtVo2(nativeVo2 ?? latestNonNull(vo2Filled))}
               values={vo2Filled}
               t={trend(vo2Filled)}
-              lowerIsBetter={false}
-              fmtDelta={(d) => `${d < 0 ? "−" : "+"}${Math.abs(d).toFixed(1)}`}
-            />
-            <MetricRow
-              label="VDOT"
-              value={fmtVo2(latestNonNull(vdotSeries))}
-              values={vdotSeries}
-              t={trend(vdotSeries)}
               lowerIsBetter={false}
               fmtDelta={(d) => `${d < 0 ? "−" : "+"}${Math.abs(d).toFixed(1)}`}
             />
@@ -193,24 +183,22 @@ function Hero({ ctl, t, window }: { ctl: number | null; t: Trend; window: string
   const color = trendColor(t, false);
   const hasDelta = t.delta != null;
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-        <span
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: 48,
-            fontWeight: 500,
-            color: "var(--color-brand-accent)",
-            lineHeight: 1,
-          }}
-        >
-          {ctl == null ? "—" : Math.round(ctl)}
-        </span>
-        <span style={{ color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>CTL</span>
-      </div>
+    <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+      <span
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: 48,
+          fontWeight: 500,
+          color: "var(--color-brand-accent)",
+          lineHeight: 1,
+        }}
+      >
+        {ctl == null ? "—" : Math.round(ctl)}
+      </span>
+      <span style={{ color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>CTL</span>
       <span
         className="font-mono-sm"
-        style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--color-text-muted)" }}
+        style={{ display: "inline-flex", alignItems: "baseline", gap: 6, color: "var(--color-text-muted)" }}
       >
         {hasDelta ? (
           <span style={{ color }}>
