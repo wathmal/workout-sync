@@ -30,6 +30,13 @@ describe("ewmaLoad / CTL / ATL", () => {
     const ctl = ctlSeries(flat);
     expect(ctl[ctl.length - 1]).toBeCloseTo(40, 1);
   });
+  it("seeding at steady-state avoids the warm-up ramp", () => {
+    // flat load seeded at its own level stays flat from day 1 (no fake ramp)
+    const ctl = ctlSeries([40, 40, 40, 40], 40);
+    ctl.forEach((v) => expect(v).toBeCloseTo(40, 6));
+    // unseeded, the same load ramps up from 0
+    expect(ctlSeries([40, 40, 40, 40])[0]).toBeLessThan(2);
+  });
   it("treats nulls as rest (0 load)", () => {
     const s = ewmaLoad([null, null], 42);
     expect(s).toEqual([0, 0]);

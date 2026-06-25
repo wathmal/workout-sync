@@ -28,7 +28,8 @@ const GOOD = "var(--color-semantic-success)";
 const BAD = "var(--color-semantic-error)";
 const FLAT = "var(--color-text-tertiary)";
 
-const CTL_DISPLAY_DAYS = 42; // settled tail of the EWMA to show
+const CTL_DISPLAY_DAYS = 84; // chart window — 12 weeks of context (dip + rebuild)
+const CTL_TREND_DAYS = 28; // hero delta = recent 4-week direction, not the whole chart
 const METRIC_DAYS = 30; // VO2max/VDOT/RHR only have ~a month of data
 
 function trendColor(t: Trend, lowerIsBetter: boolean): string {
@@ -44,12 +45,18 @@ function arrow(t: Trend): string {
 export function FitnessCard({ series }: { series: FitnessPoint[] }) {
   const latest = series[series.length - 1];
 
-  // CTL over the full window, display the settled tail.
-  const ctlFull = ctlSeries(series.map((p) => p.trainingLoadHrtss));
+  // CTL over the full window, display the settled tail. Seed the EWMA at the early
+  // steady-state load (mean of the first ~4 weeks) instead of 0 — otherwise the curve
+  // ramps up from zero and fakes a fitness gain that is really just the filter warming
+  // up. Standard CTL initialisation (TrainingPeaks "starting CTL").
+  const loadVals = series.map((p) => p.trainingLoadHrtss);
+  const seedSlice = loadVals.slice(0, 28).filter((v): v is number => v != null);
+  const seed = seedSlice.length ? seedSlice.reduce((a, b) => a + b, 0) / seedSlice.length : 0;
+  const ctlFull = ctlSeries(loadVals, seed);
   const ctl = ctlFull.slice(-CTL_DISPLAY_DAYS);
   const ctlDates = series.map((p) => p.date).slice(-CTL_DISPLAY_DAYS);
   const ctlNow = latestNonNull(ctl);
-  const ctlTrend = trend(ctl);
+  const ctlTrend = trend(ctl.slice(-CTL_TREND_DAYS)); // recent 4-week direction
   const hasLoad = series.some((p) => p.trainingLoadHrtss != null);
 
   // Capacity / performance markers — only the recent month carries these.
@@ -82,7 +89,7 @@ export function FitnessCard({ series }: { series: FitnessPoint[] }) {
         <Empty />
       ) : (
         <>
-          <Hero ctl={ctlNow} t={ctlTrend} window={`${ctl.length}d`} />
+          <Hero ctl={ctlNow} t={ctlTrend} window={`${Math.min(CTL_TREND_DAYS, ctl.length)}d`} />
 
           <FitnessIndexChart values={ctl} dates={ctlDates} />
 
