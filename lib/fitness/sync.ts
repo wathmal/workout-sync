@@ -1,38 +1,55 @@
 import "server-only";
-import { fetchFitnessSnapshot, fetchRhrBackfill } from "./garmin";
-import { upsertFitnessSnapshot, upsertRhrPoints, countFitnessRows } from "./queries";
+import { fetchFitnessSnapshot, fetchRhrBackfill, fetchActivityLoad } from "./garmin";
+import {
+  upsertFitnessSnapshot,
+  upsertRhrPoints,
+  upsertDailyLoad,
+  countFitnessRows,
+  countDaysWithLoad,
+} from "./queries";
+import { hrTss } from "./trimp";
 
 export interface FitnessSyncResult {
   snapshot: boolean; // today's snapshot stored
   rhrBackfilled: number; // RHR points seeded (only on a sparse table)
+  loadDays: number; // days of training load upserted
   errors: string[];
 }
 
-const BACKFILL_DAYS = 30;
-// Seed RHR history only while the table is still sparse (first runs). Once we have a
-// few weeks of real snapshots the backfill is redundant, so stop hitting get_stats 30×.
-const BACKFILL_WHEN_ROWS_BELOW = 14;
+const RHR_BACKFILL_DAYS = 30;
+const RHR_BACKFILL_WHEN_ROWS_BELOW = 14;
+// CTL is a 42-day EWMA, so it needs a long lead-in to settle. Seed the load history
+// 120 days deep on first runs, then top up a short trailing window each night (also
+// fills any missed-sync gaps so the EWMA spine stays continuous).
+const LOAD_BACKFILL_DAYS = 120;
+const LOAD_DAILY_DAYS = 7;
+const LOAD_BACKFILL_WHEN_DAYS_BELOW = 60;
 
-/** Today's local date (USER_TZ) as YYYY-MM-DD. en-CA formats as ISO date. */
-function todayYmd(now: Date, tz: string): string {
+function ymdInTz(d: Date, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(now);
+  }).format(d);
+}
+
+function shiftDays(ymd: string, delta: number): string {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
 }
 
 /**
- * Pull today's Garmin fitness snapshot into Postgres, and on the first runs also
- * backfill resting-HR history so the chart isn't empty. Snapshot + backfill are caught
- * independently — a stale token failing the snapshot must not swallow the backfill.
- * Invoked from the shared agenda cron (lib/agenda/sync.ts).
+ * Pull today's Garmin fitness snapshot + training-load history into Postgres. On the
+ * first runs it backfills resting-HR (for the sparklines) and a deep window of daily
+ * training load (so the CTL curve is settled, not ramping from zero). Each source is
+ * caught independently. Invoked from the shared agenda cron (lib/agenda/sync.ts).
  */
 export async function runFitnessSync(now: Date = new Date()): Promise<FitnessSyncResult> {
   const tz = process.env.USER_TZ ?? "UTC";
-  const today = todayYmd(now, tz);
-  const result: FitnessSyncResult = { snapshot: false, rhrBackfilled: 0, errors: [] };
+  const today = ymdInTz(now, tz);
+  const result: FitnessSyncResult = { snapshot: false, rhrBackfilled: 0, loadDays: 0, errors: [] };
 
   try {
     const snap = await fetchFitnessSnapshot(today);
@@ -43,13 +60,31 @@ export async function runFitnessSync(now: Date = new Date()): Promise<FitnessSyn
   }
 
   try {
-    if ((await countFitnessRows()) < BACKFILL_WHEN_ROWS_BELOW) {
-      const points = await fetchRhrBackfill(BACKFILL_DAYS, today);
+    if ((await countFitnessRows()) < RHR_BACKFILL_WHEN_ROWS_BELOW) {
+      const points = await fetchRhrBackfill(RHR_BACKFILL_DAYS, today);
       await upsertRhrPoints(points);
       result.rhrBackfilled = points.length;
     }
   } catch (err) {
     result.errors.push(`rhr backfill: ${(err as Error).message}`);
+  }
+
+  try {
+    const deep = (await countDaysWithLoad()) < LOAD_BACKFILL_WHEN_DAYS_BELOW;
+    const fromYmd = shiftDays(today, -(deep ? LOAD_BACKFILL_DAYS : LOAD_DAILY_DAYS));
+    const activities = await fetchActivityLoad(fromYmd, today);
+
+    // Sum each day's activities' hrTSS, bucketed by the activity's local (USER_TZ) day.
+    const loadByDate = new Map<string, number>();
+    for (const a of activities) {
+      if (a.durationS == null) continue;
+      const day = ymdInTz(new Date(a.startTime), tz);
+      loadByDate.set(day, (loadByDate.get(day) ?? 0) + hrTss(a.durationS, a.avgHr));
+    }
+    await upsertDailyLoad(loadByDate, fromYmd, today);
+    result.loadDays = activities.length;
+  } catch (err) {
+    result.errors.push(`training load: ${(err as Error).message}`);
   }
 
   if (result.errors.length) {

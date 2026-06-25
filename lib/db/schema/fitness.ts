@@ -26,7 +26,11 @@ export const dailyFitnessMetric = pgTable(
     fitnessTrendCode: integer("fitness_trend_code"),
     weeklyLoad: integer("weekly_load"),
     restingHr: integer("resting_hr"),
-    fitnessIndex: real("fitness_index"), // composite (P2)
+    // Daily training load (hrTSS) = sum of the day's activities' HR-based TSS. Feeds
+    // the CTL ("Fitness") EWMA — the research-grounded fitness-trend headline. One row
+    // per day in the window (0 on rest days) so the EWMA spine stays continuous.
+    trainingLoadHrtss: real("training_load_hrtss"),
+    fitnessIndex: real("fitness_index"), // legacy homemade composite (unused)
     raw: jsonb("raw"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

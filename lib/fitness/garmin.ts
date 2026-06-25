@@ -1,7 +1,7 @@
 import "server-only";
 import { spawn } from "node:child_process";
 import path from "node:path";
-import type { FitnessSnapshot, RhrPoint } from "./types";
+import type { FitnessSnapshot, RhrPoint, ActivityLoad } from "./types";
 
 /**
  * Fitness-metric fetch via the same Python `garminconnect` subprocess as the agenda
@@ -63,4 +63,20 @@ export async function fetchRhrBackfill(days: number, endYmd: string): Promise<Rh
   }
   if (!Array.isArray(parsed)) throw new Error("rhr backfill: expected an array");
   return (parsed as RhrPoint[]).filter((p) => p.date);
+}
+
+/** Activities in [sinceYmd, untilYmd] with avgHr — for TRIMP/hrTSS training load. */
+export async function fetchActivityLoad(sinceYmd: string, untilYmd: string): Promise<ActivityLoad[]> {
+  const python = process.env.GARMIN_PYTHON ?? "python3";
+  const stdout = await run(python, [scriptPath(), `--since=${sinceYmd}`, `--until=${untilYmd}`]);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stdout);
+  } catch {
+    throw new Error(`activity load: non-JSON stdout: ${stdout.slice(0, 200)}`);
+  }
+  if (!Array.isArray(parsed)) throw new Error("activity load: expected an array");
+  return (parsed as ActivityLoad[])
+    .filter((a) => a.startTime)
+    .map((a) => ({ startTime: a.startTime, durationS: a.durationS ?? null, avgHr: a.avgHr ?? null }));
 }

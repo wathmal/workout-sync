@@ -20,7 +20,7 @@ export default async function OverviewPage() {
   // Fitness series (P1). Guarded — a missing DB/table must not blank the dashboard.
   let fitnessSeries: FitnessPoint[] = [];
   try {
-    fitnessSeries = await readFitnessSeries(30);
+    fitnessSeries = await readFitnessSeries(90); // deep enough for the 42-day CTL EWMA
   } catch (err) {
     console.warn("[overview] fitness series read failed:", (err as Error).message);
   }

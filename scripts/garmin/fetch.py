@@ -100,6 +100,7 @@ def emit_activities(client, since: str, until: str) -> None:
         start = (gmt.replace(" ", "T") + "Z") if gmt else a.get("startTimeLocal")
         duration = a.get("duration")
         distance = a.get("distance")
+        avg_hr = a.get("averageHR")
         out.append(
             {
                 "garminId": str(a.get("activityId")),
@@ -108,6 +109,8 @@ def emit_activities(client, since: str, until: str) -> None:
                 "name": a.get("activityName"),
                 "durationS": int(duration) if duration is not None else None,
                 "distanceM": int(distance) if distance is not None else None,
+                # avgHr feeds the fitness pipeline's TRIMP/hrTSS; agenda ignores it.
+                "avgHr": int(avg_hr) if avg_hr is not None else None,
             }
         )
     print(json.dumps(out))

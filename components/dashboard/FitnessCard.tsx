@@ -6,30 +6,30 @@ import {
   trainingStatusLabel,
   sparkPoints,
   latestNonNull,
-  movingAverage,
   type Trend,
 } from "@/lib/fitness/view";
 import { uthVo2max } from "@/lib/fitness/uth";
 import { vdotFromRace } from "@/lib/fitness/vdot";
-import { fitnessIndex } from "@/lib/fitness/fitness-index";
+import { ctlSeries } from "@/lib/fitness/ctl";
 import { FitnessIndexChart } from "./FitnessIndexChart";
 
 /**
- * Fitness Trends card (P2) — composite index hero + VO2max / VDOT / resting-HR
- * sparkline rows + race-prediction block. Read-only: the server reads the daily
- * series from Postgres (lib/fitness/queries) and passes it in, so this is pure markup
- * and works in both the desktop server tree and the client MobileOverview.
+ * Fitness Trends card. Headline = CTL ("Fitness") — a 42-day EWMA of daily training
+ * load (hrTSS), the research-grounded Banister/TrainingPeaks fitness curve. VO2max +
+ * VDOT are supporting capacity/performance markers; resting HR is a SEPARATE recovery
+ * lane (RHR↔fitness is weak — it's an adaptation signal, not a fitness measure). See
+ * docs/fitness-trends.md.
  *
- * The VO2max series is Uth-proxied from resting HR on days Garmin's native (latest-
- * only) value is absent — so the index has real day-over-day history from the RHR
- * backfill. Trend colour follows the app DS (semantic green = improving): VO2max /
- * VDOT / index improve when they rise, resting HR improves when it falls.
+ * Read-only: the server reads the daily series from Postgres and passes it in, so this
+ * is pure markup and works in both the desktop server tree and the client MobileOverview.
  */
 
 const GOOD = "var(--color-semantic-success)";
 const BAD = "var(--color-semantic-error)";
 const FLAT = "var(--color-text-tertiary)";
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const CTL_DISPLAY_DAYS = 42; // settled tail of the EWMA to show
+const METRIC_DAYS = 30; // VO2max/VDOT/RHR only have ~a month of data
 
 function trendColor(t: Trend, lowerIsBetter: boolean): string {
   if (t.dir === "flat" || t.delta == null) return FLAT;
@@ -41,37 +41,26 @@ function arrow(t: Trend): string {
   return t.dir === "up" ? "▲" : t.dir === "down" ? "▼" : "→";
 }
 
-function fmtDate(d: string | null): string {
-  if (!d) return "—";
-  const [, m, day] = d.split("-");
-  return `${MON[Number(m) - 1]} ${Number(day)}`;
-}
-
 export function FitnessCard({ series }: { series: FitnessPoint[] }) {
   const latest = series[series.length - 1];
 
-  // VO2max filled with the Uth proxy on days the native value is absent (latest-only).
-  const vo2Filled = series.map((p) => p.vo2maxRunning ?? uthVo2max(p.restingHr));
-  const vdotSeries = series.map((p) => vdotFromRace(p.racePred10kS, 10000));
-  const rhrSeries = series.map((p) => p.restingHr);
+  // CTL over the full window, display the settled tail.
+  const ctlFull = ctlSeries(series.map((p) => p.trainingLoadHrtss));
+  const ctl = ctlFull.slice(-CTL_DISPLAY_DAYS);
+  const ctlDates = series.map((p) => p.date).slice(-CTL_DISPLAY_DAYS);
+  const ctlNow = latestNonNull(ctl);
+  const ctlTrend = trend(ctl);
+  const hasLoad = series.some((p) => p.trainingLoadHrtss != null);
 
-  // Index = VO2max + VDOT. RHR is intentionally NOT a separate term: it already
-  // enters through the Uth-proxied VO2max, so adding it again would double-count and
-  // amplify daily HR noise. VDOT is held flat across history (race-pred is latest-only)
-  // so the trend reflects the metrics that actually have history. Then 7-day smoothed —
-  // fitness is a trend, not a daily reading.
-  const latestVdot = latestNonNull(vdotSeries);
-  const indexRaw = series.map((_, i) =>
-    fitnessIndex({ vo2: vo2Filled[i], vdot: latestVdot, rhr: null }),
-  );
-  const indexSeries = movingAverage(indexRaw, 7);
-  const indexDates = series.map((p) => p.date);
+  // Capacity / performance markers — only the recent month carries these.
+  const recent = series.slice(-METRIC_DAYS);
+  const vo2Filled = recent.map((p) => p.vo2maxRunning ?? uthVo2max(p.restingHr));
+  const vdotSeries = recent.map((p) => vdotFromRace(p.racePred10kS, 10000));
+  const rhrSeries = recent.map((p) => p.restingHr);
+  const nativeVo2 = latestNonNull(recent.map((p) => p.vo2maxRunning));
 
-  const index = latestNonNull(indexSeries);
-  const indexTrend = trend(indexSeries);
-  const nativeVo2 = latestNonNull(series.map((p) => p.vo2maxRunning));
   const statusLabel = trainingStatusLabel(latest?.trainingStatusCode ?? null);
-  const hasData = series.length > 0 && index != null;
+  const hasData = series.length > 0 && hasLoad;
 
   return (
     <div
@@ -93,11 +82,11 @@ export function FitnessCard({ series }: { series: FitnessPoint[] }) {
         <Empty />
       ) : (
         <>
-          <Hero index={index} t={indexTrend} window={`${series.length}d`} />
+          <Hero ctl={ctlNow} t={ctlTrend} window={`${ctl.length}d`} />
 
-          <FitnessIndexChart values={indexSeries} dates={indexDates} />
+          <FitnessIndexChart values={ctl} dates={ctlDates} />
 
-          <Group label="Trends">
+          <Group label="Capacity">
             <MetricRow
               label="VO₂max"
               value={fmtVo2(nativeVo2 ?? latestNonNull(vo2Filled))}
@@ -108,20 +97,11 @@ export function FitnessCard({ series }: { series: FitnessPoint[] }) {
             />
             <MetricRow
               label="VDOT"
-              value={fmtVo2(latestVdot)}
+              value={fmtVo2(latestNonNull(vdotSeries))}
               values={vdotSeries}
               t={trend(vdotSeries)}
               lowerIsBetter={false}
               fmtDelta={(d) => `${d < 0 ? "−" : "+"}${Math.abs(d).toFixed(1)}`}
-            />
-            <MetricRow
-              label="Resting HR"
-              value={fmtInt(latestNonNull(rhrSeries))}
-              suffix="bpm"
-              values={rhrSeries}
-              t={trend(rhrSeries)}
-              lowerIsBetter
-              fmtDelta={(d) => `${d < 0 ? "−" : "+"}${Math.abs(d)}`}
             />
           </Group>
 
@@ -134,7 +114,19 @@ export function FitnessCard({ series }: { series: FitnessPoint[] }) {
             </div>
           </Group>
 
-          <Footer vo2Date={fmtDate(latest?.vo2maxComputedDate ?? null)} days={series.length} />
+          <Group label="Recovery">
+            <MetricRow
+              label="Resting HR"
+              value={fmtInt(latestNonNull(rhrSeries))}
+              suffix="bpm"
+              values={rhrSeries}
+              t={trend(rhrSeries)}
+              lowerIsBetter
+              fmtDelta={(d) => `${d < 0 ? "−" : "+"}${Math.abs(d)}`}
+            />
+          </Group>
+
+          <Footer days={series.length} />
         </>
       )}
     </div>
@@ -183,7 +175,7 @@ function Header({ status }: { status: string | null }) {
   );
 }
 
-function Hero({ index, t, window }: { index: number | null; t: Trend; window: string }) {
+function Hero({ ctl, t, window }: { ctl: number | null; t: Trend; window: string }) {
   const color = trendColor(t, false);
   const hasDelta = t.delta != null;
   return (
@@ -192,14 +184,14 @@ function Hero({ index, t, window }: { index: number | null; t: Trend; window: st
         className="text-display-sm"
         style={{ color: "var(--color-brand-mark)", fontWeight: 600, lineHeight: 1 }}
       >
-        {index == null ? "—" : index.toFixed(1)}
+        {ctl == null ? "—" : Math.round(ctl)}
       </span>
-      <span style={{ color: "var(--color-text-tertiary)", fontSize: "0.8rem" }}>Fitness index</span>
+      <span style={{ color: "var(--color-text-tertiary)", fontSize: "0.8rem" }}>Fitness · CTL</span>
       <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6 }}>
         {hasDelta ? (
           <span style={{ color, fontSize: "0.75rem" }}>
             {arrow(t)} {t.delta! > 0 ? "+" : "−"}
-            {Math.abs(t.delta!).toFixed(1)}
+            {Math.abs(t.delta!).toFixed(0)}
           </span>
         ) : (
           <span style={{ color: "var(--color-text-muted)", fontSize: "0.72rem" }}>tracking</span>
@@ -299,7 +291,7 @@ function MetricRow({
   );
 }
 
-function Footer({ vo2Date, days }: { vo2Date: string; days: number }) {
+function Footer({ days }: { days: number }) {
   return (
     <div
       style={{
@@ -312,7 +304,7 @@ function Footer({ vo2Date, days }: { vo2Date: string; days: number }) {
         fontSize: "0.72rem",
       }}
     >
-      <span>VO₂max measured {vo2Date} · gaps est. from RHR</span>
+      <span>CTL · 42-day load EWMA (Banister)</span>
       <span>
         {days} day{days === 1 ? "" : "s"}
       </span>
@@ -323,8 +315,8 @@ function Footer({ vo2Date, days }: { vo2Date: string; days: number }) {
 function Empty() {
   return (
     <p style={{ margin: 0, color: "var(--color-text-secondary)", fontSize: "0.875rem" }}>
-      Syncing your engine. The first snapshot lands on tonight&rsquo;s sync — VO₂max, run
-      fitness and resting HR will trend here.
+      Syncing your engine. Training load lands on tonight&rsquo;s sync — your Fitness (CTL)
+      curve, VO₂max and run predictions will trend here.
     </p>
   );
 }

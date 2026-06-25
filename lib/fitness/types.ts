@@ -22,6 +22,13 @@ export interface RhrPoint {
   restingHr: number | null;
 }
 
+/** One activity (from the activities feed) carrying just what TRIMP/hrTSS needs. */
+export interface ActivityLoad {
+  startTime: string; // ISO
+  durationS: number | null;
+  avgHr: number | null;
+}
+
 /** One day of the series the dashboard card reads. */
 export interface FitnessPoint {
   date: string;
@@ -34,4 +41,5 @@ export interface FitnessPoint {
   restingHr: number | null;
   trainingStatusCode: number | null;
   weeklyLoad: number | null;
+  trainingLoadHrtss: number | null; // daily hrTSS — feeds the CTL curve
 }

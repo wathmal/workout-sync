@@ -64,6 +64,13 @@
       "when": 1782349707154,
       "tag": "0008_classy_blink",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782356784584,
+      "tag": "0009_lame_professor_monster",
+      "breakpoints": true
     }
   ]
 }

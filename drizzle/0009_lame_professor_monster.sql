@@ -1,0 +1,1 @@
+ALTER TABLE "daily_fitness_metric" ADD COLUMN "training_load_hrtss" real;

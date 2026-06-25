@@ -27,7 +27,20 @@ function toPoint(r: DailyFitnessMetricRow): FitnessPoint {
     restingHr: r.restingHr,
     trainingStatusCode: r.trainingStatusCode,
     weeklyLoad: r.weeklyLoad,
+    trainingLoadHrtss: r.trainingLoadHrtss,
   };
+}
+
+/** Inclusive list of YYYY-MM-DD between two dates (UTC-stepped to avoid tz drift). */
+function eachDay(fromYmd: string, toYmd: string): string[] {
+  const out: string[] = [];
+  const cur = new Date(`${fromYmd}T00:00:00Z`);
+  const end = new Date(`${toYmd}T00:00:00Z`);
+  while (cur <= end) {
+    out.push(cur.toISOString().slice(0, 10));
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return out;
 }
 
 /** Upsert a full snapshot keyed on date — re-syncs the same day overwrite, never dupe. */
@@ -82,6 +95,35 @@ export async function upsertRhrPoints(points: RhrPoint[]): Promise<void> {
       target: dailyFitnessMetric.date,
       set: { restingHr: sqlExcluded("resting_hr"), updatedAt: new Date() },
     });
+}
+
+/**
+ * Upsert daily training load (hrTSS) across a continuous day range — writes a row for
+ * EVERY day in [fromYmd, toYmd] (0 on rest days) so the CTL EWMA spine has no gaps.
+ * Sets only training_load_hrtss on conflict, never clobbering a day's other metrics.
+ */
+export async function upsertDailyLoad(
+  loadByDate: Map<string, number>,
+  fromYmd: string,
+  toYmd: string,
+): Promise<void> {
+  const days = eachDay(fromYmd, toYmd);
+  if (days.length === 0) return;
+  await db
+    .insert(dailyFitnessMetric)
+    .values(days.map((d) => ({ date: d, trainingLoadHrtss: loadByDate.get(d) ?? 0, updatedAt: new Date() })))
+    .onConflictDoUpdate({
+      target: dailyFitnessMetric.date,
+      set: { trainingLoadHrtss: sqlExcluded("training_load_hrtss"), updatedAt: new Date() },
+    });
+}
+
+export async function countDaysWithLoad(): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(dailyFitnessMetric)
+    .where(sql`${dailyFitnessMetric.trainingLoadHrtss} is not null`);
+  return row?.n ?? 0;
 }
 
 /** Last `days` days of metrics, oldest-first (chart order). */
