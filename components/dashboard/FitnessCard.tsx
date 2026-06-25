@@ -185,38 +185,30 @@ function Hero({ ctl, t, window }: { ctl: number | null; t: Trend; window: string
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-        <span
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: 48,
-            fontWeight: 500,
-            color: "var(--color-brand-accent)",
-            lineHeight: 1,
-          }}
-        >
+        <span className="text-display-sm" style={{ color: "var(--color-brand-accent)" }}>
           {ctl == null ? "—" : Math.round(ctl)}
         </span>
         <span style={{ color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>CTL</span>
       </div>
       <span
-        className="font-mono-sm"
         style={{
           alignSelf: "flex-end",
           display: "inline-flex",
           alignItems: "baseline",
           gap: 6,
-          color: "var(--color-text-muted)",
         }}
       >
         {hasDelta ? (
-          <span style={{ color }}>
+          <span className="font-mono-md" style={{ color }}>
             {arrow(t)} {t.delta! > 0 ? "+" : "−"}
             {Math.abs(t.delta!).toFixed(0)}
           </span>
         ) : (
-          <span>tracking</span>
+          <span className="font-mono-md" style={{ color: "var(--color-text-muted)" }}>
+            tracking
+          </span>
         )}
-        <span style={{ fontSize: "0.62rem", color: "var(--color-text-muted)" }}>{window}</span>
+        <span className="font-mono-xs" style={{ color: "var(--color-text-muted)" }}>{window}</span>
       </span>
     </div>
   );
@@ -257,7 +249,7 @@ function MetricRow({
       <span style={{ width: 78, flexShrink: 0, color: "var(--color-text-secondary)", fontSize: "0.875rem" }}>
         {label}
       </span>
-      <span style={{ fontFamily: "var(--font-mono)", fontSize: 18, color: "var(--color-text-primary)" }}>{value}</span>
+      <span className="font-mono-md" style={{ color: "var(--color-text-primary)" }}>{value}</span>
       {suffix ? <span style={{ color: "var(--color-text-muted)", fontSize: "0.7rem" }}>{suffix}</span> : null}
       <span style={{ flex: 1, display: "flex", justifyContent: "flex-end", paddingRight: 12 }}>
         {pts ? (
