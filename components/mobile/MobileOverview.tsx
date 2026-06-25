@@ -6,6 +6,8 @@ import { useDashboardWeek } from "@/app/_providers/dashboard-week-provider";
 import { useRaces } from "@/app/_providers/race-provider";
 import { CalorieSummary } from "@/components/dashboard/CalorieSummary";
 import { MuscleCoverage } from "@/components/dashboard/MuscleCoverage";
+import { FitnessCard } from "@/components/dashboard/FitnessCard";
+import type { FitnessPoint } from "@/lib/fitness/types";
 import {
   TYPE,
   ORDER,
@@ -34,9 +36,11 @@ const SECTION_PAD = "16px 16px 0";
 export function MobileOverview({
   svgs,
   trend,
+  fitness,
 }: {
   svgs: { front: string; back: string };
   trend: TrendPoint[];
+  fitness: FitnessPoint[];
 }) {
   const { agendaDays, agendaRangeLabel, agendaLoading } = useDashboardWeek();
   const { views } = useRaces();
@@ -50,6 +54,9 @@ export function MobileOverview({
       </div>
       <div style={{ padding: SECTION_PAD }}>
         <MuscleCoverage svgs={svgs} />
+      </div>
+      <div style={{ padding: SECTION_PAD }}>
+        <FitnessCard series={fitness} />
       </div>
       <RaceSpine views={views} />
       <MobileBodyTrend series={trend} />

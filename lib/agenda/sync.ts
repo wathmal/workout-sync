@@ -2,11 +2,13 @@ import "server-only";
 import { fetchGarminWindow } from "./garmin";
 import { fetchCalendarWindow } from "./calendar";
 import { upsertGarmin, replaceCalendarWindow } from "./queries";
+import { runFitnessSync, type FitnessSyncResult } from "@/lib/fitness/sync";
 import { currentWeekUtcRange, currentWeekDateKeys } from "@/lib/dashboard/agenda";
 
 export interface SyncSummary {
   garmin: number | null; // activities synced, or null if it failed
   calendar: number | null; // events synced, or null if it failed
+  fitness: FitnessSyncResult | null; // daily metric snapshot, or null if it failed
   errors: string[];
   lastRun: string; // ISO
 }
@@ -25,6 +27,7 @@ export async function runAgendaSync(now: Date = new Date()): Promise<SyncSummary
   const summary: SyncSummary = {
     garmin: null,
     calendar: null,
+    fitness: null,
     errors: [],
     lastRun: now.toISOString(),
   };
@@ -46,6 +49,15 @@ export async function runAgendaSync(now: Date = new Date()): Promise<SyncSummary
         summary.calendar = events.length;
       } catch (err) {
         summary.errors.push(`calendar: ${(err as Error).message}`);
+      }
+    })(),
+    (async () => {
+      try {
+        const res = await runFitnessSync(now);
+        summary.fitness = res;
+        summary.errors.push(...res.errors);
+      } catch (err) {
+        summary.errors.push(`fitness: ${(err as Error).message}`);
       }
     })(),
   ]);

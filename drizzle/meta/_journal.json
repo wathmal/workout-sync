@@ -57,6 +57,13 @@
       "when": 1781932245820,
       "tag": "0007_tired_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782349707154,
+      "tag": "0008_classy_blink",
+      "breakpoints": true
     }
   ]
 }
