@@ -222,6 +222,7 @@ Or load image directly: `docker load -i image.tar`.
 - Date format: `MMM dd` (date-fns). Time format: `HH:MM`, default `08:00`.
 - Image zoom/pan: `react-zoom-pan-pinch` v3, range 50%-400%, 30% step, double-click resets. Desktop only (`hidden lg:block`).
 - Dark mode: toggle `dark` class on `<html>`. CSS vars switch automatically.
+- Desktop dashboard (`app/page.tsx`, non-mobile branch) targets a 2560x1440 display. Layout (`maxWidth: 1400` shell, grid column ratios) is tuned for that resolution — verify dashboard changes at 2560x1440, not a smaller viewport. Mobile shell (`x-shell: m` → `MobileOverview`) is a separate component.
 
 ## Open tech debt
 

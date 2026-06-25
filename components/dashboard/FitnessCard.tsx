@@ -105,32 +105,26 @@ export function FitnessCard({ series }: { series: FitnessPoint[] }) {
 
           <FitnessIndexChart values={ctl} dates={ctlDates} />
 
-          <Group label="Capacity">
-            <MetricRow
-              label="VO₂max"
-              value={fmtVo2(nativeVo2 ?? latestNonNull(vo2Filled))}
-              values={vo2Filled}
-              t={trend(vo2Filled)}
-              lowerIsBetter={false}
-              fmtDelta={(d) => `${d < 0 ? "−" : "+"}${Math.abs(d).toFixed(1)}`}
-            />
-          </Group>
+          <MetricRow
+            label="VO₂max"
+            value={fmtVo2(nativeVo2 ?? latestNonNull(vo2Filled))}
+            values={vo2Filled}
+            t={trend(vo2Filled)}
+            lowerIsBetter={false}
+            fmtDelta={(d) => `${d < 0 ? "−" : "+"}${Math.abs(d).toFixed(1)}`}
+            window={`${METRIC_DAYS}d`}
+          />
 
-          <Group label="Recovery">
-            <MetricRow
-              label="Resting HR"
-              value={fmtInt(latestNonNull(rhrSeries))}
-              suffix="bpm"
-              values={rhrSeries}
-              t={trend(rhrSeries)}
-              lowerIsBetter
-              fmtDelta={(d) => `${d < 0 ? "−" : "+"}${Math.abs(d)}`}
-            />
-          </Group>
-
-          <ComputeDetails atl={atlNow} tsb={tsb} recent={recentLoad} />
-
-          <Footer days={series.length} />
+          <MetricRow
+            label="Resting HR"
+            value={fmtInt(latestNonNull(rhrSeries))}
+            suffix="bpm"
+            values={rhrSeries}
+            t={trend(rhrSeries)}
+            lowerIsBetter
+            fmtDelta={(d) => `${d < 0 ? "−" : "+"}${Math.abs(d).toFixed(1)}`}
+            window={`${METRIC_DAYS}d`}
+          />
         </>
       )}
     </div>
@@ -183,44 +177,26 @@ function Hero({ ctl, t, window }: { ctl: number | null; t: Trend; window: string
   const color = trendColor(t, false);
   const hasDelta = t.delta != null;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
         <span className="text-display-sm" style={{ color: "var(--color-brand-accent)" }}>
           {ctl == null ? "—" : Math.round(ctl)}
         </span>
         <span style={{ color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>CTL</span>
       </div>
-      <span
-        style={{
-          alignSelf: "flex-end",
-          display: "inline-flex",
-          alignItems: "baseline",
-          gap: 6,
-        }}
-      >
+      <span style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
         {hasDelta ? (
           <span className="font-mono-md" style={{ color }}>
             {arrow(t)} {t.delta! > 0 ? "+" : "−"}
-            {Math.abs(t.delta!).toFixed(0)}
+            {Math.abs(t.delta!).toFixed(1)}
           </span>
         ) : (
           <span className="font-mono-md" style={{ color: "var(--color-text-muted)" }}>
             tracking
           </span>
         )}
-        <span className="font-mono-xs" style={{ color: "var(--color-text-muted)" }}>{window}</span>
+        <span className="font-mono-md" style={{ color: "var(--color-text-muted)" }}>{window}</span>
       </span>
-    </div>
-  );
-}
-
-function Group({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
-      <span className="text-label-md" style={{ color: "var(--color-text-tertiary)" }}>
-        {label}
-      </span>
-      {children}
     </div>
   );
 }
@@ -233,6 +209,7 @@ function MetricRow({
   t,
   lowerIsBetter,
   fmtDelta,
+  window,
 }: {
   label: string;
   value: string;
@@ -241,16 +218,31 @@ function MetricRow({
   t: Trend;
   lowerIsBetter: boolean;
   fmtDelta: (d: number) => string;
+  window: string; // trend timeframe label, e.g. "30d" — gives the delta context
 }) {
   const color = trendColor(t, lowerIsBetter);
   const pts = sparkPoints(values, 92, 22);
+  // last point of the polyline → an endpoint dot tying the spark's path to the value
+  const end = pts ? pts.split(" ").pop()!.split(",").map(Number) : null;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0" }}>
-      <span style={{ width: 78, flexShrink: 0, color: "var(--color-text-secondary)", fontSize: "0.875rem" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "7px 0" }}>
+      <span
+        className="text-body-sm"
+        style={{ width: 104, flexShrink: 0, whiteSpace: "nowrap", color: "var(--color-text-secondary)" }}
+      >
         {label}
       </span>
-      <span className="font-mono-md" style={{ color: "var(--color-text-primary)" }}>{value}</span>
-      {suffix ? <span style={{ color: "var(--color-text-muted)", fontSize: "0.7rem" }}>{suffix}</span> : null}
+      {/* value = the anchor; unit + trend ride beside it, small and muted */}
+      <span style={{ display: "flex", alignItems: "baseline", gap: 4, minWidth: 68, flexShrink: 0 }}>
+        <span className="font-mono-sm" style={{ color: "var(--color-text-primary)" }}>{value}</span>
+        {suffix ? <span className="text-body-sm" style={{ color: "var(--color-text-muted)" }}>{suffix}</span> : null}
+      </span>
+      <span style={{ display: "flex", alignItems: "baseline", gap: 5, flexShrink: 0, whiteSpace: "nowrap" }}>
+        <span className="font-mono-xs" style={{ color }}>
+          {arrow(t)} {t.delta == null ? "—" : fmtDelta(t.delta)}
+        </span>
+        <span className="font-mono-xs" style={{ color: "var(--color-text-muted)" }}>·{window}</span>
+      </span>
       <span style={{ flex: 1, display: "flex", justifyContent: "flex-end", paddingRight: 12 }}>
         {pts ? (
           <svg width={92} height={22} viewBox="0 0 92 22" aria-hidden>
@@ -262,131 +254,11 @@ function MetricRow({
               strokeLinejoin="round"
               strokeLinecap="round"
             />
+            {end ? <circle cx={end[0]} cy={end[1]} r={2.2} fill={color} /> : null}
           </svg>
         ) : (
           <span style={{ color: "var(--color-text-muted)", fontSize: "0.7rem" }}>—</span>
         )}
-      </span>
-      <span
-        className="font-mono-sm"
-        style={{ color, minWidth: 46, textAlign: "right" }}
-      >
-        {arrow(t)} {t.delta == null ? "—" : fmtDelta(t.delta)}
-      </span>
-    </div>
-  );
-}
-
-function ComputeDetails({
-  atl,
-  tsb,
-  recent,
-}: {
-  atl: number | null;
-  tsb: number | null;
-  recent: Array<{ date: string; load: number | null }>;
-}) {
-  const mono = {
-    background: "var(--color-surface-low)",
-    borderRadius: "var(--radius-sm)",
-    padding: "var(--space-sm)",
-    color: "var(--color-text-primary)",
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: 3,
-  };
-  return (
-    <details style={{ marginTop: "auto" }}>
-      <summary
-        style={{
-          cursor: "pointer",
-          color: "var(--color-text-tertiary)",
-          fontSize: "0.75rem",
-          paddingTop: "var(--space-sm)",
-        }}
-      >
-        How Fitness (CTL) is computed
-      </summary>
-      <div
-        style={{
-          marginTop: "var(--space-sm)",
-          display: "flex",
-          flexDirection: "column",
-          gap: "var(--space-sm)",
-          color: "var(--color-text-secondary)",
-          fontSize: "0.72rem",
-          lineHeight: 1.5,
-        }}
-      >
-        <p style={{ margin: 0 }}>
-          CTL is a 42-day average of your daily training <b>load</b>. Each session&rsquo;s load:
-        </p>
-        <div className="font-mono-xs" style={mono}>
-          <span>load = 100 × TRIMP ÷ TRIMP(1h @ LTHR)</span>
-          <span>TRIMP = min × HRR × 0.64·e^(1.92·HRR)</span>
-          <span>
-            HRR = (avgHR − {HR_CONFIG.hrRest}) ÷ ({HR_CONFIG.hrMax} − {HR_CONFIG.hrRest})
-          </span>
-        </div>
-        <p style={{ margin: 0 }}>
-          Load grows with <b>duration AND heart rate</b> (harder/longer = more). CTL is the slow
-          42-day average, so steady weeks build it; one session only nudges it.
-        </p>
-        <p style={{ margin: 0, color: "var(--color-text-tertiary)" }}>
-          Inputs: HRmax {HR_CONFIG.hrMax} · HRrest {HR_CONFIG.hrRest} · LTHR {HR_CONFIG.lthr}
-          <span style={{ color: "var(--color-text-muted)" }}> (tunable)</span>
-        </p>
-
-        {recent.length > 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span style={{ color: "var(--color-text-tertiary)" }}>Recent daily load (hrTSS):</span>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-              {recent.map((d) => (
-                <span
-                  key={d.date}
-                  style={{
-                    background: "var(--color-surface-chip)",
-                    borderRadius: "var(--radius-full)",
-                    padding: "3px 8px",
-                    fontSize: 11,
-                    color: (d.load ?? 0) > 0 ? "var(--color-text-primary)" : "var(--color-text-muted)",
-                  }}
-                >
-                  {fmtDay(d.date)}{" "}
-                  <span className="font-mono-sm">{(d.load ?? 0) > 0 ? Math.round(d.load!) : "rest"}</span>
-                </span>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        <p style={{ margin: 0, color: "var(--color-text-tertiary)" }}>
-          Fatigue (7-day, ATL) <b style={{ color: "var(--color-text-secondary)" }}>{atl == null ? "—" : Math.round(atl)}</b>
-          {" · "}Form (CTL−ATL){" "}
-          <b style={{ color: "var(--color-text-secondary)" }}>
-            {tsb == null ? "—" : `${tsb > 0 ? "+" : "−"}${Math.abs(Math.round(tsb))}`}
-          </b>
-        </p>
-      </div>
-    </details>
-  );
-}
-
-function Footer({ days }: { days: number }) {
-  return (
-    <div
-      style={{
-        paddingTop: "var(--space-sm)",
-        borderTop: "1px solid var(--color-outline)",
-        display: "flex",
-        justifyContent: "space-between",
-        color: "var(--color-text-muted)",
-        fontSize: "0.72rem",
-      }}
-    >
-      <span>CTL · 42-day load EWMA (Banister)</span>
-      <span>
-        {days} day{days === 1 ? "" : "s"}
       </span>
     </div>
   );

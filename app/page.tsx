@@ -59,7 +59,7 @@ export default async function OverviewPage() {
         aria-label="Calorie tracking, muscle coverage, fitness trends"
         style={{
           display: "grid",
-          gridTemplateColumns: "5fr 3fr 4fr",
+          gridTemplateColumns: "repeat(3, 1fr)",
           gap: "var(--space-xl)",
           alignItems: "stretch",
         }}

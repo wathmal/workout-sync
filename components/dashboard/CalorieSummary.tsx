@@ -566,21 +566,18 @@ export function CalorieSummary() {
           consumed={Math.round(macros.protein)}
           target={macroTargets.protein}
           color="var(--color-data-2)"
-          stack={isMobile}
         />
         <MacroBar
           label="Carbs"
           consumed={Math.round(macros.carbs)}
           target={macroTargets.carbs}
           color="var(--color-data-3)"
-          stack={isMobile}
         />
         <MacroBar
           label="Fat"
           consumed={Math.round(macros.fat)}
           target={macroTargets.fat}
           color="var(--color-data-4)"
-          stack={isMobile}
         />
       </div>
     </Card>
@@ -592,15 +589,11 @@ function MacroBar({
   consumed,
   target,
   color,
-  stack = false,
 }: {
   label: string;
   consumed: number;
   target: number;
   color: string;
-  // Narrow mobile columns can't fit "Protein  70 / 160g" on one line — stack
-  // the label over the value instead of placing them side by side.
-  stack?: boolean;
 }) {
   const pct = target > 0 ? Math.min(100, Math.round((consumed / target) * 100)) : 0;
   return (
@@ -614,13 +607,8 @@ function MacroBar({
         gap: 8,
       }}
     >
-      <div
-        style={
-          stack
-            ? { display: "flex", flexDirection: "column", gap: 3 }
-            : { display: "flex", justifyContent: "space-between", alignItems: "baseline" }
-        }
-      >
+      {/* label stacked over the value */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
         <span
           className="text-label-md"
           style={{ color: "var(--color-text-tertiary)", fontSize: 10 }}
