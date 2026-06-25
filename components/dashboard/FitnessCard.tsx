@@ -1,7 +1,6 @@
 import type { FitnessPoint } from "@/lib/fitness/types";
 import {
   fmtVo2,
-  secsToClock,
   trend,
   trainingStatusLabel,
   sparkPoints,
@@ -127,15 +126,6 @@ export function FitnessCard({ series }: { series: FitnessPoint[] }) {
             />
           </Group>
 
-          <Group label="Race predictions">
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-sm)" }}>
-              <PredTile label="5K" secs={latest?.racePred5kS ?? null} />
-              <PredTile label="10K" secs={latest?.racePred10kS ?? null} />
-              <PredTile label="Half" secs={latest?.racePredHmS ?? null} />
-              <PredTile label="Marathon" secs={latest?.racePredMS ?? null} />
-            </div>
-          </Group>
-
           <Group label="Recovery">
             <MetricRow
               label="Resting HR"
@@ -233,35 +223,6 @@ function Group({ label, children }: { label: string; children: React.ReactNode }
         {label}
       </span>
       {children}
-    </div>
-  );
-}
-
-function PredTile({ label, secs }: { label: string; secs: number | null }) {
-  return (
-    <div
-      style={{
-        background: "var(--color-surface-elevated)",
-        borderRadius: "var(--radius-md)",
-        padding: "var(--space-sm) var(--space-md)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 2,
-      }}
-    >
-      <span
-        style={{
-          color: "var(--color-text-tertiary)",
-          fontSize: "0.68rem",
-          letterSpacing: "0.04em",
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
-      </span>
-      <span className="font-mono-md" style={{ color: "var(--color-text-primary)", fontSize: "1rem" }}>
-        {secsToClock(secs)}
-      </span>
     </div>
   );
 }
