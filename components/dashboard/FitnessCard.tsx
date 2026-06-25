@@ -193,24 +193,34 @@ function Hero({ ctl, t, window }: { ctl: number | null; t: Trend; window: string
   const color = trendColor(t, false);
   const hasDelta = t.delta != null;
   return (
-    <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-sm)" }}>
+    <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 48,
+            fontWeight: 500,
+            color: "var(--color-brand-accent)",
+            lineHeight: 1,
+          }}
+        >
+          {ctl == null ? "—" : Math.round(ctl)}
+        </span>
+        <span style={{ color: "var(--color-text-secondary)", fontSize: "0.85rem" }}>CTL</span>
+      </div>
       <span
-        className="text-display-sm"
-        style={{ color: "var(--color-brand-mark)", fontWeight: 600, lineHeight: 1 }}
+        className="font-mono-sm"
+        style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--color-text-muted)" }}
       >
-        {ctl == null ? "—" : Math.round(ctl)}
-      </span>
-      <span style={{ color: "var(--color-text-tertiary)", fontSize: "0.8rem" }}>Fitness · CTL</span>
-      <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6 }}>
         {hasDelta ? (
-          <span style={{ color, fontSize: "0.75rem" }}>
+          <span style={{ color }}>
             {arrow(t)} {t.delta! > 0 ? "+" : "−"}
             {Math.abs(t.delta!).toFixed(0)}
           </span>
         ) : (
-          <span style={{ color: "var(--color-text-muted)", fontSize: "0.72rem" }}>tracking</span>
+          <span>tracking</span>
         )}
-        <span style={{ color: "var(--color-text-muted)", fontSize: "0.7rem" }}>{window}</span>
+        <span style={{ fontSize: "0.7rem" }}>{window}</span>
       </span>
     </div>
   );
@@ -245,21 +255,21 @@ function MetricRow({
   fmtDelta: (d: number) => string;
 }) {
   const color = trendColor(t, lowerIsBetter);
-  const pts = sparkPoints(values, 64, 20);
+  const pts = sparkPoints(values, 92, 22);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)" }}>
-      <span style={{ color: "var(--color-text-tertiary)", fontSize: "0.8rem", width: 84 }}>{label}</span>
-      <span className="font-mono-sm" style={{ color: "var(--color-text-primary)", fontSize: "0.9rem", width: 56 }}>
-        {value}
-        {suffix ? <span style={{ color: "var(--color-text-muted)", fontSize: "0.7rem" }}> {suffix}</span> : null}
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0" }}>
+      <span style={{ width: 78, flexShrink: 0, color: "var(--color-text-secondary)", fontSize: "0.875rem" }}>
+        {label}
       </span>
-      <span style={{ flex: 1, display: "flex", justifyContent: "center" }}>
+      <span style={{ fontFamily: "var(--font-mono)", fontSize: 18, color: "var(--color-text-primary)" }}>{value}</span>
+      {suffix ? <span style={{ color: "var(--color-text-muted)", fontSize: "0.7rem" }}>{suffix}</span> : null}
+      <span style={{ flex: 1, display: "flex", justifyContent: "flex-end", paddingRight: 12 }}>
         {pts ? (
-          <svg width={64} height={20} viewBox="0 0 64 20" aria-hidden>
+          <svg width={92} height={22} viewBox="0 0 92 22" aria-hidden>
             <polyline
               points={pts}
               fill="none"
-              stroke="var(--color-text-muted)"
+              stroke="rgba(163,160,154,0.6)"
               strokeWidth={1.5}
               strokeLinejoin="round"
               strokeLinecap="round"
@@ -269,7 +279,10 @@ function MetricRow({
           <span style={{ color: "var(--color-text-muted)", fontSize: "0.7rem" }}>—</span>
         )}
       </span>
-      <span style={{ color, fontSize: "0.72rem", width: 48, textAlign: "right" }}>
+      <span
+        className="font-mono-sm"
+        style={{ color, minWidth: 46, textAlign: "right" }}
+      >
         {arrow(t)} {t.delta == null ? "—" : fmtDelta(t.delta)}
       </span>
     </div>
