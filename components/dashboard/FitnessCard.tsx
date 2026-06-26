@@ -195,6 +195,9 @@ export function FitnessCard({ series }: { series: FitnessPoint[] }) {
         <Empty />
       ) : (
         <>
+          {/* ponytail: pull the first block up one gap — SectionHead's own
+              marginBottom + the card's gap:20 double the title→metrics space. */}
+          <div style={{ marginTop: "calc(var(--space-lg) * -1)" }}>
           <IOSBlock
             value={ctlNow != null ? Math.round(ctlNow) : "—"}
             unit="CTL"
@@ -212,6 +215,7 @@ export function FitnessCard({ series }: { series: FitnessPoint[] }) {
             dotIndices={[]}
             yCount={3}
           />
+          </div>
 
           <Divider />
 
