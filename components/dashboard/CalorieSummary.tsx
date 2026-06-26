@@ -1,6 +1,6 @@
 "use client";
 
-import { SectionHead } from "./SectionHead";
+import { SectionHead, Sep } from "./SectionHead";
 import {
   BarChart,
   Bar,
@@ -674,18 +674,3 @@ function LegendSwatch({ color, label }: { color: string; label: string }) {
   );
 }
 
-function Sep() {
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        width: 3,
-        height: 3,
-        borderRadius: 999,
-        background: "var(--color-text-muted)",
-        margin: "0 6px",
-        verticalAlign: "middle",
-      }}
-    />
-  );
-}

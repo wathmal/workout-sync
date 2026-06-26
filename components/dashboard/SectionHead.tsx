@@ -43,3 +43,20 @@ export function SectionHead({
     </div>
   );
 }
+
+/** Round bullet separator for overlines, e.g. `Nutrition <Sep /> This week`. */
+export function Sep() {
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        width: 3,
+        height: 3,
+        borderRadius: 999,
+        background: "var(--color-text-muted)",
+        margin: "0 6px",
+        verticalAlign: "middle",
+      }}
+    />
+  );
+}

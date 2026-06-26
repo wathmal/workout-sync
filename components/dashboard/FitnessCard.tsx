@@ -3,7 +3,7 @@ import type { FitnessPoint } from "@/lib/fitness/types";
 import { trend, trainingStatusLabel, latestNonNull, type Trend } from "@/lib/fitness/view";
 import { uthVo2max } from "@/lib/fitness/uth";
 import { ctlSeries, atlSeries } from "@/lib/fitness/ctl";
-import { SectionHead } from "./SectionHead";
+import { SectionHead, Sep } from "./SectionHead";
 
 /**
  * Fitness Trends card (iOS Health-inspired v2). Three stacked blocks — CTL ("Fitness"),
@@ -168,7 +168,7 @@ export function FitnessCard({ series }: { series: FitnessPoint[] }) {
     >
       <SectionHead
         size="md"
-        overline="Engine · Garmin"
+        overline={<>Engine <Sep /> Garmin</>}
         title="Fitness."
         right={
           statusLabel ? (
@@ -216,7 +216,7 @@ export function FitnessCard({ series }: { series: FitnessPoint[] }) {
           <Divider />
 
           <IOSBlock
-            overline="VO₂MAX · 30D"
+            overline={<>VO₂MAX <Sep /> 30D</>}
             value={fmtV(nativeVo2 ?? latestNonNull(vo2Vals))}
             unit="ml/kg/min"
             dateLabel={dateRange(recentDates)}
@@ -234,7 +234,7 @@ export function FitnessCard({ series }: { series: FitnessPoint[] }) {
           <Divider />
 
           <IOSBlock
-            overline="RESTING HR · 30D"
+            overline={<>RESTING HR <Sep /> 30D</>}
             value={fmtI(latestNonNull(rhrVals))}
             unit="bpm"
             dateLabel={dateRange(recentDates)}
@@ -289,7 +289,7 @@ function IOSBlock({
   dotIndices,
   yCount,
 }: {
-  overline?: string;
+  overline?: ReactNode;
   value: ReactNode;
   unit?: string;
   valueColor?: string;

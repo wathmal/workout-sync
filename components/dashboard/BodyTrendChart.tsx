@@ -1,7 +1,7 @@
 "use client";
 
 import type { TrendPoint } from "@/lib/dashboard/mock-data";
-import { SectionHead } from "./SectionHead";
+import { SectionHead, Sep } from "./SectionHead";
 import { useMemo, useState } from "react";
 import {
   LineChart,
@@ -265,18 +265,3 @@ function LegendChip({
   );
 }
 
-function Sep() {
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        width: 3,
-        height: 3,
-        borderRadius: 999,
-        background: "var(--color-text-muted)",
-        margin: "0 6px",
-        verticalAlign: "middle",
-      }}
-    />
-  );
-}

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Calendar, Check, Clock, MapPin, Plus, Tag } from "lucide-react";
-import { SectionHead } from "./SectionHead";
+import { SectionHead, Sep } from "./SectionHead";
 import { useRaces } from "@/app/_providers/race-provider";
 import { categoryColor, categoryLabel, type RaceView } from "@/lib/race/types";
 import { todayLocalStr } from "@/lib/food/local-date";
@@ -518,18 +518,3 @@ function pct(d: Date, start: Date, end: Date): number {
   return ((+d - +start) / total) * 100;
 }
 
-function Sep() {
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        width: 3,
-        height: 3,
-        borderRadius: 999,
-        background: "var(--color-text-muted)",
-        margin: "0 6px",
-        verticalAlign: "middle",
-      }}
-    />
-  );
-}

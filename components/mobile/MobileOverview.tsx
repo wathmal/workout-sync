@@ -7,6 +7,7 @@ import { useRaces } from "@/app/_providers/race-provider";
 import { CalorieSummary } from "@/components/dashboard/CalorieSummary";
 import { MuscleCoverage } from "@/components/dashboard/MuscleCoverage";
 import { FitnessCard } from "@/components/dashboard/FitnessCard";
+import { Sep } from "@/components/dashboard/SectionHead";
 import type { FitnessPoint } from "@/lib/fitness/types";
 import {
   TYPE,
@@ -71,9 +72,13 @@ function Hero({ days, rangeLabel }: { days: DayAgenda[]; rangeLabel: string }) {
   const wb = weekBreakdown(days);
   const workouts = (wb.byType.strength?.count ?? 0) + (wb.byType.hyrox?.count ?? 0);
   const runs = wb.byType.run?.count ?? 0;
-  const overline = today
-    ? `${FULL_DAY[today.day] ?? today.day} · ${rangeLabel}`
-    : rangeLabel;
+  const overline = today ? (
+    <>
+      {FULL_DAY[today.day] ?? today.day} <Sep /> {rangeLabel}
+    </>
+  ) : (
+    rangeLabel
+  );
 
   const legend: { label: string; count: number; color: string }[] = [];
   for (const disc of ORDER) {
@@ -578,7 +583,7 @@ function MobileBodyTrend({ series }: { series: TrendPoint[] }) {
                 marginBottom: 3,
               }}
             >
-              Body composition · {range}
+              Body composition <Sep /> {range}
             </div>
             <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 18, color: "var(--color-text-primary)", margin: 0 }}>
               Trending lean.
