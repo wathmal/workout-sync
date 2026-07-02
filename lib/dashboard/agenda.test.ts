@@ -1,6 +1,7 @@
 import { buildAgenda, type BuildAgendaInput } from "./agenda";
 import type { JoinedWorkout } from "@/lib/hevy/workouts-since";
 import type { GarminActivity, CalendarItem } from "@/lib/agenda/types";
+import type { RaceEvent } from "@/lib/race/types";
 
 const TZ = "Australia/Sydney"; // UTC+10 in May 2026 (AEST, no DST)
 
@@ -19,6 +20,20 @@ function garmin(p: Partial<GarminActivity> & { startTime: string }): GarminActiv
 }
 function cal(p: Partial<CalendarItem> & { start: string; title: string }): CalendarItem {
   return { gcalId: "c", ...p };
+}
+function race(p: Partial<RaceEvent> & { name: string; date: string; category: string }): RaceEvent {
+  return {
+    id: "r",
+    eventTarget: null,
+    location: null,
+    note: null,
+    resultTime: null,
+    resultPlacement: null,
+    resultNote: null,
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: "2026-01-01T00:00:00Z",
+    ...p,
+  };
 }
 
 function base(overrides: Partial<BuildAgendaInput> = {}): BuildAgendaInput {
@@ -217,5 +232,22 @@ describe("buildAgenda", () => {
     const withAnchor = buildAgenda(base({ anchor: new Date("2026-05-20T14:00:00+10:00") }));
     const without = buildAgenda(base());
     expect(withAnchor).toEqual(without);
+  });
+
+  it("attaches a race to its day as a banner (not a session) and un-rests the day", () => {
+    const r = buildAgenda(
+      base({
+        races: [
+          race({ name: "Hyrox Sydney", date: "2026-05-23", category: "hyrox" }),
+          race({ name: "City2Surf", date: "2026-08-09", category: "running" }), // outside week
+        ],
+      }),
+    );
+    const sat = dayOf(r, "Sat");
+    expect(sat.races).toEqual([{ name: "Hyrox Sydney", category: "hyrox" }]);
+    expect(sat.sessions).toEqual([]);
+    expect(sat.isRest).toBeUndefined();
+    // Race outside the week never leaks in.
+    expect(r.days.flatMap((d) => d.races ?? []).map((x) => x.name)).toEqual(["Hyrox Sydney"]);
   });
 });

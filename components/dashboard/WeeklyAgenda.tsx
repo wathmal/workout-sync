@@ -1,4 +1,5 @@
-import type { DayAgenda } from "@/lib/dashboard/mock-data";
+import type { AgendaRace, DayAgenda } from "@/lib/dashboard/mock-data";
+import { categoryColor } from "@/lib/race/types";
 import {
   TYPE,
   dayMinutes,
@@ -32,7 +33,8 @@ function Day({ day, maxDay }: { day: DayAgenda; maxDay: number }) {
   const isToday = !!day.isToday;
   const groups = groupDay(day);
   const mins = dayMinutes(day);
-  const isRest = day.isRest || day.sessions.length === 0;
+  const races = day.races ?? [];
+  const isRest = (day.isRest || day.sessions.length === 0) && races.length === 0;
 
   return (
     <article
@@ -75,6 +77,9 @@ function Day({ day, maxDay }: { day: DayAgenda; maxDay: number }) {
 
       {/* sessions */}
       <div style={{ display: "flex", flexDirection: "column", gap: 7, flex: 1 }}>
+        {races.map((r, i) => (
+          <RaceBanner key={i} race={r} />
+        ))}
         {isRest ? (
           <div
             style={{
@@ -94,8 +99,8 @@ function Day({ day, maxDay }: { day: DayAgenda; maxDay: number }) {
         )}
       </div>
 
-      {/* stacked minutes bar + footer */}
-      {!isRest && (
+      {/* stacked minutes bar + footer — only when real sessions carry minutes */}
+      {day.sessions.length > 0 && (
         <div style={{ marginTop: "auto", paddingTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
           <div
             style={{
@@ -133,6 +138,28 @@ function Day({ day, maxDay }: { day: DayAgenda; maxDay: number }) {
         </div>
       )}
     </article>
+  );
+}
+
+/** Race row — same anatomy as a session row (swatch + name + mono sub-line);
+ *  category shows through the swatch colour only. */
+function RaceBanner({ race }: { race: AgendaRace }) {
+  const color = categoryColor(race.category);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+        <span style={{ width: 7, height: 7, borderRadius: 2, background: color, flexShrink: 0 }} />
+        <span
+          className="text-title-sm"
+          style={{ lineHeight: 1.25, flex: 1, minWidth: 0, color: "var(--color-text-primary)" }}
+        >
+          {race.name}
+        </span>
+      </div>
+      <span className="font-mono-xs" style={{ color, paddingLeft: 14 }}>
+        Race
+      </span>
+    </div>
   );
 }
 

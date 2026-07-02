@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWorkoutsSince } from "@/lib/hevy/workouts-since";
 import { readGarmin, readCalendar } from "@/lib/agenda/queries";
+import { listAll as listRaces } from "@/lib/race/queries";
 import { buildAgenda, currentWeekUtcRange } from "@/lib/dashboard/agenda";
 
 /**
@@ -22,14 +23,16 @@ export async function GET(request: NextRequest) {
     const anchor = Number.isFinite(anchorMs) ? new Date(anchorMs) : now;
     const { fromIso, toIso } = currentWeekUtcRange(anchor, tz);
 
-    const [hevyRes, garmin, calendar] = await Promise.all([
+    const [hevyRes, garmin, calendar, races] = await Promise.all([
       getWorkoutsSince(Date.parse(fromIso), true),
       readGarmin(fromIso, toIso),
       readCalendar(fromIso, toIso),
+      // ponytail: whole table (handful of rows/year); buildAgenda buckets to the week
+      listRaces(),
     ]);
 
     const hevy = hevyRes.ok ? hevyRes.workouts : [];
-    return NextResponse.json(buildAgenda({ hevy, garmin, calendar, now, tz, anchor }));
+    return NextResponse.json(buildAgenda({ hevy, garmin, calendar, races, now, tz, anchor }));
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }

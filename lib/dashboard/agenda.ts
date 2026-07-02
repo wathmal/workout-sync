@@ -21,6 +21,7 @@
 import type { DayAgenda, DayName, Session, SessionDiscipline } from "./mock-data";
 import type { JoinedWorkout } from "@/lib/hevy/workouts-since";
 import type { GarminActivity, CalendarItem } from "@/lib/agenda/types";
+import type { RaceEvent } from "@/lib/race/types";
 
 const DAY_MS = 86_400_000;
 const FLIP_HOUR = 21;
@@ -41,6 +42,8 @@ export interface BuildAgendaInput {
   hevy: JoinedWorkout[];
   garmin: GarminActivity[];
   calendar: CalendarItem[];
+  /** Race calendar events — attached as day banners, never merged into sessions. */
+  races?: RaceEvent[];
   now: Date;
   tz: string;
   /**
@@ -176,6 +179,7 @@ export function buildAgenda({
   hevy,
   garmin,
   calendar,
+  races,
   now,
   tz,
   anchor,
@@ -185,10 +189,12 @@ export function buildAgenda({
   // 7 local day keys, Monday → Sunday, for the week containing `anchor` (now by default).
   const weekKeys = weekKeysFor(anchor ?? now, tz);
 
-  // Bucket each source by local day key.
+  // Bucket each source by local day key. Race dates are civil YYYY-MM-DD already —
+  // no tz conversion, direct key match.
   const hevyByDay = bucket(hevy, (w) => localDateKey(w.start_time, tz));
   const garminByDay = bucket(garmin, (a) => localDateKey(a.startTime, tz));
   const calByDay = bucket(calendar, (c) => localDateKey(c.start, tz));
+  const raceByDay = bucket(races ?? [], (r) => r.date.slice(0, 10));
 
   const todayUTC = keyToUTC(todayKey);
 
@@ -213,12 +219,19 @@ export function buildAgenda({
       sessions = planned();
     }
 
+    const dayRaces = (raceByDay.get(key) ?? []).map((r) => ({
+      name: r.name,
+      category: r.category,
+    }));
+
     return {
       day: DAY_NAMES[idx],
       date: Number(key.slice(8, 10)),
       sessions,
+      races: dayRaces.length > 0 ? dayRaces : undefined,
       isToday: isToday || undefined,
-      isRest: sessions.length === 0 || undefined,
+      // A race day is never "rest", even before anything is logged.
+      isRest: (sessions.length === 0 && dayRaces.length === 0) || undefined,
     };
   });
 

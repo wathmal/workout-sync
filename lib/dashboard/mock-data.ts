@@ -29,10 +29,17 @@ export interface Session {
 
 export type DayName = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
 
+/** Race falling on an agenda day — rendered as a banner, not a session. */
+export interface AgendaRace {
+  name: string;
+  category: string;
+}
+
 export interface DayAgenda {
   day: DayName;
   date: number;
   sessions: Session[];
+  races?: AgendaRace[];
   isToday?: boolean;
   isRest?: boolean;
 }
