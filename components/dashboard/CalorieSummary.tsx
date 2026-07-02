@@ -66,15 +66,7 @@ function ChartTooltip({ active, payload, label }: TipProps) {
         boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
       }}
     >
-      <p
-        style={{
-          margin: 0,
-          fontSize: 10,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: "var(--color-text-tertiary)",
-        }}
-      >
+      <p className="text-label-sm" style={{ margin: 0, color: "var(--color-text-tertiary)" }}>
         {label}
       </p>
       <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
@@ -84,18 +76,18 @@ function ChartTooltip({ active, payload, label }: TipProps) {
             style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}
           >
             <span
+              className="text-body-sm"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 6,
-                fontSize: 12,
                 color: "var(--color-text-secondary)",
               }}
             >
               <span style={{ width: 8, height: 8, borderRadius: 2, background: p.fill }} />
               {p.name}
             </span>
-            <span className="font-mono-sm" style={{ fontSize: 12, color: "var(--color-text-primary)" }}>
+            <span className="font-mono-sm" style={{ color: "var(--color-text-primary)" }}>
               {Math.round(p.grams)} g
             </span>
           </div>
@@ -110,8 +102,8 @@ function ChartTooltip({ active, payload, label }: TipProps) {
           justifyContent: "space-between",
         }}
       >
-        <span style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>Total</span>
-        <span className="font-mono-sm" style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-primary)" }}>
+        <span className="text-body-sm" style={{ color: "var(--color-text-tertiary)" }}>Total</span>
+        <span className="font-mono-sm" style={{ fontWeight: 600, color: "var(--color-text-primary)" }}>
           {Math.round(total)} kcal
         </span>
       </div>
@@ -264,6 +256,7 @@ export function CalorieSummary() {
         right={
           avgDelta !== 0 ? (
             <span
+              className="font-mono-xs"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -272,8 +265,6 @@ export function CalorieSummary() {
                 borderRadius: 999,
                 background: "rgba(255,201,74,0.14)",
                 color: "var(--color-semantic-warning)",
-                fontSize: 11,
-                fontWeight: 600,
               }}
             >
               <AlertTriangle size={11} />
@@ -423,11 +414,11 @@ export function CalorieSummary() {
 
       {/* Macro legend strip */}
       <div
+        className="font-mono-xs"
         style={{
           display: "flex",
           gap: "var(--space-md)",
           marginTop: "var(--space-sm)",
-          fontSize: 11,
           color: "var(--color-text-tertiary)",
         }}
       >
@@ -464,7 +455,7 @@ export function CalorieSummary() {
           </span>
           <span
             className="font-mono-sm"
-            style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}
+            style={{ color: "var(--color-text-tertiary)" }}
           >
             {(isCurrent ? Math.round(todayTotalKcal) : weekAvgKcal).toLocaleString()} /{" "}
             {targetTotal.toLocaleString()} kcal{isCurrent ? "" : " avg/day"}
@@ -472,22 +463,16 @@ export function CalorieSummary() {
         </div>
         {isCurrent && loading && todayGroups.length === 0 && (
           <div
-            style={{
-              padding: "var(--space-sm)",
-              color: "var(--color-text-tertiary)",
-              fontSize: 12,
-            }}
+            className="text-body-sm"
+            style={{ padding: "var(--space-sm)", color: "var(--color-text-tertiary)" }}
           >
             Loading…
           </div>
         )}
         {isCurrent && !loading && todayGroups.length === 0 && (
           <div
-            style={{
-              padding: "var(--space-sm)",
-              color: "var(--color-text-tertiary)",
-              fontSize: 12,
-            }}
+            className="text-body-sm"
+            style={{ padding: "var(--space-sm)", color: "var(--color-text-tertiary)" }}
           >
             Nothing logged yet today.
           </div>
@@ -506,13 +491,14 @@ export function CalorieSummary() {
             }}
           >
             <span
-              className="font-mono-sm"
-              style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}
+              className="font-mono-xs"
+              style={{ color: "var(--color-text-tertiary)" }}
             >
               {m.time}
             </span>
             <span
-              style={{ fontSize: 13, color: "var(--color-text-primary)" }}
+              className="text-body-sm"
+              style={{ color: "var(--color-text-primary)" }}
             >
               {m.name}
             </span>
@@ -524,9 +510,8 @@ export function CalorieSummary() {
               }}
             >
               <span
-                className="font-mono-sm"
+                className="font-mono-xs"
                 style={{
-                  fontSize: 11,
                   color: "var(--color-text-tertiary)",
                   whiteSpace: "nowrap",
                   display: "inline-block",
@@ -539,7 +524,6 @@ export function CalorieSummary() {
               <span
                 className="font-mono-sm"
                 style={{
-                  fontSize: 13,
                   color: "var(--color-text-secondary)",
                   display: "inline-block",
                   minWidth: 80,
@@ -613,14 +597,14 @@ function MacroBar({
       {/* label stacked over the value */}
       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
         <span
-          className="text-label-md"
-          style={{ color: "var(--color-text-tertiary)", fontSize: 10 }}
+          className="text-label-sm"
+          style={{ color: "var(--color-text-tertiary)" }}
         >
           {label}
         </span>
         <span
           className="font-mono-sm"
-          style={{ fontSize: 14, color: "var(--color-text-primary)", whiteSpace: "nowrap" }}
+          style={{ color: "var(--color-text-primary)", whiteSpace: "nowrap" }}
         >
           {consumed}
           <span style={{ color: "var(--color-text-tertiary)" }}>

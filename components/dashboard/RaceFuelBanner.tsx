@@ -1,6 +1,5 @@
 "use client";
 
-import { Flag } from "lucide-react";
 import { useDashboardWeek } from "@/app/_providers/dashboard-week-provider";
 import { useMeasurements } from "@/app/_providers/measurements-provider";
 import { fuelPlan, type FuelPlan } from "@/lib/race/fueling";
@@ -62,13 +61,8 @@ export function RaceFuelBanner({
     <div style={{ marginBottom: "var(--space-md)", display: "flex", flexDirection: "column", gap: 8 }}>
       {/* header: flag · RACE FUELING · race name · state pill */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-          <span style={{ color: "var(--color-semantic-warning)", display: "inline-flex" }}>
-            <Flag size={13} />
-          </span>
-          <span className="text-label-sm" style={{ color: "var(--color-text-tertiary)", whiteSpace: "nowrap" }}>
-            RACE FUELING · {ctx.raceName.toUpperCase()}
-          </span>
+        <span className="text-label-sm" style={{ color: "var(--color-text-tertiary)", whiteSpace: "nowrap", minWidth: 0 }}>
+          RACE FUELING · {ctx.raceName.toUpperCase()}
         </span>
         <span
           className="font-mono-xs"
@@ -78,7 +72,6 @@ export function RaceFuelBanner({
             background: "rgba(255,201,74,0.13)",
             borderRadius: "var(--radius-full)",
             padding: "3px 10px",
-            fontSize: 12,
           }}
         >
           {pill}
@@ -99,12 +92,12 @@ export function RaceFuelBanner({
               borderTop: i ? "1px solid var(--color-outline)" : "none",
             }}
           >
-            <span style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>{f.k}</span>
+            <span className="text-body-sm" style={{ color: "var(--color-text-secondary)" }}>{f.k}</span>
             <span style={{ display: "inline-flex", alignItems: "baseline", gap: 10, whiteSpace: "nowrap" }}>
-              <span className="font-mono-sm" style={{ fontSize: 13, color: "var(--color-text-muted)" }}>
+              <span className="font-mono-sm" style={{ color: "var(--color-text-muted)" }}>
                 {f.meta}
               </span>
-              <span className="font-mono-sm" style={{ fontSize: 13, color: "var(--color-text-primary)" }}>
+              <span className="font-mono-sm" style={{ color: "var(--color-text-primary)" }}>
                 {f.v}
               </span>
             </span>
