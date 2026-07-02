@@ -54,29 +54,13 @@ export function RaceFuelBanner({
   });
   if (!plan) return null;
 
-  const pill = `${day.day} · ${plan.phase === "race-day" ? "Race day" : `T-${plan.daysUntil}`}`;
   const facts = factsFor(plan, ctx.category, baseCarbG, baseProteinG);
 
   return (
     <div style={{ marginBottom: "var(--space-md)", display: "flex", flexDirection: "column", gap: 8 }}>
-      {/* header: flag · RACE FUELING · race name · state pill */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-        <span className="text-label-sm" style={{ color: "var(--color-text-tertiary)", whiteSpace: "nowrap", minWidth: 0 }}>
-          RACE FUELING · {ctx.raceName.toUpperCase()}
-        </span>
-        <span
-          className="font-mono-xs"
-          style={{
-            whiteSpace: "nowrap",
-            color: "var(--color-semantic-warning)",
-            background: "rgba(255,201,74,0.13)",
-            borderRadius: "var(--radius-full)",
-            padding: "3px 10px",
-          }}
-        >
-          {pill}
-        </span>
-      </div>
+      <span className="text-label-sm" style={{ color: "var(--color-text-tertiary)", whiteSpace: "nowrap", minWidth: 0 }}>
+        RACE FUELING · {ctx.raceName.toUpperCase()}
+      </span>
 
       {/* ledger: hairline rows, label left / value right */}
       <div style={{ display: "flex", flexDirection: "column" }}>
