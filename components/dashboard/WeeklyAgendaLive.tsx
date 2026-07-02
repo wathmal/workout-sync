@@ -37,8 +37,14 @@ function emptyWeek(): DayAgenda[] {
  * a blank week while loading or if the fetch fails — never fabricated data.
  */
 export function WeeklyAgendaLive() {
-  const { agendaDays: days } = useDashboardWeek();
+  const { agendaDays: days, selectedDayIdx, selectDay } = useDashboardWeek();
   const placeholder = useMemo(() => emptyWeek(), []);
   const ready = days.length > 0;
-  return <WeeklyAgenda days={ready ? days : placeholder} />;
+  return (
+    <WeeklyAgenda
+      days={ready ? days : placeholder}
+      selectedIdx={selectedDayIdx}
+      onSelect={ready ? selectDay : undefined}
+    />
+  );
 }

@@ -35,11 +35,20 @@ export interface AgendaRace {
   category: string;
 }
 
+/** Fueling-phase marker on an agenda day (e.g. carb-load T-1/T-2 before a race). */
+export interface FuelMarker {
+  kind: "carb-load";
+  raceName: string;
+  category: string;
+  daysToRace: number; // 1 = day before the race
+}
+
 export interface DayAgenda {
   day: DayName;
   date: number;
   sessions: Session[];
   races?: AgendaRace[];
+  fuel?: FuelMarker;
   isToday?: boolean;
   isRest?: boolean;
 }

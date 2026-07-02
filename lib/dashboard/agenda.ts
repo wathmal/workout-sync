@@ -18,10 +18,11 @@
  * Everything is computed from the injected `now` + `tz`, so the module is pure
  * and unit-testable with no clock/DB/network.
  */
-import type { DayAgenda, DayName, Session, SessionDiscipline } from "./mock-data";
+import type { DayAgenda, DayName, FuelMarker, Session, SessionDiscipline } from "./mock-data";
 import type { JoinedWorkout } from "@/lib/hevy/workouts-since";
 import type { GarminActivity, CalendarItem } from "@/lib/agenda/types";
 import type { RaceEvent } from "@/lib/race/types";
+import { LOAD_WINDOW_DAYS } from "@/lib/race/fueling";
 
 const DAY_MS = 86_400_000;
 const FLIP_HOUR = 21;
@@ -195,6 +196,7 @@ export function buildAgenda({
   const garminByDay = bucket(garmin, (a) => localDateKey(a.startTime, tz));
   const calByDay = bucket(calendar, (c) => localDateKey(c.start, tz));
   const raceByDay = bucket(races ?? [], (r) => r.date.slice(0, 10));
+  const fuelByDay = fuelMarkers(races ?? []);
 
   const todayUTC = keyToUTC(todayKey);
 
@@ -229,8 +231,10 @@ export function buildAgenda({
       date: Number(key.slice(8, 10)),
       sessions,
       races: dayRaces.length > 0 ? dayRaces : undefined,
+      fuel: fuelByDay.get(key),
       isToday: isToday || undefined,
-      // A race day is never "rest", even before anything is logged.
+      // A race day is never "rest", even before anything is logged. A fuel marker
+      // alone doesn't un-rest a day — rest + carb-load IS the taper.
       isRest: (sessions.length === 0 && dayRaces.length === 0) || undefined,
     };
   });
@@ -263,6 +267,31 @@ export function currentWeekUtcRange(now: Date, tz: string): { fromIso: string; t
     fromIso: new Date(mondayUTC - DAY_MS).toISOString(),
     toIso: new Date(mondayUTC + 8 * DAY_MS).toISOString(),
   };
+}
+
+/**
+ * Carb-load markers for the T-1..T-LOAD_WINDOW_DAYS days before each race,
+ * keyed by civil date. When windows overlap, the nearest race wins (races are
+ * processed date-ascending and the first marker on a day is the nearest one).
+ */
+function fuelMarkers(races: RaceEvent[]): Map<string, FuelMarker> {
+  const map = new Map<string, FuelMarker>();
+  const sorted = [...races].sort((a, b) => a.date.localeCompare(b.date));
+  for (const r of sorted) {
+    const raceUTC = keyToUTC(r.date.slice(0, 10));
+    for (let offset = 1; offset <= LOAD_WINDOW_DAYS; offset++) {
+      const key = utcToKey(raceUTC - offset * DAY_MS);
+      if (!map.has(key)) {
+        map.set(key, {
+          kind: "carb-load",
+          raceName: r.name,
+          category: r.category,
+          daysToRace: offset,
+        });
+      }
+    }
+  }
+  return map;
 }
 
 function bucket<T>(items: T[], keyOf: (item: T) => string | null): Map<string, T[]> {

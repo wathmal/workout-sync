@@ -15,6 +15,7 @@ import {
 import { AlertTriangle } from "lucide-react";
 import { useDashboardWeek } from "@/app/_providers/dashboard-week-provider";
 import { useShell } from "@/app/_providers/shell-provider";
+import { RaceFuelBanner } from "./RaceFuelBanner";
 
 const DOW_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
@@ -282,6 +283,8 @@ export function CalorieSummary() {
           ) : null
         }
       />
+
+      {isCurrent && <RaceFuelBanner baseCarbG={t.carbsG} baseProteinG={t.proteinG} />}
 
       <div style={{ height: 280, width: "100%" }}>
         <ResponsiveContainer width="100%" height="100%">

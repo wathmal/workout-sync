@@ -17,7 +17,7 @@ import {
   weekBreakdown,
   type SessionGroup,
 } from "@/lib/dashboard/agenda-view";
-import type { DayAgenda, TrendPoint } from "@/lib/dashboard/mock-data";
+import type { AgendaRace, DayAgenda, FuelMarker, TrendPoint } from "@/lib/dashboard/mock-data";
 import type { RaceView } from "@/lib/race/types";
 import { categoryColor, categoryLabel } from "@/lib/race/types";
 
@@ -176,8 +176,9 @@ function AgendaSkeleton() {
 
 function Agenda({ days, loading }: { days: DayAgenda[]; loading: boolean }) {
   const todayIdx = days.findIndex((d) => d.isToday);
-  // null = follow today; agendaDays loads async so we can't seed off todayIdx.
-  const [picked, setIdx] = useState<number | null>(null);
+  // Shared selection: highlights here AND drives the nutrition card's fueling
+  // banner. null = follow today; agendaDays loads async so we can't seed off todayIdx.
+  const { selectedDayIdx: picked, selectDay: setIdx } = useDashboardWeek();
   // /api/agenda (Garmin subprocess + Calendar + Hevy merge) is slower than the
   // local food data, so reserve the height with a skeleton while it loads.
   if (days.length === 0) return loading ? <AgendaSkeleton /> : null;
@@ -185,15 +186,23 @@ function Agenda({ days, loading }: { days: DayAgenda[]; loading: boolean }) {
   const idx = Math.min(picked ?? (todayIdx >= 0 ? todayIdx : 0), lastIdx);
   const day = days[idx];
   const groups = groupDay(day);
-  const isRest = day.isRest || day.sessions.length === 0;
+  const races = day.races ?? [];
+  const isRest = (day.isRest || day.sessions.length === 0) && races.length === 0;
+  const restOnly = isRest && !day.fuel; // fuel row still renders on a rest day
+  const overlineText =
+    races.length > 0 && groups.length === 0
+      ? "Race day"
+      : isRest
+      ? "Rest day"
+      : `${groups.length} workout${groups.length === 1 ? "" : "s"}`;
 
   return (
     <div style={{ padding: "16px 16px 0" }}>
       <div style={{ background: "var(--color-surface-card)", borderRadius: "var(--radius-lg)", padding: 14 }}>
         {/* overline (workout count) + day title — same pattern as other cards */}
-        <div style={{ marginBottom: isRest ? 4 : 14 }}>
+        <div style={{ marginBottom: restOnly ? 4 : 14 }}>
           <div className="text-label-md" style={{ color: "var(--color-text-tertiary)", marginBottom: 2 }}>
-            {isRest ? "Rest day" : `${groups.length} workout${groups.length === 1 ? "" : "s"}`}
+            {overlineText}
           </div>
           <span
             className="text-headline-md"
@@ -206,8 +215,8 @@ function Agenda({ days, loading }: { days: DayAgenda[]; loading: boolean }) {
           </span>
         </div>
 
-        {/* sessions / rest */}
-        {isRest ? (
+        {/* sessions / races / fuel / rest */}
+        {restOnly ? (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 64, padding: "4px 0 12px" }}>
             <span style={{ fontFamily: "var(--font-body)", fontStyle: "italic", fontSize: 16, color: "var(--color-text-muted)" }}>
               Rest
@@ -215,6 +224,10 @@ function Agenda({ days, loading }: { days: DayAgenda[]; loading: boolean }) {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {races.map((r, i) => (
+              <RaceRow key={`race-${i}`} race={r} />
+            ))}
+            {day.fuel && <FuelRow fuel={day.fuel} />}
             {groups.map((g) => (
               <SessionRow key={g.name} g={g} />
             ))}
@@ -275,17 +288,59 @@ function Agenda({ days, loading }: { days: DayAgenda[]; loading: boolean }) {
                   {d.date}
                 </span>
                 <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "center" }}>
-                  {dGroups.length > 0 ? (
-                    dGroups.slice(0, 3).map((g, gi) => (
-                      <span key={gi} style={{ width: 6, height: 6, borderRadius: 2, background: TYPE[g.type].color }} />
-                    ))
-                  ) : d.isRest ? (
+                  {(d.races ?? []).map((r, ri) => (
+                    <span key={`r${ri}`} style={{ width: 6, height: 6, borderRadius: 2, background: categoryColor(r.category) }} />
+                  ))}
+                  {dGroups.slice(0, Math.max(0, 3 - (d.races?.length ?? 0))).map((g, gi) => (
+                    <span key={gi} style={{ width: 6, height: 6, borderRadius: 2, background: TYPE[g.type].color }} />
+                  ))}
+                  {/* fuel tick — bar shape ≠ session square, echoes the amber strip */}
+                  {d.fuel && (
+                    <span style={{ width: 8, height: 2, borderRadius: 999, background: "var(--color-data-3)" }} />
+                  )}
+                  {dGroups.length === 0 && !d.races?.length && !d.fuel && d.isRest && (
                     <span style={{ width: 6, height: 6, borderRadius: 999, background: "var(--color-surface-disabled)" }} />
-                  ) : null}
+                  )}
                 </div>
               </button>
             );
           })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Carb-load row — SessionRow anatomy; swatch + sub-line wear the carbs token. */
+function FuelRow({ fuel }: { fuel: FuelMarker }) {
+  const c = "var(--color-data-3)";
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+      <span style={{ width: 8, height: 8, borderRadius: 2, background: c, flexShrink: 0, marginTop: 5 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: "var(--font-body)", fontWeight: 500, fontSize: 15, color: "var(--color-text-primary)", marginBottom: 2 }}>
+          Carb load
+        </div>
+        <div className="font-mono-xs" style={{ color: c }}>
+          T−{fuel.daysToRace} · {fuel.raceName}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Race row — SessionRow anatomy at mobile sizing; category shows via swatch colour. */
+function RaceRow({ race }: { race: AgendaRace }) {
+  const color = categoryColor(race.category);
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+      <span style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0, marginTop: 5 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: "var(--font-body)", fontWeight: 500, fontSize: 15, color: "var(--color-text-primary)", marginBottom: 2 }}>
+          {race.name}
+        </div>
+        <div className="font-mono-xs" style={{ color }}>
+          Race
         </div>
       </div>
     </div>

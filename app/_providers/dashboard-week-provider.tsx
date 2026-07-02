@@ -59,6 +59,11 @@ interface DashboardWeekContextType {
   agendaDays: DayAgenda[];
   agendaRangeLabel: string;
   agendaLoading: boolean;
+
+  // Day selection — shared by the agenda (highlight) and the nutrition card
+  // (per-day fueling plan). null = no explicit selection (follow today).
+  selectedDayIdx: number | null;
+  selectDay: (idx: number | null) => void;
 }
 
 const Ctx = createContext<DashboardWeekContextType | undefined>(undefined);
@@ -170,6 +175,13 @@ export function DashboardWeekProvider({ children }: { children: ReactNode }) {
 
   const isCurrent = weekOffset === 0;
 
+  // Selected agenda day (0=Mon … 6=Sun); cleared when the week changes.
+  const [selectedDayIdx, setSelectedDayIdx] = useState<number | null>(null);
+  useEffect(() => {
+    setSelectedDayIdx(null);
+  }, [weekOffset]);
+  const selectDay = useCallback((idx: number | null) => setSelectedDayIdx(idx), []);
+
   const value = useMemo<DashboardWeekContextType>(() => {
     return {
       weekOffset,
@@ -195,6 +207,9 @@ export function DashboardWeekProvider({ children }: { children: ReactNode }) {
       agendaDays: isCurrent ? agenda.days : selAgendaDays,
       agendaRangeLabel: isCurrent ? agenda.rangeLabel : selAgendaLabel,
       agendaLoading: isCurrent ? agenda.loading : selLoading,
+
+      selectedDayIdx,
+      selectDay,
     };
   }, [
     weekOffset,
@@ -221,6 +236,8 @@ export function DashboardWeekProvider({ children }: { children: ReactNode }) {
     selAgendaLabel,
     selLoading,
     selError,
+    selectedDayIdx,
+    selectDay,
   ]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

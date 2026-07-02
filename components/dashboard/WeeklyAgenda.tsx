@@ -1,4 +1,4 @@
-import type { AgendaRace, DayAgenda } from "@/lib/dashboard/mock-data";
+import type { AgendaRace, DayAgenda, FuelMarker } from "@/lib/dashboard/mock-data";
 import { categoryColor } from "@/lib/race/types";
 import {
   TYPE,
@@ -9,7 +9,15 @@ import {
   type SessionGroup,
 } from "@/lib/dashboard/agenda-view";
 
-export function WeeklyAgenda({ days }: { days: DayAgenda[] }) {
+export function WeeklyAgenda({
+  days,
+  selectedIdx,
+  onSelect,
+}: {
+  days: DayAgenda[];
+  selectedIdx?: number | null;
+  onSelect?: (idx: number | null) => void;
+}) {
   const maxDay = Math.max(1, ...days.map(dayMinutes));
 
   return (
@@ -21,15 +29,31 @@ export function WeeklyAgenda({ days }: { days: DayAgenda[] }) {
           gap: "var(--space-sm)",
         }}
       >
-        {days.map((d) => (
-          <Day key={d.day} day={d} maxDay={maxDay} />
+        {days.map((d, i) => (
+          <Day
+            key={d.day}
+            day={d}
+            maxDay={maxDay}
+            selected={selectedIdx === i}
+            onSelect={onSelect ? () => onSelect(selectedIdx === i ? null : i) : undefined}
+          />
         ))}
       </div>
     </section>
   );
 }
 
-function Day({ day, maxDay }: { day: DayAgenda; maxDay: number }) {
+function Day({
+  day,
+  maxDay,
+  selected,
+  onSelect,
+}: {
+  day: DayAgenda;
+  maxDay: number;
+  selected: boolean;
+  onSelect?: () => void;
+}) {
   const isToday = !!day.isToday;
   const groups = groupDay(day);
   const mins = dayMinutes(day);
@@ -38,15 +62,34 @@ function Day({ day, maxDay }: { day: DayAgenda; maxDay: number }) {
 
   return (
     <article
+      role={onSelect ? "button" : undefined}
+      aria-pressed={onSelect ? selected : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      onClick={onSelect}
+      onKeyDown={
+        onSelect
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelect();
+              }
+            }
+          : undefined
+      }
       style={{
-        background: "var(--color-surface-card)",
+        background: selected ? "var(--color-surface-elevated)" : "var(--color-surface-card)",
         borderRadius: "var(--radius-card)",
         padding: 14,
         display: "flex",
         flexDirection: "column",
         gap: 10,
         minHeight: 220,
-        boxShadow: isToday ? "inset 0 0 0 1.5px var(--color-brand-accent)" : "none",
+        boxShadow: isToday
+          ? "inset 0 0 0 1.5px var(--color-brand-accent)"
+          : selected
+          ? "inset 0 0 0 1px var(--color-text-muted)"
+          : "none",
+        cursor: onSelect ? "pointer" : undefined,
       }}
     >
       {/* day header */}
@@ -80,6 +123,7 @@ function Day({ day, maxDay }: { day: DayAgenda; maxDay: number }) {
         {races.map((r, i) => (
           <RaceBanner key={i} race={r} />
         ))}
+        {day.fuel && <FuelRow fuel={day.fuel} />}
         {isRest ? (
           <div
             style={{
@@ -138,6 +182,31 @@ function Day({ day, maxDay }: { day: DayAgenda; maxDay: number }) {
         </div>
       )}
     </article>
+  );
+}
+
+/**
+ * Carb-load row — same anatomy as session/race rows. Swatch + sub-line wear the
+ * carbs token (--color-data-3, the same amber carbs wear in the calorie chart);
+ * the sub-line carries the racing-style T−n countdown + race name.
+ */
+export function FuelRow({ fuel }: { fuel: FuelMarker }) {
+  const c = "var(--color-data-3)";
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+        <span style={{ width: 7, height: 7, borderRadius: 2, background: c, flexShrink: 0 }} />
+        <span
+          className="text-title-sm"
+          style={{ lineHeight: 1.25, flex: 1, minWidth: 0, color: "var(--color-text-primary)" }}
+        >
+          Carb load
+        </span>
+      </div>
+      <span className="font-mono-xs" style={{ color: c, paddingLeft: 14, whiteSpace: "nowrap" }}>
+        T−{fuel.daysToRace} · {fuel.raceName}
+      </span>
+    </div>
   );
 }
 

@@ -250,4 +250,43 @@ describe("buildAgenda", () => {
     // Race outside the week never leaks in.
     expect(r.days.flatMap((d) => d.races ?? []).map((x) => x.name)).toEqual(["Hyrox Sydney"]);
   });
+
+  it("marks the T-1/T-2 days before a race as carb-load, race day itself unmarked", () => {
+    const r = buildAgenda(
+      base({ races: [race({ name: "Hyrox Sydney", date: "2026-05-23", category: "hyrox" })] }),
+    );
+    expect(dayOf(r, "Thu").fuel).toEqual({
+      kind: "carb-load", raceName: "Hyrox Sydney", category: "hyrox", daysToRace: 2,
+    });
+    expect(dayOf(r, "Fri").fuel).toEqual({
+      kind: "carb-load", raceName: "Hyrox Sydney", category: "hyrox", daysToRace: 1,
+    });
+    expect(dayOf(r, "Sat").fuel).toBeUndefined();
+    // Fuel marker alone doesn't un-rest the day.
+    expect(dayOf(r, "Fri").isRest).toBe(true);
+  });
+
+  it("a race just past the week end still marks its load days inside the week", () => {
+    // Race Mon 25 May (next week) -> load days Sat 23 + Sun 24 of this week.
+    const r = buildAgenda(
+      base({ races: [race({ name: "City Run", date: "2026-05-25", category: "running" })] }),
+    );
+    expect(dayOf(r, "Sat").fuel?.daysToRace).toBe(2);
+    expect(dayOf(r, "Sun").fuel?.daysToRace).toBe(1);
+  });
+
+  it("overlapping load windows: the nearest race claims the day", () => {
+    const r = buildAgenda(
+      base({
+        races: [
+          race({ id: "a", name: "Race A", date: "2026-05-22", category: "hyrox" }),
+          race({ id: "b", name: "Race B", date: "2026-05-23", category: "running" }),
+        ],
+      }),
+    );
+    // Thu 21 = T-1 of A (nearest), also T-2 of B — A wins.
+    expect(dayOf(r, "Thu").fuel).toMatchObject({ raceName: "Race A", daysToRace: 1 });
+    // Fri 22 = race day of A, T-1 of B — B's marker lands on it.
+    expect(dayOf(r, "Fri").fuel).toMatchObject({ raceName: "Race B", daysToRace: 1 });
+  });
 });
