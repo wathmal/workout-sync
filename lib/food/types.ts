@@ -117,7 +117,7 @@ export interface FmaSearchResponse {
   query?: string;
   total?: number;
   limit?: number;
-  offset?: number;
+  page?: number;
   items: FmaSearchHit[];
 }
 

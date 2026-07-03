@@ -1230,6 +1230,124 @@ function ActionRow({
   );
 }
 
+// ── Pager ─────────────────────────────────────────────────────────────────
+
+/**
+ * Bottom page-control for the Search & Brands result lists. Both FMA endpoints
+ * now share a page-based contract (`page`/`limit` → `total`/`page`/`limit`), so
+ * one control drives both. Page-replace (not accumulate) keeps the list short
+ * enough that the pager stays thumb-reachable without scrolling on a phone.
+ * Render only when there's a sibling page to reach — callers gate on hasPrev||hasNext.
+ */
+function Pager({
+  page,
+  hasPrev,
+  hasNext,
+  loading,
+  onPrev,
+  onNext,
+}: {
+  page: number;
+  hasPrev: boolean;
+  hasNext: boolean;
+  loading: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const navBtn = (
+    dir: "prev" | "next",
+    enabled: boolean,
+    onClick: () => void,
+  ) => (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!enabled || loading}
+      aria-label={dir === "prev" ? "Previous page" : "Next page"}
+      className="food-pager-btn"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        height: 40,
+        minWidth: 44,
+        padding: "0 14px",
+        borderRadius: "var(--radius-md)",
+        background: "var(--color-surface-elevated)",
+        border: "1px solid var(--color-outline)",
+        color: enabled ? "var(--color-text-primary)" : "var(--color-text-tertiary)",
+        fontSize: 13,
+        fontWeight: 500,
+        cursor: enabled && !loading ? "pointer" : "default",
+        opacity: enabled ? 1 : 0.4,
+        transition: "border-color 120ms ease, background 120ms ease",
+        WebkitTapHighlightColor: "transparent",
+      }}
+    >
+      {dir === "prev" ? (
+        <>
+          <ChevronLeft size={16} />
+          <span className="food-pager-label">Prev</span>
+        </>
+      ) : (
+        <>
+          <span className="food-pager-label">Next</span>
+          <ChevronRight size={16} />
+        </>
+      )}
+    </button>
+  );
+
+  return (
+    <div
+      className="food-pager"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 8,
+        marginTop: 4,
+        paddingTop: 10,
+        borderTop: "1px solid var(--color-outline)",
+      }}
+    >
+      {navBtn("prev", hasPrev, onPrev)}
+      <span
+        aria-live="polite"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 7,
+          fontSize: 12,
+          color: "var(--color-text-tertiary)",
+          fontFamily: "var(--font-mono)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {loading ? (
+          <Loader2 size={12} className="spin" />
+        ) : (
+          <span
+            aria-hidden
+            style={{
+              width: 5,
+              height: 5,
+              borderRadius: "50%",
+              background: "var(--color-brand-primary)",
+            }}
+          />
+        )}
+        Page{" "}
+        <span style={{ color: "var(--color-text-primary)", fontWeight: 600 }}>
+          {page}
+        </span>
+      </span>
+      {navBtn("next", hasNext, onNext)}
+    </div>
+  );
+}
+
 // ── Search panel ──────────────────────────────────────────────────────────
 
 function SearchPanel({
@@ -1240,15 +1358,26 @@ function SearchPanel({
   onPick: (items: PendingItem[]) => void;
 }) {
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
   const [hits, setHits] = useState<FmaSearchHit[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const PAGE_SIZE = 8;
+
+  // A new query or locale restarts paging from the first page. The fetch effect
+  // below also depends on `page`, so the timer-clear there cancels any in-flight
+  // request for a stale page before this reset's page-1 fetch fires.
+  useEffect(() => {
+    setPage(1);
+  }, [q, locale]);
 
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
     if (q.trim().length < 2) {
       setHits([]);
+      setTotal(0);
       return;
     }
     timer.current = setTimeout(async () => {
@@ -1257,15 +1386,18 @@ function SearchPanel({
       try {
         const url = new URL("/api/food/search", window.location.origin);
         url.searchParams.set("q", q);
-        url.searchParams.set("limit", "8");
+        url.searchParams.set("limit", String(PAGE_SIZE));
+        url.searchParams.set("page", String(page));
         if (locale && locale !== "en") url.searchParams.set("locale", locale);
         const res = await fetch(url.pathname + url.search);
         const body = await res.json();
         if (!res.ok) throw new Error(body?.error ?? `${res.status}`);
         setHits((body.items ?? []) as FmaSearchHit[]);
+        setTotal(typeof body.total === "number" ? body.total : 0);
       } catch (e) {
         setErr((e as Error).message);
         setHits([]);
+        setTotal(0);
       } finally {
         setLoading(false);
       }
@@ -1273,7 +1405,13 @@ function SearchPanel({
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [q, locale]);
+  }, [q, locale, page]);
+
+  // hits.length === PAGE_SIZE guards against a short final page; total guards the
+  // common case. Search's `total` is a bounded relevance-pool size (creeps up as
+  // you page deeper) — the full-page check keeps Next honest regardless.
+  const hasPrev = page > 1;
+  const hasNext = hits.length === PAGE_SIZE && page * PAGE_SIZE < total;
 
   const [pickGrams, setPickGrams] = useState<Record<string, string>>({});
 
@@ -1351,6 +1489,16 @@ function SearchPanel({
           );
         })}
       </div>
+      {hits.length > 0 && (hasPrev || hasNext) && (
+        <Pager
+          page={page}
+          hasPrev={hasPrev}
+          hasNext={hasNext}
+          loading={loading}
+          onPrev={() => setPage((p) => Math.max(1, p - 1))}
+          onNext={() => setPage((p) => p + 1)}
+        />
+      )}
     </div>
   );
 }
@@ -1367,18 +1515,27 @@ function OffSearchPanel({
   setError: (msg: string | null) => void;
 }) {
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
   const [hits, setHits] = useState<FmaOffSearchHit[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   // barcode currently being resolved via /analyze/barcode (per-row spinner)
   const [resolving, setResolving] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const PAGE_SIZE = 10;
 
-  // OFF search ignores locale (upstream takes only q/limit/page).
+  // A new query restarts paging (OFF search ignores locale — upstream takes only
+  // q/limit/page). The fetch effect's timer-clear cancels any stale-page request.
+  useEffect(() => {
+    setPage(1);
+  }, [q]);
+
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
     if (q.trim().length < 2) {
       setHits([]);
+      setTotal(0);
       return;
     }
     timer.current = setTimeout(async () => {
@@ -1387,14 +1544,17 @@ function OffSearchPanel({
       try {
         const url = new URL("/api/food/off-search", window.location.origin);
         url.searchParams.set("q", q);
-        url.searchParams.set("limit", "10");
+        url.searchParams.set("limit", String(PAGE_SIZE));
+        url.searchParams.set("page", String(page));
         const res = await fetch(url.pathname + url.search);
         const body = await res.json();
         if (!res.ok) throw new Error(body?.error ?? `${res.status}`);
         setHits((body.items ?? []) as FmaOffSearchHit[]);
+        setTotal(typeof body.total === "number" ? body.total : 0);
       } catch (e) {
         setErr((e as Error).message);
         setHits([]);
+        setTotal(0);
       } finally {
         setLoading(false);
       }
@@ -1402,7 +1562,11 @@ function OffSearchPanel({
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [q]);
+  }, [q, page]);
+
+  // OFF `total` is the upstream match count (stable across pages).
+  const hasPrev = page > 1;
+  const hasNext = hits.length === PAGE_SIZE && page * PAGE_SIZE < total;
 
   // Resolve a chosen barcode into a loggable item (serving + complete macros),
   // then append it. Locale flows into the resolve, not the OFF search.
@@ -1504,6 +1668,16 @@ function OffSearchPanel({
           );
         })}
       </div>
+      {hits.length > 0 && (hasPrev || hasNext) && (
+        <Pager
+          page={page}
+          hasPrev={hasPrev}
+          hasNext={hasNext}
+          loading={loading}
+          onPrev={() => setPage((p) => Math.max(1, p - 1))}
+          onNext={() => setPage((p) => p + 1)}
+        />
+      )}
     </div>
   );
 }

@@ -60,10 +60,10 @@ async function fma<T>(
 export async function fmaSearch(
   q: string,
   limit = 8,
-  opts?: { locale?: string },
+  opts?: { locale?: string; page?: number },
 ): Promise<FmaSearchResponse> {
   return fma<FmaSearchResponse>("/v1/foods/search", {
-    query: { q, limit, locale: opts?.locale },
+    query: { q, limit, page: opts?.page ?? 1, locale: opts?.locale },
   });
 }
 
@@ -75,9 +75,10 @@ export async function fmaSearch(
 export async function fmaOffSearch(
   q: string,
   limit = 10,
+  page = 1,
 ): Promise<FmaOffSearchResponse> {
   return fma<FmaOffSearchResponse>("/v1/off/search", {
-    query: { q, limit, page: 1 },
+    query: { q, limit, page },
   });
 }
 

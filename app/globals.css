@@ -510,4 +510,6 @@ html { scroll-behavior: smooth; }
   .food-locale-select { font-size: 11px !important; }
   .food-review-actions { flex-wrap: wrap !important; }
   .food-review-when { width: 100% !important; }
+  /* Pager: grow the prev/next hit areas to a comfortable thumb target on phones. */
+  .food-pager-btn { height: 44px !important; min-width: 56px !important; }
 }
