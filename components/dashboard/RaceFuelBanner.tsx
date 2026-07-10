@@ -2,7 +2,15 @@
 
 import { useDashboardWeek } from "@/app/_providers/dashboard-week-provider";
 import { useMeasurements } from "@/app/_providers/measurements-provider";
-import { fuelPlan, type FuelPlan } from "@/lib/race/fueling";
+import { useRaces } from "@/app/_providers/race-provider";
+import {
+  fuelPlan,
+  FIRST_GEL_MIN,
+  GEL_CARB_G,
+  GEL_INTERVAL_MIN,
+  type FuelPlan,
+} from "@/lib/race/fueling";
+import { lastResultDurationMin, parseDurationMin } from "@/lib/race/types";
 import type { DayAgenda } from "@/lib/dashboard/mock-data";
 
 // Fallback bodyweight when no measurement is stored yet (matches the sample baseline).
@@ -30,6 +38,7 @@ export function RaceFuelBanner({
 }) {
   const { agendaDays, selectedDayIdx } = useDashboardWeek();
   const { inputs } = useMeasurements();
+  const { views } = useRaces();
 
   const day: DayAgenda | undefined =
     selectedDayIdx != null ? agendaDays[selectedDayIdx] : agendaDays.find((d) => d.isToday);
@@ -46,11 +55,20 @@ export function RaceFuelBanner({
     : null;
   if (!ctx) return null;
 
+  // Gel schedule sized to the athlete's own clock: the race's target time when
+  // parseable, else the most recent completed result in the same category.
+  const targetView = views.find((v) => v.name === ctx.raceName);
+  const expectedDurationMin =
+    parseDurationMin(targetView?.eventTarget) ??
+    lastResultDurationMin(views, ctx.category) ??
+    undefined;
+
   const plan = fuelPlan({
     daysUntil: ctx.daysUntil,
     category: ctx.category,
     weightKg,
     baseCarbG,
+    expectedDurationMin,
   });
   if (!plan) return null;
 
@@ -104,6 +122,9 @@ function factsFor(
       ...(plan.carbDeltaG > 0
         ? [{ k: "vs base", v: `+${plan.carbDeltaG}g`, meta: `over ${Math.round(baseCarbG)}g` }]
         : []),
+      ...(plan.sodiumMg > 0
+        ? [{ k: "Sodium", v: `~${plan.sodiumMg}mg`, meta: "with dinner" }]
+        : []),
       { k: "Fibre + fat", v: "low", meta: "easy gut" },
       { k: "Protein", v: "keep", meta: baseProteinG ? `${Math.round(baseProteinG)}g` : "" },
     ];
@@ -111,10 +132,19 @@ function factsFor(
   return [
     { k: "Pre-race meal", v: `~${plan.morningCarbG}g carbs`, meta: "3h out" },
     { k: "Caffeine", v: `${plan.caffeineMg}mg`, meta: "45min out" },
-    { k: "Hydration", v: `${plan.fluidMl}ml + ${plan.sodiumMg}mg Na`, meta: "pre-start" },
+    { k: "Hydration", v: `${plan.fluidMl}ml + ${plan.sodiumMg}mg Na`, meta: "90min out" },
     category === "hyrox"
-      ? { k: "In-race fuel", v: `gel ~${plan.inRaceCarbPerH}g`, meta: "~40min in" }
+      ? {
+          k: "In-race fuel",
+          v: `${plan.inRaceGelCount} gels ~${GEL_CARB_G}g`,
+          meta: `${FIRST_GEL_MIN}min in, every ${GEL_INTERVAL_MIN}min`,
+        }
       : { k: "In-race fuel", v: `${plan.inRaceCarbPerH}g/h`, meta: "throughout" },
+    {
+      k: "In-race sodium",
+      v: `${plan.inRaceSodiumMgPerH}mg/h`,
+      meta: category === "hyrox" ? "sip at roxzones" : "throughout",
+    },
     { k: "Refill", v: `${plan.recoveryCarbPerH}g/h × 4h`, meta: "after finish" },
   ];
 }

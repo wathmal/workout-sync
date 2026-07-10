@@ -1,4 +1,4 @@
-import { fuelPlan, LOAD_CARB_PER_KG } from "./fueling";
+import { fuelPlan, LOAD_CARB_PER_KG, LOAD_NIGHT_SODIUM_MG, SODIUM_PRELOAD_MG } from "./fueling";
 
 describe("fuelPlan", () => {
   const W = 68; // kg
@@ -32,16 +32,53 @@ describe("fuelPlan", () => {
     expect(p.phase).toBe("race-day");
     expect(p.morningCarbG).toBe(136); // 2 g/kg
     expect(p.caffeineMg).toBe(306); // 4.5 mg/kg
-    expect(p.sodiumMg).toBe(300);
+    expect(p.sodiumMg).toBe(SODIUM_PRELOAD_MG); // 750
     expect(p.fluidMl).toBe(476); // 7 ml/kg
     expect(p.recoveryCarbPerH).toBe(75); // 1.1 g/kg/h
   });
 
-  it("every category fuels in-race; hyrox at gel rate (30 g/h), others at 45 g/h", () => {
+  it("T-1 load day carries the evening sodium preload; T-2 does not", () => {
+    expect(fuelPlan({ daysUntil: 1, category: "hyrox", weightKg: W, baseCarbG: BASE })!.sodiumMg).toBe(
+      LOAD_NIGHT_SODIUM_MG,
+    );
+    expect(fuelPlan({ daysUntil: 2, category: "hyrox", weightKg: W, baseCarbG: BASE })!.sodiumMg).toBe(0);
+  });
+
+  it("hyrox gel schedule scales with expected duration", () => {
+    // No duration → 90min default: gels at 35/65 → 2 gels, 33 g/h.
+    const dflt = fuelPlan({ daysUntil: 0, category: "hyrox", weightKg: W, baseCarbG: BASE })!;
+    expect(dflt.inRaceGelCount).toBe(2);
+    expect(dflt.inRaceCarbPerH).toBe(33);
+
+    // 2h02 finisher: gels at 35/65/95 → 3 gels, ~37 g/h.
+    const slow = fuelPlan({
+      daysUntil: 0,
+      category: "hyrox",
+      weightKg: W,
+      baseCarbG: BASE,
+      expectedDurationMin: 122,
+    })!;
+    expect(slow.inRaceGelCount).toBe(3);
+    expect(slow.inRaceCarbPerH).toBe(37);
+
+    // Even a sub-envelope flyer keeps one gel as insurance.
+    const fast = fuelPlan({
+      daysUntil: 0,
+      category: "hyrox",
+      weightKg: W,
+      baseCarbG: BASE,
+      expectedDurationMin: 60,
+    })!;
+    expect(fast.inRaceGelCount).toBe(1);
+  });
+
+  it("every category fuels in-race; hyrox via gels, others at 45 g/h with no gel count", () => {
     const hyrox = fuelPlan({ daysUntil: 0, category: "hyrox", weightKg: W, baseCarbG: BASE })!;
     expect(hyrox.needsInRaceFuel).toBe(true);
-    expect(hyrox.inRaceCarbPerH).toBe(30);
-    expect(fuelPlan({ daysUntil: 0, category: "running", weightKg: W, baseCarbG: BASE })!.inRaceCarbPerH).toBe(45);
+    expect(hyrox.inRaceSodiumMgPerH).toBeGreaterThan(0);
+    const running = fuelPlan({ daysUntil: 0, category: "running", weightKg: W, baseCarbG: BASE })!;
+    expect(running.inRaceCarbPerH).toBe(45);
+    expect(running.inRaceGelCount).toBe(0);
     expect(fuelPlan({ daysUntil: 0, category: "team", weightKg: W, baseCarbG: BASE })!.inRaceCarbPerH).toBe(45);
   });
 });

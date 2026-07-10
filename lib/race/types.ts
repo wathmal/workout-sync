@@ -126,3 +126,40 @@ export function deriveRaceViews(races: RaceEvent[], todayIso: string): RaceView[
 export function nextRaceView(views: RaceView[]): RaceView | null {
   return views.find((v) => v.status === "next") ?? null;
 }
+
+/**
+ * Parse a duration in minutes out of free text (eventTarget / resultTime):
+ * "2:02:11" → 122, "1:50" → 110 (H:MM), "45:00" → 45 (MM:SS — two-part with
+ * an implausible hour count, >12, reads as minutes), "sub 2h" → 120,
+ * "90 min" → 90. Null when nothing parseable.
+ */
+export function parseDurationMin(text: string | null | undefined): number | null {
+  if (!text) return null;
+  const colon = text.match(/(\d+):(\d{2})(?::(\d{2}))?/);
+  if (colon) {
+    const a = Number(colon[1]);
+    const b = Number(colon[2]);
+    if (colon[3] != null) return Math.round(a * 60 + b + Number(colon[3]) / 60); // H:MM:SS
+    return a <= 12 ? a * 60 + b : Math.round(a + b / 60); // H:MM vs MM:SS
+  }
+  const h = text.match(/(\d+(?:\.\d+)?)\s*h/i);
+  if (h) return Math.round(Number(h[1]) * 60);
+  const m = text.match(/(\d+)\s*m/i);
+  if (m) return Number(m[1]);
+  return null;
+}
+
+/**
+ * The athlete's most recent completed result duration in a category — the
+ * expected-duration fallback when the upcoming race has no parseable target.
+ */
+export function lastResultDurationMin(races: RaceEvent[], category: string): number | null {
+  const done = races
+    .filter((r) => r.category === category && r.resultTime?.trim())
+    .sort((a, b) => b.date.localeCompare(a.date));
+  for (const r of done) {
+    const min = parseDurationMin(r.resultTime);
+    if (min != null) return min;
+  }
+  return null;
+}
