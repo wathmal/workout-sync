@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, Camera, Clock, RotateCcw, X, AlertCircle, Info } from "lucide-react";
+import { Sparkles, Camera, Clock, RotateCcw, X, AlertCircle } from "lucide-react";
 import { Overline } from "@/app/_components/overline";
 import { PhotoDropzone } from "@/app/_components/photo-dropzone";
 import { useWorkout } from "@/app/_providers/workout-provider";
@@ -167,7 +167,6 @@ function LogPane() {
   const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isUsingFallback, setIsUsingFallback] = useState(false);
 
   const {
     setUploadedImage,
@@ -180,7 +179,6 @@ function LogPane() {
 
   const handlePrepared = async (prepared: PreparedImage) => {
     setError(null);
-    setIsUsingFallback(false);
     setExtractedWorkoutDate(null);
     setExtractedWorkoutTime(null);
 
@@ -202,13 +200,6 @@ function LogPane() {
       }
       setDetectionModel(result.modelName);
       setDetectionConfidence(result.confidence);
-      if (
-        result.exercises.length === 1 &&
-        result.exercises[0].exercise.title === "Push Press" &&
-        result.exercises[0].sets.length === 5
-      ) {
-        setIsUsingFallback(true);
-      }
       router.push("/review");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error occurred";
@@ -233,11 +224,6 @@ function LogPane() {
       {error && (
         <LogBanner tone="error" icon={<AlertCircle size={16} />} onDismiss={() => setError(null)}>
           {error}
-        </LogBanner>
-      )}
-      {isUsingFallback && (
-        <LogBanner tone="info" icon={<Info size={16} />} onDismiss={() => setIsUsingFallback(false)}>
-          Using sample data. Add your GROQ_API_KEY to process real workout images.
         </LogBanner>
       )}
 

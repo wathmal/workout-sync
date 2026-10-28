@@ -42,7 +42,7 @@ lib/
   groq/                helpers.ts, prompts.ts
   embeddings/          pluggable provider system (LM Studio / Transformers.js)
   agents/              tool-use harness (feature-flagged extraction path)
-    providers/         claude-cli / groq / lm-studio adapters + openai-shape
+    providers/         groq / lm-studio / anthropic adapters + openai-shape
     __tests__/
   data/
     hevy-exercises/    Hevy template catalog (refreshed by prebuild)
@@ -51,7 +51,6 @@ lib/
   workout-set-builder.ts  shared switch over Exercise.type (used by groq + agents paths)
   types.ts, utils.ts, image-utils.ts
 scripts/               build/debug tooling (build:embeddings etc.)
-  agent-tools/         CLI shims invoked by claude-cli adapter
   agent-extract.ts     manual try-it for the agent harness
 tests/e2e/             slow, hits real APIs
 ```
@@ -68,13 +67,13 @@ tests/e2e/             slow, hits real APIs
 
 ## Groq vision
 
-- Model: `meta-llama/llama-4-scout-17b-16e-instruct` (preview)
+- Model: `qwen/qwen3.8-27b` (preferred pin `GROQ_VISION_MODEL`; resolved via `lib/models/resolve.ts`, see Model resolution). `VISION_PROVIDER=anthropic` uses Claude (`claude-haiku-5-5` default) with `output_config.format` JSON schema.
 - Env: `GROQ_API_KEY` (server-only)
 - Limits: image ≤20MB, ≤33 megapixels; base64 request ≤4MB
 - Accepted formats: JPEG, PNG, WEBP. HEIC/HEIF accepted on upload but converted server-side to JPEG via `heic-convert` (`lib/image-utils.ts`) before forwarding to Groq. EXIF runs on the original HEIC buffer first (exifr supports HEIC). Detection: mime + filename extension + ISO BMFF brand bytes — iOS Safari frequently reports empty `file.type` for HEIC. Server returns the converted JPEG as `convertedImageBase64`; client rebuilds a `File` and swaps it into the workout context so review-page preview renders.
 - Prompts: `lib/groq/prompts.ts` (`WORKOUT_EXTRACTION_SYSTEM_PROMPT`, `..._USER_PROMPT`)
 - Response: JSON `{ exercises: [{ name, sets: [{ kg, reps }] }] }`
-- Fallback: returns mock data if key missing / network error / rate limit. UI shows yellow warning banner. Detection: `exercises[0].title === "Push Press"` (mock indicator — fragile, replace with explicit flag).
+- No mock fallback: any API error surfaces as an error banner on `/upload`.
 
 ## Agent harness
 
@@ -83,11 +82,13 @@ Feature-flagged alternative to single-shot Groq vision. When `AGENT_HARNESS_PROV
 **Why.** Single-shot vision misroutes ambiguous rows (compound exercises, unusual abbreviations, mixed equipment). The agent iterates: search the catalog, narrow candidates, verify equipment/type, then commit a final `WorkoutExercise[]` via the terminal `proposeWorkout` tool.
 
 **Providers (v1).**
-- `claude-cli` — spawns `claude -p` subprocess. Highest accuracy. ~3-6 min/run, ~$0.30-0.50 (Opus). Self-hosted-loop kind: claude drives its own internal loop; the adapter parses `--output-format stream-json` events and derives the agent tool name from `Bash(npx tsx scripts/agent-tools/<name>.ts ...)` commands. Tool shims write the final workout to a tmp sentinel JSON. Production deploys without the `claude` binary won't work — local-dev / self-hosted only.
-- `groq` — Llama 4 Scout via OpenAI-compat `chat.completions` with `tools`. ~30-60s/run, <$0.001. `tool_choice: required` to suppress prose drift. 429 handler honors `Retry-After` header and Groq's "try again in Xs" body hint, with exponential backoff fallback (default 3 retries, capped at 60s wait).
+- `groq` — qwen3.8-27b (resolved) via OpenAI-compat `chat.completions` with `tools`. ~30-60s/run, <$0.001. `tool_choice: required` to suppress prose drift. 429 handler honors `Retry-After` header and Groq's "try again in Xs" body hint, with exponential backoff fallback (default 3 retries, capped at 60s wait).
 - `lm-studio` — OpenAI-compat at `LM_STUDIO_URL` (default `http://localhost:1234/v1`). Default model `nvidia/nemotron-3-nano-omni`. Some local models emit XML-style tool calls (`<tool_call><function=NAME><parameter=KEY>VALUE</parameter></function></tool_call>`) inside `reasoning_content` instead of `tool_calls`; the adapter parses those and synthesizes OpenAI-shape calls.
+- `anthropic` — Claude via `@anthropic-ai/sdk` `messages.create`. Default `claude-haiku-5-5` (`ANTHROPIC_MODEL`), family `ANTHROPIC_MODEL_FAMILY=haiku`. `tool_choice: auto` (forced choice 400s on Opus/Sonnet 5.5; prompt enforces tools-only). Assistant content replayed verbatim (thinking + tool_use blocks). SDK handles 429/5xx retries. Opt-in; needs `ANTHROPIC_API_KEY`.
 
-**Tools.** Defined once in `lib/agents/tools.ts`. `toOpenAITools()` / `toAnthropicTools()` / `toCliBashAllowlist()` derive per-provider shape from a single source of truth.
+**Model resolution** (`lib/models/resolve.ts`). Env model pins are preferences. `resolveModel` reads the provider's `/models` manifest (Groq: `input_modalities` / `supported_features`; Anthropic: `capabilities.image_input` / `structured_outputs`), keeps the pin if listed + capable, else picks the newest capable model (Anthropic: within family). 6h in-process cache. `withModelRetry` wraps the first call of each request: on a 404 it drops the cache, re-resolves, retries once. Manifest outage falls back to the pin (never blocks extraction). `instrumentation.ts` warms the active provider at boot so a retirement shows in container logs at deploy time.
+
+**Tools.** Defined once in `lib/agents/tools.ts`. `toOpenAITools()` / `toAnthropicTools()` derive per-provider shape from a single source of truth.
 - `searchCatalog(query, limit?, kind?)` — wraps `searchExercisesScored()`
 - `getExerciseDetails(id)` — wraps `getHevyTemplateById()` (id-keyed Map, O(1))
 - `expandAbbreviations(text)` — wraps `expandAbbreviations` from `lib/exercise-abbreviations.ts`
@@ -107,15 +108,13 @@ Feature-flagged alternative to single-shot Groq vision. When `AGENT_HARNESS_PROV
 ```
 `AGENT_DEBUG_LOG=1` additionally appends JSONL events to `.agent-runs/<runId>.jsonl` (gitignored). The `finalize()` summary string becomes the API response's `raw_response` so the existing UI raw-response panel keeps working.
 
-**CLI shims** (`scripts/agent-tools/`). Each tool has a thin wrapper script callable as `npx tsx scripts/agent-tools/<name>.ts '<json>'`. The shim reads `argv[2]`, dispatches via `dispatchTool`, prints the result JSON to stdout. `_silence.ts` redirects `console.log` (catalog boot prints) to stderr so stdout stays clean for the parent's JSON parse. `propose-workout.ts` additionally writes the assembled workout to `AGENT_RESULT_PATH` for the claude-cli adapter to read post-exit.
-
-**Response shape.** Agent path returns the same envelope as the single-shot path (`exercises`, `modelName`, `confidence`, `extractedDate`, `raw_response`, `convertedImageBase64`). `app/_providers/workout-provider.tsx` consumers don't change. `modelName` reflects the active provider, e.g. `"Llama 4 Scout · Groq (agent)"`.
+**Response shape.** Agent path returns the same envelope as the single-shot path (`exercises`, `modelName`, `confidence`, `extractedDate`, `raw_response`, `convertedImageBase64`). `app/_providers/workout-provider.tsx` consumers don't change. `modelName` reflects the active provider, e.g. `"qwen/qwen3.8-27b · Groq (agent)"`.
 
 **Manual try-it.**
 ```bash
 AGENT_HARNESS_PROVIDER=groq      npm run agent:extract -- tests/fixtures/workout-revl-1.jpeg
 AGENT_HARNESS_PROVIDER=lm-studio npm run agent:extract -- tests/fixtures/workout-revl-1.jpeg
-AGENT_HARNESS_PROVIDER=claude-cli npm run agent:extract -- tests/fixtures/workout-revl-1.jpeg
+AGENT_HARNESS_PROVIDER=anthropic npm run agent:extract -- tests/fixtures/workout-revl-1.jpeg
 
 # Forensic JSONL trace
 AGENT_DEBUG_LOG=1 AGENT_HARNESS_PROVIDER=groq npm run agent:extract -- tests/fixtures/workout-revl-1.jpeg
@@ -180,15 +179,18 @@ podman run -d -p 3000:3000 \
 | `EMBEDDING_SOURCE` | no | `off` | `auto` / `lm-studio` / `transformers` / `off` |
 | `EMBEDDING_BOOST_MAX` | no | `30` | Max additive embedding boost in `both` mode |
 | `EMBEDDING_COS_THRESHOLD` | no | `0.55` | Cosine score below this contributes 0 boost |
-| `AGENT_HARNESS_PROVIDER` | no | `off` | `off` / `groq` / `lm-studio` / `claude-cli`. When non-`off`, replaces single-shot extraction with tool-use loop |
-| `AGENT_MAX_ITERATIONS` | no | `30` | Loop turn cap (also `--max-turns` for `claude-cli`) |
-| `AGENT_TIMEOUT_MS` | no | `240000` | Subprocess kill timeout (`claude-cli` only) |
+| `AGENT_HARNESS_PROVIDER` | no | `off` | `off` / `groq` / `lm-studio` / `anthropic`. When non-`off`, replaces single-shot extraction with tool-use loop |
+| `AGENT_MAX_ITERATIONS` | no | `30` | Loop turn cap |
 | `AGENT_DEBUG_LOG` | no | unset | `=1` writes JSONL traces to `.agent-runs/` |
-| `GROQ_AGENT_MODEL` | no | `meta-llama/llama-4-scout-17b-16e-instruct` | Override Groq model |
+| `GROQ_AGENT_MODEL` | no | `qwen/qwen3.8-27b` | Preferred Groq agent model (self-heals if retired) |
+| `GROQ_VISION_MODEL` | no | `qwen/qwen3.8-27b` | Preferred Groq vision model (self-heals if retired) |
+| `VISION_PROVIDER` | no | `groq` | `groq` / `lm-studio` / `anthropic` single-shot extractor |
+| `ANTHROPIC_API_KEY` | for `anthropic` | — | Claude API key |
+| `ANTHROPIC_MODEL` | no | `claude-haiku-5-5` | Preferred Claude model (self-heals if retired) |
+| `ANTHROPIC_MODEL_FAMILY` | no | `haiku` | Regex family the resolver stays within (`haiku` / `sonnet` / `opus`) |
 | `LM_STUDIO_AGENT_MODEL` | no | `nvidia/nemotron-3-nano-omni` | Override LM Studio model |
 | `LM_STUDIO_MAX_TOKENS` | no | `8192` | Local model token budget |
 | `LM_STUDIO_TEMPERATURE` | no | `0.1` | Local model temperature |
-| `CLAUDE_CLI_BIN` | no | `claude` | Override CLI binary path (claude-cli adapter) |
 
 Container ships with embeddings disabled. To enable:
 
@@ -227,5 +229,4 @@ Or load image directly: `docker load -i image.tar`.
 ## Open tech debt
 
 - `lib/mock-data.ts` mixes fixtures + real helpers. Split: real → `lib/workout.ts`, fixtures → `tests/fixtures/`.
-- Mock-fallback detected by string match (`title === "Push Press"`). Replace with explicit `isMock` flag.
 - No `.nvmrc` despite Node 22+ requirement.

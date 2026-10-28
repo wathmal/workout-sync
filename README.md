@@ -38,7 +38,7 @@ Log meals by search, brand lookup, text, photo, or barcode against the local mac
 
 ### Workout sync (Hevy)
 - Photo upload with EXIF date extraction (HEIC/HEIF supported)
-- Groq Vision (Llama 4 Scout) extracts exercises, sets, reps, weights
+- Groq Vision (qwen3.8-27b, auto-resolved) or Claude Haiku extracts exercises, sets, reps, weights
 - Optional agent harness (tool-use loop via Groq, LM Studio, or local Claude CLI)
 - Fuzzy + embedding match against Hevy's catalog (461 exercises)
 - Review and edit before sync; duplicate detection by date
@@ -81,7 +81,7 @@ Log meals by search, brand lookup, text, photo, or barcode against the local mac
 - **Framework:** Next.js 16 (App Router), React 19, TypeScript
 - **Styling:** Tailwind v4, shadcn/ui (New York), Radix, lucide-react
 - **State:** React Context providers (workout, hevy, food log, measurements, agenda, race)
-- **Vision:** Groq API (Llama 4 Scout) or local LM Studio; optional agent harness
+- **Vision:** Groq API (qwen3.8-27b), Anthropic Claude (Haiku 5.5), or local LM Studio; optional agent harness
 - **Matching:** Fuzzy (Levenshtein + bonuses) blended with embeddings (LM Studio / Transformers.js)
 - **Charts:** Recharts (body-composition trend)
 - **Persistence:** Postgres 16 + Drizzle ORM (food log, macro targets, races, Garmin + calendar cache)
@@ -132,7 +132,9 @@ See `.env.example` for the full template. Highlights:
 | `AGENDA_SYNC_SECRET` | for cron | Shared secret for `POST /api/agenda/sync`; required on internet-exposed deploys |
 | `MATCHING_MODE` | optional | `fuzzy` / `vector` / `both` |
 | `EMBEDDING_SOURCE` | optional | `auto` / `lm-studio` / `transformers` / `off` |
-| `AGENT_HARNESS_PROVIDER` | optional | `off` / `groq` / `lm-studio` / `claude-cli` |
+| `AGENT_HARNESS_PROVIDER` | optional | `off` / `groq` / `lm-studio` / `anthropic` |
+| `VISION_PROVIDER` | optional | `groq` / `lm-studio` / `anthropic` |
+| `ANTHROPIC_API_KEY` | for `anthropic` | Claude API key |
 
 Full list with defaults: `docs/architecture.md` and `docs/agenda-integration.md`.
 

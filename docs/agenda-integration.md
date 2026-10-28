@@ -116,8 +116,8 @@ POST user/pass -> sso.garmin.com (ticket) [+ MFA code]
     again silently.
   - **Security:** this stores the Garmin password at rest (a deliberate reversal of the old
     "password never stored" stance). Prefer a secrets store over plaintext env; restrict file perms.
-- Subprocess **stdout must be clean JSON** — apply the `_silence` stdout-redirect pattern used by the
-  `claude-cli` agent shims (`scripts/agent-tools/_silence`), or boot prints corrupt the parent's parse.
+- Subprocess **stdout must be clean JSON** — force all library chatter and boot prints to stderr, or they
+  corrupt the parent's parse.
 - Dockerfile: add `python3` + `pip install garminconnect` to the runtime stage.
 
 ## Calendar integration

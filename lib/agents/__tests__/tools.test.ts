@@ -1,4 +1,4 @@
-import { dispatchTool, AGENT_TOOLS, toOpenAITools, toCliBashAllowlist } from "../tools";
+import { dispatchTool, AGENT_TOOLS, toOpenAITools, toAnthropicTools } from "../tools";
 import { HEVY_EXERCISES } from "../../hevy/catalog";
 
 describe("agent tool registry", () => {
@@ -18,12 +18,13 @@ describe("agent tool registry", () => {
     expect(out[0]).toMatchObject({ type: "function", function: { name: expect.any(String) } });
   });
 
-  it("derives a CLI bash allowlist with kebab-case paths", () => {
-    const list = toCliBashAllowlist();
-    expect(list).toContain("Bash(node scripts/agent-tools/search-catalog.ts:*)");
-    expect(list).toContain("Bash(node scripts/agent-tools/get-exercise-details.ts:*)");
-    expect(list).toContain("Bash(node scripts/agent-tools/expand-abbreviations.ts:*)");
-    expect(list).toContain("Bash(node scripts/agent-tools/propose-workout.ts:*)");
+  it("derives Anthropic-shaped tool defs", () => {
+    const out = toAnthropicTools();
+    expect(out).toHaveLength(4);
+    for (const t of out) {
+      expect(t).toMatchObject({ name: expect.any(String), description: expect.any(String), input_schema: { type: "object" } });
+      expect(t).not.toHaveProperty("parameters");
+    }
   });
 });
 

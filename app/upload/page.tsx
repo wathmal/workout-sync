@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, AlertCircle, Info, X } from "lucide-react";
+import { Camera, AlertCircle, X } from "lucide-react";
 import { useWorkout } from "@/app/_providers/workout-provider";
 import { processWorkoutImage } from "@/lib/mock-data";
 import { Overline } from "@/app/_components/overline";
@@ -23,7 +23,6 @@ export default function UploadPage() {
   const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isUsingFallback, setIsUsingFallback] = useState(false);
 
   const {
     setUploadedImage,
@@ -36,7 +35,6 @@ export default function UploadPage() {
 
   const handlePrepared = async (prepared: PreparedImage) => {
     setError(null);
-    setIsUsingFallback(false);
     setExtractedWorkoutDate(null);
     setExtractedWorkoutTime(null);
 
@@ -61,13 +59,6 @@ export default function UploadPage() {
       }
       setDetectionModel(result.modelName);
       setDetectionConfidence(result.confidence);
-      if (
-        result.exercises.length === 1 &&
-        result.exercises[0].exercise.title === "Push Press" &&
-        result.exercises[0].sets.length === 5
-      ) {
-        setIsUsingFallback(true);
-      }
       router.push("/review");
     } catch (err) {
       console.error("Error processing image:", err);
@@ -104,19 +95,6 @@ export default function UploadPage() {
       {error && (
         <Banner tone="error" onDismiss={() => setError(null)} icon={<AlertCircle size={18} />}>
           {error}
-        </Banner>
-      )}
-      {isUsingFallback && (
-        <Banner tone="info" onDismiss={() => setIsUsingFallback(false)} icon={<Info size={18} />}>
-          Using sample data. Add your GROQ_API_KEY to process real workout images.{" "}
-          <a
-            href="https://console.groq.com/keys"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ textDecoration: "underline" }}
-          >
-            Get API Key →
-          </a>
         </Banner>
       )}
 

@@ -25,8 +25,8 @@ recreate, after which the next run silently re-mints. GARMIN_TOKEN_B64, if set,
 seeds the dir on first boot only (optional — credentials alone bootstrap it).
 
 The parent Node process (lib/agenda/garmin.ts, lib/fitness/garmin.ts) parses
-stdout, so stdout MUST be clean JSON — all library chatter is forced to stderr
-(the Python analogue of scripts/agent-tools/_silence.ts). 2FA is expected OFF;
+stdout, so stdout MUST be clean JSON — all library chatter is forced to stderr.
+2FA is expected OFF;
 if Garmin ever demands an MFA code we fail loud (see _no_mfa).
 """
 import argparse

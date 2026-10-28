@@ -361,13 +361,3 @@ export function toAnthropicTools(tools: ToolDefinition[] = AGENT_TOOLS): Anthrop
     input_schema: t.parameters,
   }));
 }
-
-export function toCliBashAllowlist(): string[] {
-  return AGENT_TOOLS.map(
-    (t) => `Bash(node scripts/agent-tools/${kebab(t.name)}.ts:*)`,
-  );
-}
-
-function kebab(name: string): string {
-  return name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`).replace(/^-/, "");
-}

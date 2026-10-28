@@ -35,7 +35,7 @@ async function callGroqVision(jpegBase64: string): Promise<string> {
   const groq = new Groq({ apiKey });
 
   const completion = await groq.chat.completions.create({
-    model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    model: process.env.GROQ_VISION_MODEL || "qwen/qwen3.8-27b",
     messages: [
       { role: "system", content: WORKOUT_EXTRACTION_SYSTEM_PROMPT },
       {
@@ -51,7 +51,8 @@ async function callGroqVision(jpegBase64: string): Promise<string> {
     ],
     response_format: { type: "json_object" },
     temperature: 0.2,
-    max_completion_tokens: 2048,
+    reasoning_effort: "none",
+    max_completion_tokens: 1000,
   });
 
   const text = completion.choices[0]?.message?.content;

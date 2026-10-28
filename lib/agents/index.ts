@@ -3,14 +3,14 @@ import { AGENT_TOOLS } from "./tools";
 import { AGENT_SYSTEM_PROMPT, AGENT_USER_PROMPT } from "./prompts";
 import { createGroqAgentProvider } from "./providers/groq";
 import { createLMStudioAgentProvider } from "./providers/lm-studio";
-import { createClaudeCliAgentProvider } from "./providers/claude-cli";
+import { createAnthropicAgentProvider } from "./providers/anthropic";
 import { AgentProvider, AgentRunResult, AgentProviderName } from "./types";
 
 export type AgentHarnessProvider = "off" | AgentProviderName;
 
 export function getAgentHarnessProvider(): AgentHarnessProvider {
   const raw = (process.env.AGENT_HARNESS_PROVIDER || "off").toLowerCase();
-  if (raw === "off" || raw === "groq" || raw === "lm-studio" || raw === "claude-cli") {
+  if (raw === "off" || raw === "groq" || raw === "lm-studio" || raw === "anthropic") {
     return raw;
   }
   console.warn(
@@ -29,8 +29,8 @@ function buildProvider(name: AgentProviderName): AgentProvider {
       return createGroqAgentProvider();
     case "lm-studio":
       return createLMStudioAgentProvider();
-    case "claude-cli":
-      return createClaudeCliAgentProvider();
+    case "anthropic":
+      return createAnthropicAgentProvider();
   }
 }
 

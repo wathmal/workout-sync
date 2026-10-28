@@ -7,7 +7,7 @@ function parseArgs(): { fixture: string; provider?: string } {
   if (args.length < 1) {
     console.error(
       "usage: tsx scripts/agent-extract.ts <fixture-path> [provider]\n" +
-        "  provider: groq | lm-studio | claude-cli (overrides AGENT_HARNESS_PROVIDER)",
+        "  provider: groq | lm-studio | anthropic (overrides AGENT_HARNESS_PROVIDER)",
     );
     process.exit(2);
   }
@@ -22,7 +22,7 @@ async function main() {
   const which = getAgentHarnessProvider();
   if (which === "off") {
     console.error(
-      'AGENT_HARNESS_PROVIDER is "off". Set it via env or pass a provider arg: groq | lm-studio | claude-cli',
+      'AGENT_HARNESS_PROVIDER is "off". Set it via env or pass a provider arg: groq | lm-studio | anthropic',
     );
     process.exit(2);
   }

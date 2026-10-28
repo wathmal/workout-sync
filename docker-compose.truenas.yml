@@ -45,6 +45,7 @@ services:
       USER_TZ: Australia/Sydney
       # Blank a value to disable that feature.
       GROQ_API_KEY: CHANGE_ME
+      # ANTHROPIC_API_KEY: CHANGE_ME   # optional, with VISION_PROVIDER: anthropic
       HEVY_API_KEY: CHANGE_ME
       FMA_BASE_URL: CHANGE_ME
       FMA_API_KEY: CHANGE_ME

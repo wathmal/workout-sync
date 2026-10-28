@@ -1,6 +1,6 @@
 import { WorkoutExercise } from "../types";
 
-export type AgentProviderName = "claude-cli" | "groq" | "lm-studio";
+export type AgentProviderName = "groq" | "lm-studio" | "anthropic";
 
 export interface ToolCall {
   id: string;
@@ -59,24 +59,7 @@ export interface IterativeAgentProvider {
   continue(history: AgentMessage[], tools: ToolDefinition[]): Promise<AgentTurn>;
 }
 
-export interface SelfHostedRunHooks {
-  onTurn?: (index: number, turn: AgentTurn) => void;
-  onToolCall?: (call: ToolCall) => void;
-  onToolResult?: (call: ToolCall, result: ToolHandlerResult | TerminalToolResult) => void;
-}
-
-export interface SelfHostedAgentProvider {
-  name: AgentProviderName;
-  modelLabel: string;
-  kind: "self-hosted-loop";
-  runOnce(image: string, mimeType: string, hooks?: SelfHostedRunHooks): Promise<{
-    workout: WorkoutExercise[];
-    iterations: number;
-    toolCalls: number;
-  }>;
-}
-
-export type AgentProvider = IterativeAgentProvider | SelfHostedAgentProvider;
+export type AgentProvider = IterativeAgentProvider;
 
 export interface AgentRunResult {
   workout: WorkoutExercise[];
@@ -93,8 +76,7 @@ export class AgentLoopError extends Error {
       | "max_iterations"
       | "propose_validation_failed"
       | "timeout"
-      | "provider_error"
-      | "subprocess_error",
+      | "provider_error",
     message: string,
     public cause?: unknown,
   ) {

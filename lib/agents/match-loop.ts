@@ -5,7 +5,6 @@ import {
   AgentRunResult,
   AgentToolResult,
   IterativeAgentProvider,
-  SelfHostedAgentProvider,
   ToolDefinition,
 } from "./types";
 import { createTelemetryLogger, TelemetryLogger } from "./telemetry";
@@ -93,7 +92,7 @@ async function runIterative(opts: RunIterativeOpts): Promise<{
 }
 
 export async function runAgentMatchLoop(input: {
-  provider: IterativeAgentProvider | SelfHostedAgentProvider;
+  provider: IterativeAgentProvider;
   image: string;
   mimeType: string;
   systemPrompt: string;
@@ -107,22 +106,6 @@ export async function runAgentMatchLoop(input: {
   const maxIterations = input.maxIterations ?? envInt("AGENT_MAX_ITERATIONS", DEFAULT_MAX_ITERATIONS);
 
   try {
-    if (input.provider.kind === "self-hosted-loop") {
-      const out = await input.provider.runOnce(input.image, input.mimeType, {
-        onTurn: (i, turn) => telemetry.logTurn(i, turn),
-        onToolCall: (call) => telemetry.logToolCall(call),
-        onToolResult: (call, result) => telemetry.logToolResult(call, result),
-      });
-      const summary = telemetry.finalize({ iterations: out.iterations, status: "ok" });
-      return {
-        workout: out.workout,
-        modelLabel: input.provider.modelLabel,
-        iterations: out.iterations,
-        toolCalls: out.toolCalls,
-        telemetrySummary: summary,
-      };
-    }
-
     const tools = input.tools ?? (await import("./tools")).AGENT_TOOLS;
     const result = await runIterative({
       provider: input.provider,

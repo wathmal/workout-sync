@@ -95,7 +95,7 @@ export async function processWorkoutImage(prepared: PreparedImage): Promise<Proc
       } else if (response.status === 422) {
         throw new Error("Image processing failed. The image may not contain valid workout data.");
       } else {
-        throw new Error(errorMessage);
+        throw new Error(errorDetails || errorMessage);
       }
     }
 
@@ -121,19 +121,8 @@ export async function processWorkoutImage(prepared: PreparedImage): Promise<Proc
     // If no exercises found, throw error to trigger fallback
     throw new Error("No exercises detected in image");
   } catch (error) {
-    console.error("Error processing image with Groq API:", error);
-    console.log("Falling back to mock data...");
-
-    // Fallback to mock data for API failures (file validation happens upstream)
-    return {
-      exercises: getMockWorkoutData(),
-      extractedDate: null,
-      workoutStartDate: null,
-      workoutStartTime: null,
-      convertedImageFile: null,
-      modelName: null,
-      confidence: null,
-    };
+    console.error("Error processing workout image:", error);
+    throw error;
   }
 }
 
@@ -145,65 +134,6 @@ function base64ToJpegFile(base64: string, originalName: string): File {
   return new File([bytes], jpegName, { type: 'image/jpeg' });
 }
 
-// Separate mock data function for fallback
-function getMockWorkoutData(): WorkoutExercise[] {
-  const pushPressExercise = MOCK_EXERCISES.find(e => e.title === "Push Press")!;
-  
-  return [
-    {
-      exercise: pushPressExercise,
-      sets: [
-        { 
-          set_number: 1, 
-          weight_kg: 15, 
-          reps: 6, 
-          kg: 15, // Legacy field
-          previous_weight_kg: 15, 
-          previous_reps: 6, 
-          completed: false 
-        },
-        { 
-          set_number: 2, 
-          weight_kg: 15, 
-          reps: 6, 
-          kg: 15, // Legacy field
-          previous_weight_kg: 15, 
-          previous_reps: 6, 
-          completed: false 
-        },
-        { 
-          set_number: 3, 
-          weight_kg: 15, 
-          reps: 6, 
-          kg: 15, // Legacy field
-          previous_weight_kg: 15, 
-          previous_reps: 6, 
-          completed: false 
-        },
-        { 
-          set_number: 4, 
-          weight_kg: 15, 
-          reps: 6, 
-          kg: 15, // Legacy field
-          previous_weight_kg: 15, 
-          previous_reps: 6, 
-          completed: false 
-        },
-        { 
-          set_number: 5, 
-          weight_kg: 15, 
-          reps: 6, 
-          kg: 15, // Legacy field
-          previous_weight_kg: 15, 
-          previous_reps: 6, 
-          completed: false 
-        },
-      ],
-      notes: "",
-      rest_timer_enabled: false,
-    },
-  ];
-}
 
 /**
  * Sync workout to Hevy via API route

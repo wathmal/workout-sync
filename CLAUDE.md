@@ -38,7 +38,7 @@ npm run debug:match -- "DB Curl"  # score breakdown for one query
 # Agent harness (feature-flagged tool-use loop)
 AGENT_HARNESS_PROVIDER=groq       npm run agent:extract -- tests/fixtures/workout-revl-1.jpeg
 AGENT_HARNESS_PROVIDER=lm-studio  npm run agent:extract -- tests/fixtures/workout-revl-1.jpeg
-AGENT_HARNESS_PROVIDER=claude-cli npm run agent:extract -- tests/fixtures/workout-revl-1.jpeg
+AGENT_HARNESS_PROVIDER=anthropic  npm run agent:extract -- tests/fixtures/workout-revl-1.jpeg
 AGENT_DEBUG_LOG=1 ...             # writes JSONL trace to .agent-runs/
 ```
 
@@ -60,7 +60,7 @@ Two domains share the app shell: **Hevy workout sync** and **food/macro log**. T
 
 **Vision abstraction (`lib/vision/`).** Wraps single-shot Groq, single-shot LM Studio, and the agent harness behind one `extractWorkout(buffer, mime, filename, base64)` API. HEIC normalization + EXIF extraction happen here. `ExtractionResult` is shared by the API route regardless of which provider ran.
 
-**Agent harness alt path.** When `AGENT_HARNESS_PROVIDER` ∈ `{groq, lm-studio, claude-cli}`, the vision layer swaps the single-shot call for a tool-use loop (`searchCatalog` / `getExerciseDetails` / `expandAbbreviations` / terminal `proposeWorkout`). Default `off`. Response shape stays byte-compatible. Full details: `docs/architecture.md` § Agent harness.
+**Agent harness alt path.** When `AGENT_HARNESS_PROVIDER` ∈ `{groq, lm-studio, anthropic}`, the vision layer swaps the single-shot call for a tool-use loop (`searchCatalog` / `getExerciseDetails` / `expandAbbreviations` / terminal `proposeWorkout`). Default `off`. Response shape stays byte-compatible. Full details: `docs/architecture.md` § Agent harness.
 
 ### Directory layout
 
@@ -78,7 +78,8 @@ Two domains share the app shell: **Hevy workout sync** and **food/macro log**. T
 - `hevy/` — Hevy API client, catalog (`lib/data/hevy-exercises/catalog.json`), fuzzy matcher. `fuzzy-match.ts` is exercise-name-specific (knows abbreviations, equipment ordering) — not a generic string utility.
 - `groq/` — Groq client helpers + extraction prompts (used by `lib/vision/single-shot.ts`)
 - `embeddings/` — pluggable provider system (LM Studio / Transformers.js). Server-only — lazy-imported by `lib/hevy/exercises.ts` so client bundles stay clean. Pre-computed catalogs in `lib/data/exercise-embeddings/`.
-- `agents/` — tool-use harness (feature-flagged). `tools.ts` is the single source of truth for tool defs; `match-loop.ts` drives the iterative path; `providers/{claude-cli,groq,lm-studio}.ts` are adapters.
+- `agents/` — tool-use harness (feature-flagged). `tools.ts` is the single source of truth for tool defs; `match-loop.ts` drives the iterative path; `providers/{groq,lm-studio,anthropic}.ts` are adapters.
+- `models/` — `resolve.ts`: self-healing model resolution from provider `/models` manifests (see Gotchas).
 - `food/` — `schema.ts` (Drizzle), `db.ts` (server-only pool), `fma.ts` (FMA fetch wrapper), `queries.ts` (typed read/write), `targets.ts` (resolve active target), `types.ts`, `photo-prep.ts` (HEIC convert + EXIF for food photos).
 - `dashboard/` — `muscle-coverage.ts` (pure compute, used by `hevy-provider`), `muscle-svg-loader.ts`, `mock-data.ts`, `config.ts`.
 - `body/` — `measurements.ts` (Hevy body-measurements payload shape, 1:1 with Hevy's API).
@@ -116,7 +117,8 @@ All server-side only — API keys never reach client.
 ## Gotchas
 
 - **Next.js client/server split.** `lib/hevy/exercises.ts` lazy-imports embedding code (`@huggingface/transformers`, `fs`). Don't break this — adding a top-level import will pull Node-only deps into client bundle and break build. Same rule applies to `lib/food/db.ts` (Postgres pool) — must stay `import "server-only"`.
-- **Mock fallback detection** uses string match: `exercises[0].title === "Push Press"`. Fragile. If you change mock fixture exercises, update the check (or replace with explicit flag).
+- **No mock fallback on extraction failure.** `processWorkoutImage` rethrows so `/upload` shows the real error. The old silent "Push Press" fallback made every failed upload (e.g. Groq retiring a model) look like a stale result. Don't reintroduce it.
+- **Vision/agent model pins self-heal.** `GROQ_VISION_MODEL` / `GROQ_AGENT_MODEL` / `ANTHROPIC_MODEL` are *preferences*: `lib/models/resolve.ts` uses them if the provider's `/models` lists them, else the newest vision+tools/json model (Anthropic: within `ANTHROPIC_MODEL_FAMILY`, default `haiku`). 6h cache, warmed at boot in `instrumentation.ts`, one retry on a 404. Wrap new provider calls in `withModelRetry` rather than hard-coding IDs. Groq free tier still caps qwen3.8 at 1000 output tokens (`reasoning_effort: "none"`). Claude 5.5: `tool_choice` must be `auto` (Opus/Sonnet 400 on forced), no `temperature`, no prefill, `max_tokens` includes thinking.
 - **Path alias** `@/*` maps to repo root (see `tsconfig.json`). Use `@/lib/...` from app/components, `../lib/...` from scripts/tests.
 - **Tailwind v4** uses CSS variables under `@theme` directive in `app/globals.css`. shadcn config (`components.json`) targets New York style. **Gotcha:** `@theme` tree-shakes any `--color-*` var it can't see used in scanned source — a token referenced ONLY via `var(--x)` in a JS inline style (the dashboard's pattern) gets pruned and resolves to empty. Put such tokens in a plain `:root {}` block instead (e.g. `--color-discipline-walk`).
 - **Jest picks up `.next/standalone/lib/*.test.ts`** build artifacts — duplicates of real tests. Add `testPathIgnorePatterns: ['/node_modules/', '/.next/']` to `jest.config.js` if cleaning up.
@@ -131,10 +133,9 @@ All server-side only — API keys never reach client.
 - **Macro target overlap.** Disallowed by policy — inserting a new period auto-closes the prior by setting `prior.end_date = new.start_date - 1`. Always exactly one active target.
 - **Hevy dup detection** is a pure date-filter against `useHevy().workouts` (last 14d). Don't reintroduce a raw API call inside `/review`.
 - **Provider roles.** `workout-provider` = in-flight UI state. `hevy-provider` = persistent reads + commit. `food-log-provider` = persistent reads + mutators. `agenda-provider` = reads `/api/agenda` (merged week) + `sync()` (server action). Don't mix sync state into `workout-provider` again — it was extracted on purpose.
-- **Dashboard agenda.** Merge is the pure `buildAgenda()` in `lib/dashboard/agenda.ts` (unit-tested) — keep it pure (no DB/clock/network; `now`+`tz` injected). Garmin runs as a Python subprocess (`scripts/garmin/fetch.py`); its **stdout must stay clean JSON** (logging + login prints forced to stderr — same rule as the agent CLI shims) and the script dir must be **COPYed into the Docker runner** (Next standalone output excludes it). Manual sync = same-origin server action (`app/_actions/agenda.ts`, no secret); cron = `POST /api/agenda/sync` with `x-sync-secret`. Full design: `docs/agenda-integration.md`.
-- **Agent harness — tool schemas defined ONCE.** Edit `lib/agents/tools.ts` `AGENT_TOOLS`. Adapters consume per-provider shape via `toOpenAITools()` / `toAnthropicTools()` / `toCliBashAllowlist()`. Don't duplicate schema in adapters. If you add a tool, also add a CLI shim in `scripts/agent-tools/<name>.ts` (one-line `runShim("toolName")`) and extend the `--allowedTools` list in `lib/agents/providers/claude-cli.ts`.
-- **Agent harness — CLI shim stdout MUST stay clean JSON.** Each shim imports `./_silence` first to redirect `console.log` (catalog boot prints) to stderr. Don't add `console.log` to anything in the shim's import path or you'll break the parent's JSON parse.
-- **Agent harness — Vercel deploy + `claude-cli`.** `claude` binary isn't in serverless runtimes. `claude-cli` provider is local-dev / self-hosted only. Production deploys should use `groq` or stay `off`.
+- **Dashboard agenda.** Merge is the pure `buildAgenda()` in `lib/dashboard/agenda.ts` (unit-tested) — keep it pure (no DB/clock/network; `now`+`tz` injected). Garmin runs as a Python subprocess (`scripts/garmin/fetch.py`); its **stdout must stay clean JSON** (logging + login prints forced to stderr) and the script dir must be **COPYed into the Docker runner** (Next standalone output excludes it). Manual sync = same-origin server action (`app/_actions/agenda.ts`, no secret); cron = `POST /api/agenda/sync` with `x-sync-secret`. Full design: `docs/agenda-integration.md`.
+- **Agent harness — tool schemas defined ONCE.** Edit `lib/agents/tools.ts` `AGENT_TOOLS`. Adapters consume per-provider shape via `toOpenAITools()` / `toAnthropicTools()`. Don't duplicate schema in adapters.
+- **Agent harness — Anthropic is opt-in.** `AGENT_HARNESS_PROVIDER=anthropic` / `VISION_PROVIDER=anthropic` need `ANTHROPIC_API_KEY`; prod stays `groq`. No cross-provider fallback.
 - **Agent harness — local model tool calling varies.** Some LM Studio models (e.g. `nvidia/nemotron-3-nano-omni`) emit XML-style tool calls inside `reasoning_content` instead of populating `tool_calls`. `lib/agents/providers/openai-shape.ts` parses both. If a new model fails with `finishReason: stop, toolCalls: 0`, check whether output is going to `reasoning_content` and extend the parser, or pin a different model via `LM_STUDIO_AGENT_MODEL`.
 - **Agent harness — Groq's strict tool-arg validator.** Groq rejects requests where the model's tool args have keys not in the schema (`additionalProperties: false`). The set-object schema is intentionally `additionalProperties: true` because Llama models sometimes copy `type` or `weight_reps` onto each set; our handler only reads known fields so extras are silently ignored. Don't tighten this.
 
@@ -144,7 +145,7 @@ All server-side only — API keys never reach client.
 - **New shadcn component:** `npx shadcn@latest add <name>` — installs to `components/ui/`.
 - **New lib module:** pick a domain (`vision/`, `hevy/`, `groq/`, `embeddings/`, `agents/`, `food/`, `dashboard/`, `body/`) or place at `lib/` root if cross-cutting. Don't recreate sibling utils already in `lib/utils.ts` or `lib/agents/env.ts`.
 - **Touching matching:** regenerate embeddings (`npm run build:embeddings:both`) if exercise catalog JSON files change. Run `npm run debug:match -- "<input>"` to inspect score components.
-- **New agent provider:** implement `IterativeAgentProvider` (or `SelfHostedAgentProvider`) from `lib/agents/types.ts`; add a `case` in `lib/agents/index.ts:buildProvider`; extend `AgentProviderName` union + `getAgentHarnessProvider()` validation. OpenAI-compat providers reuse `createOpenAIShapeSession()` — pass baseUrl/model/auth.
-- **New agent tool:** add to `AGENT_TOOLS` in `lib/agents/tools.ts` (handler + JSON Schema). Add CLI shim at `scripts/agent-tools/<name>.ts`. Extend `--allowedTools` list in `claude-cli.ts`. Mention the tool in `AGENT_SYSTEM_PROMPT` + `AGENT_SYSTEM_PROMPT_CLI` workflow contract.
+- **New agent provider:** implement `IterativeAgentProvider` from `lib/agents/types.ts`; add a `case` in `lib/agents/index.ts:buildProvider`; extend `AgentProviderName` union + `getAgentHarnessProvider()` validation. OpenAI-compat providers reuse `createOpenAIShapeSession()` — pass baseUrl/model/auth. Route model choice through `lib/models/resolve.ts` (`agentModelOpts` + `withModelRetry`).
+- **New agent tool:** add to `AGENT_TOOLS` in `lib/agents/tools.ts` (handler + JSON Schema). Mention the tool in the `AGENT_SYSTEM_PROMPT` workflow contract.
 - **New food schema field:** edit `lib/food/schema.ts`, run `npm run db:generate`, commit the generated SQL under `drizzle/`, then `npm run db:migrate` locally.
 - **New dashboard widget:** add under `components/dashboard/`, wire to whichever provider owns the data. Don't add new RSC fetches at `app/page.tsx` — the alignment pass made it a sync shell that reads from providers.
